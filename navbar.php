@@ -1,10 +1,6 @@
 <?php
-// Archivo: navbar.php (COMPLETO - MODIFICADO POR GEMINI v2 PARA ROLES DINÁMICOS)
-// *** MODIFICADO (v3) POR GEMINI PARA OCULTAR "MIS PEDIDOS" AL ROL EMPLEADO ***
+// Archivo: navbar.php (COMPLETO - ACTUALIZADO CON ENLACES A ESTADISTICAS Y LISTADO)
 if (session_status() == PHP_SESSION_NONE) { session_start(); }
-
-
-
 
 // --- INICIO BLOQUE MODIFICADO POR GEMINI (v2) ---
 $mostrar_novedades = false;
@@ -25,20 +21,16 @@ if (!isset($pdo)) {
     include_once 'conexion.php';
 }
 if (!function_exists('tiene_permiso')) {
-    // ¡Importante! funciones_permisos.php AHORA ES REQUERIDO para el navbar
     include_once 'funciones_permisos.php'; 
 }
 
 // Helper para verificar si el usuario tiene AL MENOS UNO de los permisos de una lista
-// Esto es para decidir si mostramos el dropdown "Admin"
 if (!function_exists('tiene_algun_permiso')) {
     function tiene_algun_permiso($claves_permiso, $pdo_conn) {
-        // El admin siempre tiene todo, no necesitamos chequear la BD
         if (isset($_SESSION['usuario_rol']) && $_SESSION['usuario_rol'] === 'admin') {
             return true;
         }
-        // Para otros roles, chequear cada permiso
-        if (isset($pdo_conn)) { // Asegurarse que $pdo esté disponible
+        if (isset($pdo_conn)) { 
             foreach ($claves_permiso as $clave) {
                 if (tiene_permiso($clave, $pdo_conn)) {
                     return true;
@@ -49,22 +41,18 @@ if (!function_exists('tiene_algun_permiso')) {
     }
 }
 
-// Lista de permisos que dan acceso al menú "Admin"
 $permisos_del_menu_admin = [
     'acceso_pedidos_lista_encargado',
     'admin_usuarios',
-    'admin_roles', // Añadido enlace a roles
+    'admin_roles', 
     'admin_categorias',
     'admin_areas',
     'admin_destinos',
     'admin_remitos'
 ];
 
-// Variable para decidir si mostrar el dropdown de Admin
-// Usamos $pdo que viene de conexion.php
 $mostrar_menu_admin = tiene_algun_permiso($permisos_del_menu_admin, $pdo);
-
-// --- FIN BLOQUE MODIFICADO POR GEMINI (v2) ---
+// --- FIN BLOQUE MODIFICADO ---
 
 
 $rol_usuario_nav = $_SESSION['usuario_rol'] ?? 'empleado'; 
@@ -72,7 +60,6 @@ $nombre_usuario_nav = $_SESSION['usuario_nombre'] ?? 'Invitado';
 $foto_perfil_nav = $_SESSION['usuario_perfil'] ?? 'default.png'; 
 $id_usuario_nav = $_SESSION['usuario_id'] ?? 0;
 
-// Conteo Inicial Notificaciones (SIN CAMBIOS)
 $notificaciones_no_leidas = 0; 
 if ($id_usuario_nav > 0 && isset($pdo)) { 
     try { 
@@ -105,31 +92,9 @@ if ($id_usuario_nav > 0 && isset($pdo)) {
 
             <ul class="navbar-nav me-auto mb-2 mb-lg-0">
                 <?php
-// --- LOGICA DE PERMISOS (Puedes pegar esto justo antes del HTML del menú) ---
 $u_nombre_nav = $_SESSION['usuario_nombre'] ?? '';
 $u_rol_nav    = $_SESSION['usuario_rol'] ?? '';
-
-$ver_parte = false;
-$ver_firma = false;
-
-// 1. Admin ve todo
-if ($u_rol_nav === 'admin') {
-    $ver_parte = true;
-    $ver_firma = true;
-} 
-// 2. Cañete ve todo (Generar y Firmar)
-elseif (stripos($u_nombre_nav, 'Cañete') !== false) {
-    $ver_parte = true;
-    $ver_firma = true;
-}
-// 3. Federico y Ezequiel (Solo Generar)
-elseif (stripos($u_nombre_nav, 'Federico') !== false || stripos($u_nombre_nav, 'Ezequiel Paz') !== false) {
-    $ver_parte = true;
-    $ver_firma = false;
-}
 ?>
-
-
                 
                 <?php if (tiene_permiso('acceso_pedidos_crear', $pdo) || tiene_permiso('acceso_pedidos_lista_encargado', $pdo)): ?>
                     <li class="nav-item dropdown">
@@ -162,16 +127,20 @@ elseif (stripos($u_nombre_nav, 'Federico') !== false || stripos($u_nombre_nav, '
                     </li>
                 
                 <?php endif; ?>
+                
                 <?php if ($mostrar_novedades): ?>
-<li class="nav-item dropdown">
-    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
-        Novedades
-    </a>
-    <ul class="dropdown-menu">
-        <li><a class="dropdown-item" href="asistencia_tomar.php">Generar Parte</a></li>
-    </ul>
-</li>
-<?php endif; ?>
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle <?php echo (strpos(basename($_SERVER['PHP_SELF']), 'asistencia_') !== false) ? 'active' : ''; ?>" href="#" role="button" data-bs-toggle="dropdown">
+                        <i class="fas fa-clipboard-check"></i> Personal
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="asistencia_tomar.php"><i class="fas fa-pen-square me-2"></i>Generar Parte</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="asistencia_estadisticas.php"><i class="fas fa-chart-bar me-2"></i>Estadísticas</a></li>
+                        <li><a class="dropdown-item" href="asistencia_listado_general.php"><i class="fas fa-history me-2"></i>Historial de Partes</a></li>
+                    </ul>
+                </li>
+                <?php endif; ?>
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle <?php echo (strpos(basename($_SERVER['PHP_SELF']), 'tarea_') !== false || basename($_SERVER['PHP_SELF']) == 'tareas_lista.php') ? 'active' : ''; ?>"
                         href="#" id="tareasDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
@@ -317,23 +286,19 @@ elseif (stripos($u_nombre_nav, 'Federico') !== false || stripos($u_nombre_nav, '
 </nav>
 
 <script>
-    // ... (Tu JS de navbar existente para polling, toasts, etc.) ...
     let lastCheckTime = Date.now();
     const currentUserId = <?php echo json_encode($id_usuario_nav); ?>;
     const notificationSound = new Audio('assets/alert.mp3');
     function playNotificationSound() { try { notificationSound.volume = 0.8; notificationSound.pause(); notificationSound.currentTime = 0; notificationSound.play().catch(e => { console.warn("Sonido bloqueado por navegador:", e); }); } catch(e) {} }
     function updateNotificationBadge(count) { const b = document.getElementById('notification-badge'); if (b) { b.textContent = count > 99 ? '99+' : count; b.style.display = count > 0 ? 'inline-block' : 'none'; } }
 
-    // --- FUNCIÓN loadNotificationsList ---
-    function loadNotificationsList() { const list = document.getElementById('notifications-list'); if (!list) return; list.innerHTML = '<li><a class="dropdown-item text-center text-primary p-3"><i class="fas fa-spinner fa-spin me-2"></i> Cargando...</a></li>'; fetch(`notificaciones_fetch.php?last=null`).then(r => r.ok ? r.json() : r.text().then(t => {throw new Error(`HTTP ${r.status}: ${t||r.statusText}`);})).then(data => { list.innerHTML = ''; if (data?.notifications?.length > 0) { data.notifications.forEach(notif => { let icon = 'fa-info-circle', tc = ''; if (notif.tipo === 'chat') icon = 'fa-comment text-primary'; else if (notif.tipo === 'tarea_asignada') icon = 'fa-clipboard-list text-success'; else if (notif.tipo === 'tarea_terminada') { icon = 'fa-exclamation-triangle'; tc = 'text-warning'; } else if (notif.tipo === 'tarea_verificada') { icon = 'fa-check-double'; tc = 'text-success'; } else if (notif.tipo === 'tarea_modificacion') { icon = 'fa-undo'; tc = 'text-danger'; } else if (notif.tipo === 'tarea_iniciada') { icon = 'fa-play'; tc = 'text-info'; } else if (notif.tipo === 'tarea_actualizacion') { icon = 'fa-pen'; tc = 'text-secondary'; } else if (notif.tipo === 'tarea_recall_request') { icon = 'fa-undo-alt'; tc = 'text-warning'; } else if (notif.tipo === 'tarea_reasignada_nueva') { icon = 'fa-random text-success'; tc = 'text-success'; } else if (notif.tipo === 'tarea_reasignada_anterior') { icon = 'fa-random text-info'; tc = 'text-info'; } else if (notif.tipo === 'tarea_reanudad') { icon = 'fa-play-circle text-info'; } else if (notif.tipo === 'remito_rechazado') { icon = 'fa-file-invoice-dollar'; tc = 'text-danger'; } /* NUEVO TIPO */ const sc = notif.leida == 0 ? 'fw-bold' : 'text-muted'; const fecha = notif.fecha_creacion || 'Fecha inválida'; const targetUrl = notif.url || '#'; list.innerHTML += `<li><a class="dropdown-item ${sc} ${tc} text-wrap py-2" href="${targetUrl}" data-notif-id="${notif.id_notificacion}" data-notification-type="${notif.tipo || 'unknown'}" data-target-url="${targetUrl}" onclick="handleNotificationClick(this, event)"><div class="d-flex align-items-start"><i class="fas ${icon} mt-1 me-2 fa-fw"></i><div>${notif.mensaje}<span class="small d-block fw-normal text-muted">${fecha}</span></div></div></a></li>`; }); } else { list.innerHTML = '<li><a class="dropdown-item text-center text-muted p-3">No tienes notificaciones.</a></li>'; } list.innerHTML += '<li><hr class="dropdown-divider my-1"></li><li><a class="dropdown-item text-center small py-2" href="notificaciones_lista.php">Ver todas las notificaciones</a></li>'; }).catch(error => { list.innerHTML = '<li><a class="dropdown-item text-center text-danger p-3"><i class="fas fa-exclamation-circle me-2"></i>Error al cargar.</a></li>'; console.error('[loadNotificationsList] Catch - Error:', error); }); }
+    function loadNotificationsList() { const list = document.getElementById('notifications-list'); if (!list) return; list.innerHTML = '<li><a class="dropdown-item text-center text-primary p-3"><i class="fas fa-spinner fa-spin me-2"></i> Cargando...</a></li>'; fetch(`notificaciones_fetch.php?last=null`).then(r => r.ok ? r.json() : r.text().then(t => {throw new Error(`HTTP ${r.status}: ${t||r.statusText}`);})).then(data => { list.innerHTML = ''; if (data?.notifications?.length > 0) { data.notifications.forEach(notif => { let icon = 'fa-info-circle', tc = ''; if (notif.tipo === 'chat') icon = 'fa-comment text-primary'; else if (notif.tipo === 'tarea_asignada') icon = 'fa-clipboard-list text-success'; else if (notif.tipo === 'tarea_terminada') { icon = 'fa-exclamation-triangle'; tc = 'text-warning'; } else if (notif.tipo === 'tarea_verificada') { icon = 'fa-check-double'; tc = 'text-success'; } else if (notif.tipo === 'tarea_modificacion') { icon = 'fa-undo'; tc = 'text-danger'; } else if (notif.tipo === 'tarea_iniciada') { icon = 'fa-play'; tc = 'text-info'; } else if (notif.tipo === 'tarea_actualizacion') { icon = 'fa-pen'; tc = 'text-secondary'; } else if (notif.tipo === 'tarea_recall_request') { icon = 'fa-undo-alt'; tc = 'text-warning'; } else if (notif.tipo === 'tarea_reasignada_nueva') { icon = 'fa-random text-success'; tc = 'text-success'; } else if (notif.tipo === 'tarea_reasignada_anterior') { icon = 'fa-random text-info'; tc = 'text-info'; } else if (notif.tipo === 'tarea_reanudad') { icon = 'fa-play-circle text-info'; } else if (notif.tipo === 'remito_rechazado') { icon = 'fa-file-invoice-dollar'; tc = 'text-danger'; } const sc = notif.leida == 0 ? 'fw-bold' : 'text-muted'; const fecha = notif.fecha_creacion || 'Fecha inválida'; const targetUrl = notif.url || '#'; list.innerHTML += `<li><a class="dropdown-item ${sc} ${tc} text-wrap py-2" href="${targetUrl}" data-notif-id="${notif.id_notificacion}" data-notification-type="${notif.tipo || 'unknown'}" data-target-url="${targetUrl}" onclick="handleNotificationClick(this, event)"><div class="d-flex align-items-start"><i class="fas ${icon} mt-1 me-2 fa-fw"></i><div>${notif.mensaje}<span class="small d-block fw-normal text-muted">${fecha}</span></div></div></a></li>`; }); } else { list.innerHTML = '<li><a class="dropdown-item text-center text-muted p-3">No tienes notificaciones.</a></li>'; } list.innerHTML += '<li><hr class="dropdown-divider my-1"></li><li><a class="dropdown-item text-center small py-2" href="notificaciones_lista.php">Ver todas las notificaciones</a></li>'; }).catch(error => { list.innerHTML = '<li><a class="dropdown-item text-center text-danger p-3"><i class="fas fa-exclamation-circle me-2"></i>Error al cargar.</a></li>'; console.error('[loadNotificationsList] Catch - Error:', error); }); }
 
-    // --- FUNCIÓN handleNotificationClick (Corregida para leer parámetros de URL) ---
     function handleNotificationClick(element, event) {
         event.preventDefault();
         const notifId = element.getAttribute('data-notif-id');
         const notifType = element.getAttribute('data-notification-type');
         const targetUrl = element.getAttribute('data-target-url');
-        console.log(`[handleNotificationClick] ID: ${notifId}, Tipo: ${notifType}, Target: ${targetUrl}`);
         markAsRead(element);
 
         if (notifType === 'tarea_reasignada_nueva' || notifType === 'tarea_reasignada_anterior') {
@@ -350,11 +315,7 @@ elseif (stripos($u_nombre_nav, 'Federico') !== false || stripos($u_nombre_nav, '
             const taskPrioEl = document.getElementById('reassignTaskPriority');
             const taskStateEl = document.getElementById('reassignTaskState');
 
-            if (!reassignModalEl || !modalMessageEl || !newAssigneeInfoEl || !newAssigneeNameEl || !confirmButton || !taskIdEl || !taskTitleEl || !subtextEl || !taskDescEl || !taskCatEl || !taskPrioEl || !taskStateEl) {
-                console.error("Elementos del modal de reasignación no encontrados. Redirigiendo directamente.");
-                window.location.href = targetUrl;
-                return;
-            }
+            if (!reassignModalEl) { window.location.href = targetUrl; return; }
 
             let modalMessage = ''; let subtextMessage = ''; let finalRedirectUrl = targetUrl; const urlParams = new URLSearchParams(targetUrl.split('?')[1] || '');
 
@@ -378,7 +339,7 @@ elseif (stripos($u_nombre_nav, 'Federico') !== false || stripos($u_nombre_nav, '
                 subtextMessage = "Haz clic en 'Entendido' para ver los detalles completos y gestionarla.";
                 newAssigneeInfoEl.style.display = 'none';
                 finalRedirectUrl = `tarea_ver.php?id=${taskId}`;
-            } else { // tarea_reasignada_anterior
+            } else { 
                 modalMessage = "Esta tarea ha sido reasignada por el administrador.";
                 subtextMessage = "Ya no está bajo tu responsabilidad. Haz clic en 'Entendido' para ver tus tareas actuales.";
                 newAssigneeNameEl.textContent = decodeURIComponent(newAssigneeName.replace(/\+/g, ' '));
@@ -394,34 +355,25 @@ elseif (stripos($u_nombre_nav, 'Federico') !== false || stripos($u_nombre_nav, '
         }
     }
 
-    // --- FUNCIÓN markAsRead ---
-    function markAsRead(element) { let id = element ? element.getAttribute('data-notif-id') : null; if (!id) return; console.log(`[markAsRead] Marcando ID: ${id}`); fetch(`notificaciones_mark_read.php?id=${id}`).then(r => { if(r.ok) { console.log(`[markAsRead] ID: ${id} marcada OK.`); if (element) { element.classList.remove('fw-bold'); element.classList.add('text-muted'); } setTimeout(checkNewNotifications, 200); } else { console.warn(`[markAsRead] Falló marcar ID: ${id}. Status: ${r.status}`); } }).catch(e => { console.error('[markAsRead] Error fetch:', e); }); }
+    function markAsRead(element) { let id = element ? element.getAttribute('data-notif-id') : null; if (!id) return; fetch(`notificaciones_mark_read.php?id=${id}`).then(r => { if(r.ok) { if (element) { element.classList.remove('fw-bold'); element.classList.add('text-muted'); } setTimeout(checkNewNotifications, 200); } }).catch(e => { console.error('[markAsRead] Error fetch:', e); }); }
 
-    // --- checkNewNotifications ---
-    function checkNewNotifications() { const n=Date.now(), tS=lastCheckTime, u=`notificaciones_fetch.php?last=${tS}`; fetch(u).then(r=>{if(!r.ok)throw new Error(`[Polling] HTTP error ${r.status}`); return r.json();}).then(d=>{if(d&&typeof d.unread_count==='number')updateNotificationBadge(d.unread_count); if(d&&d.new_notifications&&d.new_notifications.length>0){console.log(`[Polling] ${d.new_notifications.length} nuevas.`); showNewNotificationToasts(d.new_notifications); playNotificationSound();} lastCheckTime=n;}).catch(e=>{console.error('[Polling] Fetch falló:',e);});}
+    function checkNewNotifications() { const n=Date.now(), tS=lastCheckTime, u=`notificaciones_fetch.php?last=${tS}`; fetch(u).then(r=>{if(!r.ok)throw new Error(`[Polling] HTTP error ${r.status}`); return r.json();}).then(d=>{if(d&&typeof d.unread_count==='number')updateNotificationBadge(d.unread_count); if(d&&d.new_notifications&&d.new_notifications.length>0){showNewNotificationToasts(d.new_notifications); playNotificationSound();} lastCheckTime=n;}).catch(e=>{console.error('[Polling] Fetch falló:',e);});}
 
-    // --- showNewNotificationToasts ---
     function showNewNotificationToasts(newNotifications) {
-        if(typeof bootstrap==='undefined'||typeof bootstrap.Toast==='undefined'){console.error('Bootstrap Toast no cargado.');return;} const tc=document.getElementById('notificationToastContainer'); if(!tc){console.warn('Contenedor Toast no encontrado.'); return;}
-        newNotifications.forEach(notif=>{let ic='fas fa-info-circle',tt='Notificación',bg='bg-info',lt='Ver',txc='text-white'; if(notif.tipo==='tarea_asignada'){ic='fas fa-clipboard-list';tt='Nueva Tarea';bg='bg-success';lt='Ver Tarea';}else if(notif.tipo==='chat'){ic='fas fa-comment';tt='Nuevo Mensaje';bg='bg-primary';lt='Ver Mensaje';}else if(notif.tipo==='tarea_terminada'){ic='fas fa-exclamation-triangle';tt='Tarea p/ Revisión';bg='bg-warning';lt='Revisar';txc='text-dark';}else if(notif.tipo==='tarea_verificada'){ic='fas fa-check-double';tt='Tarea Aprobada';bg='bg-success';lt='Ver';}else if(notif.tipo==='tarea_modificacion'){ic='fas fa-undo';tt='Modif. Solicitada';bg='bg-danger';lt='Ver';}else if(notif.tipo==='tarea_iniciada'){ic='fas fa-play';tt='Tarea Iniciada';bg='bg-info';lt='Ver';}else if(notif.tipo==='tarea_actualizacion'){ic='fas fa-pen';tt='Actualiz. Tarea';bg='bg-secondary';lt='Ver';}else if(notif.tipo === 'remito_rechazado') {ic='fas fa-file-invoice-dollar';tt='Remito Rechazado';bg='bg-danger';lt='Corregir';} else if (notif.tipo === 'tarea_recall_request'){ic='fas fa-undo-alt';tt='Solicitud Tarea';bg='bg-warning';lt='Revisar';txc='text-dark';}else if(notif.tipo === 'tarea_reasignada_nueva'){ic='fas fa-random';tt='Tarea Reasignada';bg='bg-success';lt='Ver Tarea';}else if(notif.tipo === 'tarea_reasignada_anterior'){ic='fas fa-random';tt='Tarea Reasignada';bg='bg-info';lt='Ver Info';} const targetUrl=notif.url||'#'; const th=`<div class="toast align-items-center ${txc} ${bg} border-0" role="alert" aria-live="assertive" aria-atomic="true" data-bs-autohide="true" data-bs-delay="10000"><div class="d-flex"><div class="toast-body"><i class="${ic} me-2"></i><strong>${tt}</strong><span class="d-block small mt-1">${notif.mensaje.substring(0,60)}${notif.mensaje.length>60?'...':''}</span><a href="${targetUrl}" class="btn btn-sm btn-light ms-auto text-primary mt-1 fw-bold" style="text-decoration: none;" data-notif-id="${notif.id_notificacion}" data-notification-type="${notif.tipo||'unknown'}" data-target-url="${targetUrl}" onclick="handleNotificationClick(this, event)">${lt} <i class="fas fa-arrow-right small"></i></a></div><button type="button" class="btn-close me-2 m-auto ${txc==='text-white'?'btn-close-white':''}" data-bs-dismiss="toast"></button></div></div>`; tc.insertAdjacentHTML('beforeend',th); const nte=tc.lastElementChild; try{const t=new bootstrap.Toast(nte); nte.addEventListener('hidden.bs.toast',()=>{nte.remove();}); t.show();}catch(e){console.error("[Toast] Error mostrar:",e,nte); if(nte)nte.remove();}});
+        if(typeof bootstrap==='undefined'||typeof bootstrap.Toast==='undefined'){return;} const tc=document.getElementById('notificationToastContainer'); if(!tc){return;}
+        newNotifications.forEach(notif=>{let ic='fas fa-info-circle',tt='Notificación',bg='bg-info',lt='Ver',txc='text-white'; if(notif.tipo==='tarea_asignada'){ic='fas fa-clipboard-list';tt='Nueva Tarea';bg='bg-success';lt='Ver Tarea';}else if(notif.tipo==='chat'){ic='fas fa-comment';tt='Nuevo Mensaje';bg='bg-primary';lt='Ver Mensaje';}else if(notif.tipo==='tarea_terminada'){ic='fas fa-exclamation-triangle';tt='Tarea p/ Revisión';bg='bg-warning';lt='Revisar';txc='text-dark';}else if(notif.tipo==='tarea_verificada'){ic='fas fa-check-double';tt='Tarea Aprobada';bg='bg-success';lt='Ver';}else if(notif.tipo==='tarea_modificacion'){ic='fas fa-undo';tt='Modif. Solicitada';bg='bg-danger';lt='Ver';}else if(notif.tipo==='tarea_iniciada'){ic='fas fa-play';tt='Tarea Iniciada';bg='bg-info';lt='Ver';}else if(notif.tipo==='tarea_actualizacion'){ic='fas fa-pen';tt='Actualiz. Tarea';bg='bg-secondary';lt='Ver';}else if(notif.tipo === 'remito_rechazado') {ic='fas fa-file-invoice-dollar';tt='Remito Rechazado';bg='bg-danger';lt='Corregir';} else if (notif.tipo === 'tarea_recall_request'){ic='fas fa-undo-alt';tt='Solicitud Tarea';bg='bg-warning';lt='Revisar';txc='text-dark';}else if(notif.tipo === 'tarea_reasignada_nueva'){ic='fas fa-random';tt='Tarea Reasignada';bg='bg-success';lt='Ver Tarea';}else if(notif.tipo === 'tarea_reasignada_anterior'){ic='fas fa-random';tt='Tarea Reasignada';bg='bg-info';lt='Ver Info';} const targetUrl=notif.url||'#'; const th=`<div class="toast align-items-center ${txc} ${bg} border-0" role="alert" aria-live="assertive" aria-atomic="true" data-bs-autohide="true" data-bs-delay="10000"><div class="d-flex"><div class="toast-body"><i class="${ic} me-2"></i><strong>${tt}</strong><span class="d-block small mt-1">${notif.mensaje.substring(0,60)}${notif.mensaje.length>60?'...':''}</span><a href="${targetUrl}" class="btn btn-sm btn-light ms-auto text-primary mt-1 fw-bold" style="text-decoration: none;" data-notif-id="${notif.id_notificacion}" data-notification-type="${notif.tipo||'unknown'}" data-target-url="${targetUrl}" onclick="handleNotificationClick(this, event)">${lt} <i class="fas fa-arrow-right small"></i></a></div><button type="button" class="btn-close me-2 m-auto ${txc==='text-white'?'btn-close-white':''}" data-bs-dismiss="toast"></button></div></div>`; tc.insertAdjacentHTML('beforeend',th); const nte=tc.lastElementChild; try{const t=new bootstrap.Toast(nte); nte.addEventListener('hidden.bs.toast',()=>{nte.remove();}); t.show();}catch(e){if(nte)nte.remove();}});
     }
 
-    // *** INICIALIZACIÓN (CORREGIDA) ***
     (function() {
         if (currentUserId > 0) {
             const dE = document.getElementById('notificationsDropdown');
             if (dE) {
                 setTimeout(() => {
-                    try {
-                        dE.addEventListener('show.bs.dropdown', loadNotificationsList);
-                    } catch(e) { console.error("[Init] Error listener dropdown:", e); }
+                    try { dE.addEventListener('show.bs.dropdown', loadNotificationsList); } catch(e) { }
                 }, 200);
             }
-            
-            // *** LÍNEAS RESTAURADAS PARA EL POLLING EN TIEMPO REAL ***
-            checkNewNotifications(); // Primera llamada inmediata
-            setInterval(checkNewNotifications, 6000); // Luego cada 6 segundos
-            // *** FIN LÍNEAS RESTAURADAS ***
+            checkNewNotifications(); 
+            setInterval(checkNewNotifications, 6000);
         }
     })();
 </script>
