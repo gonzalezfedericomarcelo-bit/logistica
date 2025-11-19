@@ -1,9 +1,9 @@
 <?php
 // Configuración de la conexión a la base de datos
 $servidor = "localhost"; // Servidor de la base de datos (XAMPP)
-$usuario = "u415354546_logistica";       // Usuario de la base de datos
+$usuario = "u415354546_logistica2";       // Usuario de la base de datos
 $password = "l0g15t1C@!";          // Contraseña del usuario (por defecto vacía en XAMPP)
-$base_de_datos = "u415354546_logistica"; // Nombre de la BD que creamos
+$base_de_datos = "u415354546_logistica2"; // Nombre de la BD que creamos
 
 // Opciones de conexión PDO
 $options = [
