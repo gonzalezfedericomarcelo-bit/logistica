@@ -274,7 +274,7 @@ function traducir_prioridad($prioridad) { $prioridades = ['baja' => '<span class
                             <a href="generar_pedido_pdf.php?id=<?php echo $tarea['id_pedido_origen']; ?>&modo=final"
                             target="_blank"
                             class="btn btn-lg btn-info text-white shadow">
-                                <i class="fas fa-file-pdf me-2"></i> Ver Informe Final PDF Completo
+                                <i class="fas fa-file-pdf me-2"></i> Ver Informe PDF
                             </a>
                             <p class="text-muted small mt-2">Generado a partir del Pedido #<?php echo htmlspecialchars($numero_orden_display); ?></p>
                         </div>
