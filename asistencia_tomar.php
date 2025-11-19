@@ -1,13 +1,15 @@
 <?php
-// Archivo: asistencia_tomar.php (CORREGIDO: AHORA FUNCIONA EL MENÚ)
+// Archivo: asistencia_tomar.php
 session_start();
 include 'conexion.php';
-include 'funciones_permisos.php'; 
+include_once 'funciones_permisos.php';
 
-if (!isset($_SESSION['usuario_id']) || !in_array($_SESSION['usuario_rol'], ['admin', 'encargado', 'empleado'])) {
+// --- SEGURIDAD NUEVA (Basada en Roles) ---
+if (!isset($_SESSION['usuario_id']) || !tiene_permiso('tomar_asistencia', $pdo)) {
     header("Location: dashboard.php");
     exit();
 }
+// -
 
 // --- LÓGICA DE JERARQUÍA ESTRICTA ---
 $nombre_usuario_actual = $_SESSION['usuario_nombre'] ?? '';

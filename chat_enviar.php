@@ -1,5 +1,5 @@
 <?php
-// chat_enviar.php - BLINDADO
+// chat_enviar.php - BLINDADO Y LIMPIO
 error_reporting(0);
 ini_set('display_errors', 0);
 ob_start();
@@ -12,6 +12,7 @@ $response = ['status' => 'error', 'msg' => 'Error desconocido'];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_SESSION['usuario_id'])) {
     $uid = $_SESSION['usuario_id'];
+    // Recibimos el HTML crudo del editor
     $mensaje = trim($_POST['mensaje'] ?? '');
     $destino_id = isset($_POST['destino_id']) ? intval($_POST['destino_id']) : 0;
     $nombre_remitente = $_SESSION['usuario_nombre'] ?? 'Usuario';
@@ -49,25 +50,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_SESSION['usuario_id'])) {
     if (!empty($mensaje) || $archivo_url) {
         try {
             $pdo->beginTransaction();
+            
+            // 1. Guardamos el mensaje con HTML en el chat para que se vea bonito
             $sql = "INSERT INTO chat (id_usuario, id_destino, mensaje, tipo_mensaje, archivo_url, archivo_nombre, fecha, leido) 
                     VALUES (:uid, :dest, :msg, :tipo, :url, :nom, NOW(), 0)";
             $stmt = $pdo->prepare($sql);
             $stmt->execute([':uid'=>$uid, ':dest'=>$destino_id, ':msg'=>$mensaje, ':tipo'=>$tipo, ':url'=>$archivo_url, ':nom'=>$archivo_nombre]);
+            
+            $msg_id = $pdo->lastInsertId();
 
+            // 2. Creamos la notificación (limpiando el HTML para que no rompa la alerta)
             if ($destino_id > 0) {
-                $pdo->exec("CREATE TABLE IF NOT EXISTS notificaciones (id_notificacion INT AUTO_INCREMENT PRIMARY KEY, id_usuario INT, mensaje TEXT, leido TINYINT DEFAULT 0, fecha DATETIME, tipo VARCHAR(50), link VARCHAR(255))");
-                $txt_notif = "💬 Nuevo mensaje de " . $nombre_remitente;
+                $mensaje_limpio = strip_tags(html_entity_decode($mensaje)); // Solo texto plano
+                
+                $txt_notif = "💬 De " . $nombre_remitente . ": " . (strlen($mensaje_limpio) > 30 ? substr($mensaje_limpio,0,30)."..." : $mensaje_limpio);
                 if($tipo == 'audio') $txt_notif = "🎤 Audio de " . $nombre_remitente;
                 if($tipo == 'archivo') $txt_notif = "📎 Archivo de " . $nombre_remitente;
-                $sql_n = "INSERT INTO notificaciones (id_usuario, mensaje, fecha, tipo, link) VALUES (:dest, :txt, NOW(), 'chat', 'chat.php')";
+                
+                // Link inteligente con ID de mensaje
+                $link_chat = "chat.php?chat_id=" . $uid . "&msg_id=" . $msg_id;
+
+                // Usamos id_usuario_destino para compatibilidad
+                $sql_n = "INSERT INTO notificaciones (id_usuario_destino, mensaje, fecha_creacion, tipo, url) VALUES (:dest, :txt, NOW(), 'chat', :link)";
                 $stmt_n = $pdo->prepare($sql_n);
-                $stmt_n->execute([':dest'=>$destino_id, ':txt'=>$txt_notif]);
+                $stmt_n->execute([':dest'=>$destino_id, ':txt'=>$txt_notif, ':link'=>$link_chat]);
             }
             $pdo->commit();
             $response = ['status' => 'success'];
         } catch (Exception $e) {
             $pdo->rollBack();
-            $response = ['status' => 'error', 'msg' => 'Error BD'];
+            $response = ['status' => 'error', 'msg' => 'Error BD: ' . $e->getMessage()];
         }
     } else {
         $response = ['status' => 'error', 'msg' => 'Mensaje vacío'];

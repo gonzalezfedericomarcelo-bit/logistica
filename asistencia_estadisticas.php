@@ -1,16 +1,15 @@
 <?php
-// Archivo: asistencia_estadisticas.php (CON TOOLTIPS Y ENLACES A PARTES)
+// Archivo: asistencia_estadisticas.php
 session_start();
 include 'conexion.php';
-include 'funciones_permisos.php'; 
+include_once 'funciones_permisos.php';
 
-// Seguridad
-$u_nombre = $_SESSION['usuario_nombre'] ?? '';
-$u_rol    = $_SESSION['usuario_rol'] ?? '';
-$es_autorizado = ($u_rol === 'admin' || stripos($u_nombre, 'Cañete') !== false || stripos($u_nombre, 'Ezequiel Paz') !== false || stripos($u_nombre, 'Federico') !== false);
-
-if (!$es_autorizado) { header("Location: dashboard.php"); exit(); }
-
+// --- SEGURIDAD NUEVA ---
+if (!isset($_SESSION['usuario_id']) || !tiene_permiso('ver_estadisticas_asistencia', $pdo)) {
+    header("Location: dashboard.php");
+    exit();
+}
+// --
 // Filtros
 $fecha_inicio = $_POST['fecha_inicio'] ?? date('Y-m-d', strtotime('-15 days'));
 $fecha_fin    = $_POST['fecha_fin'] ?? date('Y-m-d');

@@ -1,24 +1,15 @@
 <?php
-// Archivo: asistencia_listado_general.php (CORREGIDO: PERMISOS Y FLUJO APROBACION)
+// Archivo: asistencia_listado_general.php
 session_start();
 include 'conexion.php';
-include 'funciones_permisos.php'; 
+include_once 'funciones_permisos.php';
 
-// --- LÓGICA DE SEGURIDAD CORREGIDA ---
-$u_rol = $_SESSION['usuario_rol'] ?? '';
-$u_nombre = $_SESSION['usuario_nombre'] ?? '';
-$u_id = $_SESSION['usuario_id'] ?? 0;
-
-// Lista blanca de nombres permitidos para ver esta página
-$acceso_permitido = ($u_rol === 'admin' || 
-                     stripos($u_nombre, 'Cañete') !== false || 
-                     stripos($u_nombre, 'Ezequiel Paz') !== false || 
-                     stripos($u_nombre, 'Federico') !== false);
-
-if (!$acceso_permitido) {
+// --- SEGURIDAD NUEVA ---
+if (!isset($_SESSION['usuario_id']) || !tiene_permiso('ver_historial_asistencia', $pdo)) {
     header("Location: dashboard.php");
     exit();
 }
+// -----------------------------------------
 
 // --- PROCESAR APROBACIÓN (POST) ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion']) && $_POST['accion'] === 'aprobar') {

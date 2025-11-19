@@ -1,10 +1,11 @@
 <?php
-// Archivo: admin_roles.php (VERSION CON CRUD y COLORES NEUTROS)
+// Archivo: admin_roles.php (MEJORADO: Agrupación inteligente y gestión total)
 session_start();
 include 'conexion.php';
 include 'funciones_permisos.php';
 
 // 1. PROTEGER LA PÁGINA
+// Solo el rol 'admin' o quien tenga el permiso explícito 'admin_roles' puede entrar aquí.
 if (!isset($_SESSION['usuario_id']) || !tiene_permiso('admin_roles', $pdo)) {
     header("Location: dashboard.php");
     exit();
@@ -29,49 +30,48 @@ try {
     $roles = [];
 }
 
-// 3. OBTENER TODOS LOS PERMISOS DEFINIDOS
+// 3. OBTENER Y AGRUPAR TODOS LOS PERMISOS
+// Esta lógica ahora es más flexible. Busca palabras clave en lugar de frases exactas.
 try {
-    // Agrupación manual para la UI
     $permisos_sql = "SELECT clave_permiso, nombre_mostrar FROM permisos ORDER BY clave_permiso";
     $permisos_data = $pdo->query($permisos_sql)->fetchAll(PDO::FETCH_ASSOC);
 
-    // ESTRUCTURA DE AGRUPACIÓN ACTUALIZADA
+    // Estructura de grupos
     $permisos_agrupados = [
-        'Acceso Básico y Perfil' => [],
-        'Pedidos y Documentos' => [],
-        'Tareas y Logística' => [],
-        'Módulo de Avisos' => [],
-        'Configuración del Sistema (CRUD)' => [], 
-        'Configuración General (Listados)' => [],
+        'Gestión de Avisos' => [],
+        'Gestión de Tareas' => [],
+        'Gestión de Pedidos y Remitos' => [],
+        'Gestión de Usuarios y Roles' => [],
+        'Personal y Asistencia' => [],
+        'Acceso General y Tablero' => [],
+        'Otras Configuraciones' => [],
     ];
 
     foreach ($permisos_data as $p) {
-        $clave = $p['clave_permiso'];
+        $clave = strtolower($p['clave_permiso']); // Convertimos a minúsculas para comparar
         
-        // Criterio de Agrupación
-        if (strpos($clave, 'acceso_dashboard') !== false || strpos($clave, 'acceso_perfil_php') !== false || $clave === 'ver_chat') {
-            $permisos_agrupados['Acceso Básico y Perfil'][] = $p;
+        // Lógica de Agrupación Inteligente
+        if (strpos($clave, 'aviso') !== false) {
+            $permisos_agrupados['Gestión de Avisos'][] = $p;
         } 
-        // --- MODIFICADO: Agrupa los nuevos permisos de Pedidos ---
-        elseif (strpos($clave, 'acceso_pedidos_') !== false || $clave === 'admin_remitos') {
-            $permisos_agrupados['Pedidos y Documentos'][] = $p;
+        elseif (strpos($clave, 'tarea') !== false) {
+            $permisos_agrupados['Gestión de Tareas'][] = $p;
+        } 
+        elseif (strpos($clave, 'pedido') !== false || strpos($clave, 'remito') !== false || strpos($clave, 'factura') !== false) {
+            $permisos_agrupados['Gestión de Pedidos y Remitos'][] = $p;
+        } 
+        elseif (strpos($clave, 'usuario') !== false || strpos($clave, 'rol') !== false) {
+            $permisos_agrupados['Gestión de Usuarios y Roles'][] = $p;
         }
-        elseif (strpos($clave, 'acceso_tareas_') !== false || $clave === 'crear_tarea_directa') {
-            $permisos_agrupados['Tareas y Logística'][] = $p;
-        } 
-        // --- MODIFICADO: Agrupa los nuevos permisos de Avisos ---
-        elseif (strpos($clave, 'acceso_avisos') !== false) {
-            $permisos_agrupados['Módulo de Avisos'][] = $p;
-        } 
-        elseif (in_array($clave, ['admin_usuarios', 'admin_roles'])) {
-            $permisos_agrupados['Configuración del Sistema (CRUD)'][] = $p;
-        } 
-        elseif (strpos($clave, 'admin_') !== false) {
-            $permisos_agrupados['Configuración General (Listados)'][] = $p;
+        elseif (strpos($clave, 'asistencia') !== false || strpos($clave, 'personal') !== false) {
+            $permisos_agrupados['Personal y Asistencia'][] = $p;
+        }
+        elseif (strpos($clave, 'dashboard') !== false || strpos($clave, 'perfil') !== false || strpos($clave, 'chat') !== false) {
+            $permisos_agrupados['Acceso General y Tablero'][] = $p;
         } 
         else {
-             // Fallback para permisos no clasificados
-             $permisos_agrupados['Configuración General (Listados)'][] = $p;
+             // Si no coincide con nada, va a "Otras"
+             $permisos_agrupados['Otras Configuraciones'][] = $p;
         }
     }
 
@@ -80,7 +80,6 @@ try {
     $alerta_tipo = 'danger';
     $permisos_agrupados = [];
 }
-
 
 // 4. LÓGICA PARA CARGAR PERMISOS DEL ROL SELECCIONADO
 $rol_seleccionado = $_GET['rol'] ?? ($roles[0]['nombre_rol'] ?? null); 
@@ -110,39 +109,43 @@ if ($rol_seleccionado) {
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         .permisos-card-group { display: flex; flex-wrap: wrap; gap: 15px; }
-        .permisos-card { flex: 1 1 300px; /* Base width */ }
+        .permisos-card { flex: 1 1 300px; }
         .list-group-item:hover .action-buttons { visibility: visible; }
         .action-buttons { visibility: hidden; }
-        /* AJUSTE DE COLOR: primary pasa a secondary, info o dark */
-        .card-header.bg-primary { background-color: var(--bs-secondary) !important; color: white !important; }
-        .border-info { border-color: var(--bs-info) !important; }
+        .card-header.bg-secondary { background-color: #495057 !important; }
+        
+        /* Estilo visual para los switches */
+        .form-check-input:checked {
+            background-color: #198754;
+            border-color: #198754;
+        }
     </style>
 </head>
 <body>
     <?php include 'navbar.php'; ?>
 
     <div class="container mt-4">
-        <h1 class="mb-4"><i class="fas fa-user-shield me-2"></i> Gestión de Roles y Permisos</h1>
+        <h1 class="mb-4"><i class="fas fa-user-shield me-2"></i> Configuración de Roles</h1>
         
         <?php if ($mensaje): ?>
-            <div class="alert alert-<?php echo $alerta_tipo; ?> alert-dismissible fade show" role="alert">
+            <div class="alert alert-<?php echo $alerta_tipo; ?> alert-dismissible fade show shadow-sm" role="alert">
                 <?php echo htmlspecialchars($mensaje); ?>
                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
             </div>
         <?php endif; ?>
 
-        <div class="row mb-3">
+        <div class="row mb-4">
             <div class="col-12">
-                <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#crearRolModal">
-                    <i class="fas fa-plus me-1"></i> Crear Nuevo Rol
+                <button type="button" class="btn btn-success shadow-sm" data-bs-toggle="modal" data-bs-target="#crearRolModal">
+                    <i class="fas fa-plus-circle me-2"></i> Crear Nuevo Rol
                 </button>
             </div>
         </div>
 
         <div class="row">
-            <div class="col-md-3">
+            <div class="col-md-3 mb-4">
                 <div class="list-group shadow-sm" id="roleList">
-                    <div class="list-group-item active bg-dark border-dark">Roles del Sistema</div>
+                    <div class="list-group-item active bg-dark border-dark fw-bold">Roles Disponibles</div>
                     <?php if (count($roles) > 0): ?>
                         <?php foreach ($roles as $rol): ?>
                             <?php 
@@ -150,91 +153,112 @@ if ($rol_seleccionado) {
                             $rol_desc = htmlspecialchars($rol['descripcion'] ?? 'Sin descripción');
                             $is_active = ($rol_name === $rol_seleccionado) ? 'active' : '';
                             $is_admin = ($rol_name === 'admin');
+                            // Estos roles por defecto tienen advertencia al borrar, pero se pueden editar sus permisos
                             $is_default = in_array($rol_name, ['empleado', 'auxiliar', 'encargado']);
                             ?>
                             <a href="?rol=<?php echo urlencode($rol_name); ?>" 
                                class="list-group-item list-group-item-action d-flex justify-content-between align-items-center <?php echo $is_active; ?>">
                                 
                                 <div>
-                                    <h6 class="mb-0 text-capitalize"><?php echo $rol_name; ?></h6>
-                                    <small class="text-muted"><?php echo $rol_desc; ?></small>
+                                    <h6 class="mb-0 text-capitalize fw-bold"><?php echo $rol_name; ?></h6>
+                                    <small class="text-muted d-block text-truncate" style="max-width: 120px;"><?php echo $rol_desc; ?></small>
                                 </div>
                                 
                                 <div class="action-buttons text-nowrap">
                                     <?php if (!$is_admin): ?>
-                                        <button type="button" class="btn btn-sm btn-info text-white me-1" 
+                                        <button type="button" class="btn btn-sm btn-outline-primary border-0" 
                                                 data-bs-toggle="modal" data-bs-target="#editarRolModal"
                                                 data-rol-name="<?php echo $rol_name; ?>" 
                                                 data-rol-desc="<?php echo $rol_desc; ?>" 
-                                                onclick="loadEditRolModal(this)"
-                                                title="Editar Rol">
+                                                onclick="loadEditRolModal(this); event.preventDefault();"
+                                                title="Editar descripción">
                                             <i class="fas fa-edit"></i>
                                         </button>
                                         
-                                        <button type="button" class="btn btn-sm btn-danger" 
-                                                onclick="confirmDeleteRol('<?php echo $rol_name; ?>', <?php echo $is_default ? 'true' : 'false'; ?>)"
+                                        <button type="button" class="btn btn-sm btn-outline-danger border-0" 
+                                                onclick="confirmDeleteRol('<?php echo $rol_name; ?>', <?php echo $is_default ? 'true' : 'false'; ?>); event.preventDefault();"
                                                 title="Eliminar Rol">
                                             <i class="fas fa-trash"></i>
                                         </button>
                                     <?php else: ?>
-                                        <span class="badge bg-danger">Sistema</span>
+                                        <span class="badge bg-secondary"><i class="fas fa-lock"></i></span>
                                     <?php endif; ?>
                                 </div>
                             </a>
                         <?php endforeach; ?>
                     <?php else: ?>
-                        <div class="list-group-item text-center text-danger">No se encontraron roles.</div>
+                        <div class="list-group-item text-center text-danger">No hay roles creados.</div>
                     <?php endif; ?>
                 </div>
             </div>
 
             <div class="col-md-9">
                 <?php if ($rol_seleccionado): ?>
-                    <div class="card shadow">
-                        <div class="card-header bg-secondary text-white"> 
-                            <h4 class="mb-0 text-capitalize">Permisos para el Rol: "<?php echo $rol_seleccionado; ?>"</h4>
-                            <?php if ($rol_seleccionado === 'admin'): ?>
-                                <p class="mb-0 small bg-warning p-1 rounded text-dark mt-2">⚠️ El rol **admin** siempre tiene acceso a **TODOS** los permisos.</p>
-                            <?php endif; ?>
+                    <div class="card shadow-sm border-0">
+                        <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center"> 
+                            <h5 class="mb-0 text-capitalize">Permisos para: <strong><?php echo $rol_seleccionado; ?></strong></h5>
+                            <small>Selecciona qué puede hacer este rol</small>
                         </div>
-                        <div class="card-body">
-                            <form method="POST" action="admin_roles_procesar_permisos.php">
-
-                             <input type="hidden" name="rol_nombre" value="<?php echo htmlspecialchars($rol_seleccionado); ?>">
-
-    
-                            <input type="checkbox" name="permisos_seleccionados[]" value="<?php echo htmlspecialchars($permiso['clave_permiso']); ?>" ... >
-                            <input type="hidden" name="rol_nombre" value="<?php echo htmlspecialchars($rol_seleccionado); ?>">
-
-                            <?php foreach ($permisos_agrupados as $grupo => $permisos): ?>
-                                <div class="card permisos-card border-secondary mb-3">
-                                    <ul class="list-group list-group-flush">
-                                        <?php foreach ($permisos as $permiso): ?>
-                                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                                <div class="form-check">
-                                                    <input class="form-check-input" type="checkbox"
-                                                        name="permisos_seleccionados[]" 
-                                                        value="<?php echo htmlspecialchars($permiso['clave_permiso']); ?>"
-                                                        id="permiso_<?php echo htmlspecialchars($permiso['clave_permiso']); ?>"
-                                                        <?php echo in_array($permiso['clave_permiso'], $permisos_actuales) ? 'checked' : ''; ?>>
-                                                    <label class="form-check-label" for="permiso_<?php echo htmlspecialchars($permiso['clave_permiso']); ?>">
-                                                        <?php echo htmlspecialchars($permiso['nombre_mostrar']); ?>
-                                                    </label>
-                                                </div>
-                                            </li>
-                                        <?php endforeach; ?>
-                                    </ul>
+                        <div class="card-body bg-light">
+                            
+                            <?php if ($rol_seleccionado === 'admin'): ?>
+                                <div class="alert alert-warning border-warning">
+                                    <i class="fas fa-exclamation-triangle me-2"></i>
+                                    <strong>Nota:</strong> El rol <b>admin</b> tiene acceso total al sistema. Los cambios aquí son visuales pero no limitarán al super-administrador.
                                 </div>
-                            <?php endforeach; ?>
+                            <?php endif; ?>
 
-                            <div class="text-end mt-4">
-                                <button type="submit" class="btn btn-success btn-lg"><i class="fas fa-save"></i> Guardar Cambios de Permisos</button>
-                            </div>
-</form>
+                            <form method="POST" action="admin_roles_procesar_permisos.php">
+                                <input type="hidden" name="rol_nombre" value="<?php echo htmlspecialchars($rol_seleccionado); ?>">
+
+                                <div class="permisos-container">
+                                    <?php foreach ($permisos_agrupados as $grupo => $permisos): ?>
+                                        <?php if (!empty($permisos)): ?>
+                                            <div class="card mb-3 shadow-sm">
+                                                <div class="card-header bg-white fw-bold text-primary">
+                                                    <?php echo htmlspecialchars($grupo); ?>
+                                                </div>
+                                                <div class="card-body p-0">
+                                                    <ul class="list-group list-group-flush">
+                                                        <?php foreach ($permisos as $permiso): ?>
+                                                            <li class="list-group-item d-flex justify-content-between align-items-center action-row">
+                                                                <div>
+                                                                    <label class="form-check-label fw-semibold text-dark" for="permiso_<?php echo htmlspecialchars($permiso['clave_permiso']); ?>">
+                                                                        <?php echo htmlspecialchars($permiso['nombre_mostrar']); ?>
+                                                                    </label>
+                                                                    <br>
+                                                                    <small class="text-muted fst-italic" style="font-size: 0.75rem;">Clave: <?php echo htmlspecialchars($permiso['clave_permiso']); ?></small>
+                                                                </div>
+                                                                
+                                                                <div class="form-check form-switch">
+                                                                    <input class="form-check-input" type="checkbox" role="switch"
+                                                                        name="permisos_seleccionados[]" 
+                                                                        value="<?php echo htmlspecialchars($permiso['clave_permiso']); ?>"
+                                                                        id="permiso_<?php echo htmlspecialchars($permiso['clave_permiso']); ?>"
+                                                                        <?php echo in_array($permiso['clave_permiso'], $permisos_actuales) ? 'checked' : ''; ?>>
+                                                                </div>
+                                                            </li>
+                                                        <?php endforeach; ?>
+                                                    </ul>
+                                                </div>
+                                            </div>
+                                        <?php endif; ?>
+                                    <?php endforeach; ?>
+                                </div>
+
+                                <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4 mb-3">
+                                    <button type="submit" class="btn btn-success btn-lg px-5 shadow">
+                                        <i class="fas fa-save me-2"></i> Guardar Permisos
+                                    </button>
+                                </div>
+                            </form>
                         </div>
                     </div>
                 <?php else: ?>
-                    <div class="alert alert-info text-center">Por favor, cree un rol o seleccione uno de la lista para gestionar sus permisos.</div>
+                    <div class="alert alert-info text-center p-5 shadow-sm">
+                        <h4><i class="fas fa-arrow-left me-2"></i> Selecciona un rol</h4>
+                        <p>Haz clic en un rol de la lista izquierda para ver y editar sus permisos.</p>
+                    </div>
                 <?php endif; ?>
             </div>
         </div>
@@ -250,19 +274,19 @@ if ($rol_seleccionado) {
                 <form method="POST" action="admin_roles_crear.php">
                     <div class="modal-body">
                         <div class="mb-3">
-                            <label for="nombre_rol" class="form-label">Nombre del Rol (Clave)</label>
-                            <input type="text" class="form-control" id="nombre_rol" name="nombre_rol" required maxlength="50" pattern="[a-zA-Z0-9_]+" title="Solo letras, números y guiones bajos." oninput="this.value = this.value.toLowerCase()">
-                            <small class="text-muted">Ej: encargado, supervisor_logistica. Solo minúsculas, sin espacios.</small>
+                            <label for="nombre_rol" class="form-label">Nombre del Rol (ID)</label>
+                            <input type="text" class="form-control" id="nombre_rol" name="nombre_rol" required maxlength="50" pattern="[a-zA-Z0-9_]+" title="Solo letras minúsculas, números y guiones bajos." oninput="this.value = this.value.toLowerCase().replace(/[^a-z0-9_]/g, '')">
+                            <div class="form-text">Ej: supervisor_ventas. Sin espacios, solo minúsculas.</div>
                         </div>
                         <div class="mb-3">
-                            <label for="descripcion_rol" class="form-label">Descripción</label>
-                            <input type="text" class="form-control" id="descripcion_rol" name="descripcion_rol" maxlength="255">
-                            <small class="text-muted">Breve descripción para identificar el rol.</small>
+                            <label for="descripcion_rol" class="form-label">Descripción Visible</label>
+                            <input type="text" class="form-control" id="descripcion_rol" name="descripcion_rol" maxlength="255" required>
+                            <div class="form-text">Ej: Supervisor de Ventas (Tiene acceso a reportes)</div>
                         </div>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                        <button type="submit" class="btn btn-success"><i class="fas fa-plus"></i> Crear Rol</button>
+                        <button type="submit" class="btn btn-success">Crear</button>
                     </div>
                 </form>
             </div>
@@ -272,26 +296,25 @@ if ($rol_seleccionado) {
     <div class="modal fade" id="editarRolModal" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
-                <div class="modal-header bg-info text-white">
-                    <h5 class="modal-title">Editar Rol: <span id="rol_actual_title"></span></h5>
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">Editar Descripción</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <form method="POST" action="admin_roles_editar.php">
                     <div class="modal-body">
                         <input type="hidden" name="rol_original" id="rol_original">
                         <div class="mb-3">
-                            <label for="nombre_rol_edit" class="form-label">Nombre del Rol (Clave)</label>
-                            <input type="text" class="form-control" id="nombre_rol_edit" name="nombre_rol_edit" required readonly disabled>
-                            <small class="text-danger">El nombre clave del rol no puede ser modificado.</small>
+                            <label class="form-label">Rol (ID)</label>
+                            <input type="text" class="form-control bg-light" id="nombre_rol_edit" disabled readonly>
                         </div>
                         <div class="mb-3">
                             <label for="descripcion_rol_edit" class="form-label">Descripción</label>
-                            <input type="text" class="form-control" id="descripcion_rol_edit" name="descripcion_rol_edit" maxlength="255">
+                            <input type="text" class="form-control" id="descripcion_rol_edit" name="descripcion_rol_edit" maxlength="255" required>
                         </div>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                        <button type="submit" class="btn btn-info text-white"><i class="fas fa-save"></i> Guardar Cambios</button>
+                        <button type="submit" class="btn btn-primary">Guardar Cambios</button>
                     </div>
                 </form>
             </div>
@@ -302,31 +325,29 @@ if ($rol_seleccionado) {
         <input type="hidden" name="rol_a_eliminar" id="rol_a_eliminar">
     </form>
 
-
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Función para cargar los datos en el modal de edición
         function loadEditRolModal(button) {
             const rolName = button.getAttribute('data-rol-name');
             const rolDesc = button.getAttribute('data-rol-desc');
             
-            document.getElementById('rol_actual_title').textContent = rolName;
             document.getElementById('rol_original').value = rolName;
             document.getElementById('nombre_rol_edit').value = rolName;
             document.getElementById('descripcion_rol_edit').value = rolDesc;
         }
 
-        // Función para confirmar la eliminación de un rol
         function confirmDeleteRol(rolName, isDefault) {
             if (rolName === 'admin') {
-                alert('No se puede eliminar el rol "admin" por seguridad del sistema.');
+                alert('El rol admin no se puede eliminar.');
                 return;
             }
+            let msg = `¿Eliminar el rol '${rolName}'?`;
             if (isDefault) {
-                alert('Advertencia: Este es un rol por defecto ("empleado", "auxiliar", "encargado"). Eliminarlo puede causar problemas si hay usuarios asignados. Solo se recomienda eliminar roles personalizados.');
+                msg += "\n\nATENCIÓN: Es un rol predeterminado del sistema. Asegúrate de que no haya usuarios usándolo.";
             }
+            msg += "\n\nEsta acción es irreversible.";
 
-            if (confirm(`ADVERTENCIA: ¿Está seguro de ELIMINAR el rol '${rolName}'? Todos los usuarios asignados a este rol serán reasignados a 'empleado'. ESTA ACCIÓN NO SE PUEDE DESHACER.`)) {
+            if (confirm(msg)) {
                 document.getElementById('rol_a_eliminar').value = rolName;
                 document.getElementById('deleteRolForm').submit();
             }

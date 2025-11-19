@@ -1,11 +1,11 @@
 <?php
-// chat_fetch.php
+// chat_fetch.php - FIX DURACIÓN AUDIO + HTML
 error_reporting(0);
 ini_set('display_errors', 0);
 session_start();
 include 'conexion.php';
 if (ob_get_length()) ob_clean();
-header('Content-Type: application/json');
+header('Content-Type: application/json; charset=utf-8');
 
 $uid = $_SESSION['usuario_id'] ?? 0;
 if($uid == 0) { echo json_encode([]); exit; }
@@ -29,15 +29,16 @@ try {
 
     $data = [];
     while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-        // Links
-        $msg = nl2br(htmlspecialchars($row['mensaje']));
-        $msg = preg_replace('/#T(\d+)/i', '<a href="tarea_ver.php?id=$1" class="badge bg-warning text-dark text-decoration-none" target="_blank">#Tarea $1</a>', $msg);
-        $msg = preg_replace('/#P(\d+)/i', '<a href="generar_pedido_pdf.php?id=$1" class="badge bg-info text-dark text-decoration-none" target="_blank">#Pedido $1</a>', $msg);
+        $msg_html = html_entity_decode($row['mensaje']); 
+        $msg_plain = strip_tags($msg_html);
 
-        // Media HTML
+        $msg_html = preg_replace('/#T(\d+)/i', '<a href="tarea_ver.php?id=$1" class="badge bg-warning text-dark text-decoration-none" target="_blank">#Tarea $1</a>', $msg_html);
+        $msg_html = preg_replace('/#P(\d+)/i', '<a href="generar_pedido_pdf.php?id=$1" class="badge bg-info text-dark text-decoration-none" target="_blank">#Pedido $1</a>', $msg_html);
+
         $media = '';
         if($row['tipo_mensaje'] == 'audio') {
-            $media = '<div class="mt-1"><audio controls preload="none" src="uploads/chat/'.$row['archivo_url'].'" style="height:32px; width:240px;"></audio></div>';
+            // FIX: preload="metadata" permite ver la duración sin reproducir
+            $media = '<div class="mt-1"><audio controls preload="metadata" src="uploads/chat/'.$row['archivo_url'].'" style="height:40px; width:260px; border-radius:20px; background:#f1f3f4;"></audio></div>';
         } elseif($row['tipo_mensaje'] == 'archivo') {
             $ext = strtolower(pathinfo($row['archivo_nombre'], PATHINFO_EXTENSION));
             $ruta = 'uploads/chat/' . $row['archivo_url'];
@@ -52,11 +53,12 @@ try {
             'id' => $row['id_chat'],
             'es_mio' => ($row['id_usuario'] == $uid),
             'nombre' => explode(' ', $row['nombre_completo'])[0],
-            'mensaje' => $msg,
+            'remitente_nombre' => $row['nombre_completo'],
+            'remitente_id' => $row['id_usuario'],
+            'mensaje_html' => $msg_html,
+            'mensaje_plain' => $msg_plain,
             'media_html' => $media,
             'hora' => date('H:i', strtotime($row['fecha'])),
-            'remitente_id' => $row['id_usuario'],
-            'remitente_nombre' => $row['nombre_completo'],
             'remitente_foto' => !empty($row['foto_perfil']) ? 'uploads/perfiles/'.$row['foto_perfil'] : 'assets/default.png'
         ];
     }

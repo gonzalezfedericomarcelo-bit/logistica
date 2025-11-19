@@ -1,68 +1,31 @@
 <?php
-// Archivo: admin_usuarios.php
+// Archivo: avisos_crear.php (CORREGIDO: fecha_publicacion, es_activo)
 session_start();
 include 'conexion.php';
-// Asegúrate de que esta línea esté presente
-include 'funciones_permisos.php'; 
+include 'funciones_permisos.php';
 
-// 1. Proteger la página (solo con permiso)
-if (!isset($_SESSION['usuario_id']) || !tiene_permiso('acceso_avisos_crear', $pdo)) {
-    header("Location: avisos.php?error=Acceso denegado");
+if (!isset($_SESSION['usuario_id']) || !tiene_permiso('crear_aviso', $pdo)) {
+    header("Location: avisos.php");
     exit();
 }
-$mensaje = '';
-$alerta_tipo = '';
 
-$id_creador = $_SESSION['usuario_id'];
 $mensaje = '';
-$alerta_tipo = '';
-$titulo_previo = '';
-$contenido_previo = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $titulo = trim($_POST['titulo'] ?? '');
-    // El contenido viene del campo oculto rellenado por JS
-    $contenido_html = $_POST['contenido_input'] ?? '';
-    $es_activo = isset($_POST['es_activo']) ? 1 : 0;
-    $fecha_publicacion = date('Y-m-d H:i:s');
+    $titulo = trim($_POST['titulo']);
+    $contenido = $_POST['contenido']; 
+    $id_user = $_SESSION['usuario_id'];
 
-    // Guardar valores para repopular el formulario en caso de error
-    $titulo_previo = htmlspecialchars($titulo);
-    $contenido_previo = $contenido_html;
-    
-    // Validación: Contenido limpio (quita etiquetas, pero permite la imagen)
-    // Quito <p><br></p> que es lo que Quill inserta cuando está vacío
-    $contenido_limpio = strip_tags($contenido_html, '<img>');
-    
-    if (empty($titulo) || empty(trim(str_replace(['<p><br></p>', '<br>'], '', $contenido_limpio)))) {
-        $mensaje = 'El título y el contenido del aviso son obligatorios.';
-        $alerta_tipo = 'danger';
-    } else {
+    if (!empty($titulo) && !empty($contenido)) {
         try {
-            $sql = "INSERT INTO avisos (id_creador, titulo, contenido, es_activo, fecha_publicacion) 
-                    VALUES (:id_creador, :titulo, :contenido, :es_activo, :fecha_publicacion)";
-            
+            // SQL FIJO: id_creador, fecha_publicacion, es_activo
+            $sql = "INSERT INTO avisos (id_creador, titulo, contenido, fecha_publicacion, es_activo) VALUES (:id_user, :titulo, :cont, NOW(), 1)";
             $stmt = $pdo->prepare($sql);
-            $stmt->execute([
-                ':id_creador' => $id_creador,
-                ':titulo' => $titulo,
-                // El campo 'contenido' debe ser LONGTEXT en la DB
-                ':contenido' => $contenido_html, 
-                ':es_activo' => $es_activo,
-                ':fecha_publicacion' => $fecha_publicacion
-            ]);
-            
-            $mensaje = '¡Aviso creado exitosamente!';
-            $alerta_tipo = 'success';
-            
-            // Limpiar formulario después de éxito
-            $titulo_previo = '';
-            $contenido_previo = '';
-            
+            $stmt->execute([':id_user' => $id_user, ':titulo' => $titulo, ':cont' => $contenido]);
+            header("Location: avisos.php?msg=creado");
+            exit();
         } catch (PDOException $e) {
-            $mensaje = 'Error al guardar el aviso: ' . $e->getMessage();
-            $alerta_tipo = 'danger';
-            error_log("Error de DB en avisos_crear: " . $e->getMessage());
+            $mensaje = "Error: " . $e->getMessage();
         }
     }
 }
@@ -71,110 +34,52 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Crear Nuevo Aviso</title>
+    <title>Crear Aviso</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-    
-    <link href="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.snow.css" rel="stylesheet" />
-    
-    <link href="https://cdn.jsdelivr.net/npm/quill-image-resize-module@3.0.0/image-resize.min.css" rel="stylesheet">
-    
+    <script src="https://cdn.tiny.cloud/1/fsu1zolakhx1ihn2slwt050tc9rgv1jejro3mwbyixxr2coh/tinymce/7/tinymce.min.js" referrerpolicy="origin"></script>
     <style>
-        /* Estilo para dar altura al editor de Quill */
-        #editor-container {
-            height: 300px;
-        }
+        .tox-tinymce { border-radius: 8px!important; border: 1px solid #dee2e6!important; }
+        .tox-promotion, .tox-statusbar__branding { display: none!important; }
     </style>
 </head>
 <body>
     <?php include 'navbar.php'; ?>
-
-    <div class="container mt-5">
-        <h1 class="mb-4"><i class="fas fa-bullhorn"></i> Crear Nuevo Aviso Interno</h1>
-
-        <?php if ($mensaje): ?>
-            <div class="alert alert-<?php echo $alerta_tipo; ?> alert-dismissible fade show" role="alert">
-                <?php echo $mensaje; ?>
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    <div class="container mt-4">
+        <div class="card shadow-lg border-0">
+            <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center py-3">
+                <h4 class="mb-0">Redactar Aviso</h4>
+                <a href="avisos.php" class="btn btn-sm btn-outline-light rounded-pill px-3">Volver</a>
             </div>
-        <?php endif; ?>
-
-        <div class="card shadow-sm">
-            <div class="card-body">
-                <form method="POST" onsubmit="return submitForm()">
-                    
-                    <div class="mb-3">
-                        <label for="titulo" class="form-label">Título del Aviso (*)</label>
-                        <input type="text" class="form-control" id="titulo" name="titulo" value="<?php echo $titulo_previo; ?>" required maxlength="255">
+            <div class="card-body p-4">
+                <?php if($mensaje): ?><div class="alert alert-danger"><?php echo $mensaje; ?></div><?php endif; ?>
+                <form method="POST">
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">TÍTULO</label>
+                        <input type="text" name="titulo" class="form-control form-control-lg" required>
                     </div>
-                    
-                    <div class="mb-3">
-                        <label class="form-label">Contenido Detallado (*)</label>
-                        <div id="editor-container"><?php echo $contenido_previo; ?></div>
-                        <input type="hidden" name="contenido_input" id="contenido_input" required>
+                    <div class="mb-4">
+                        <textarea id="editor" name="contenido"></textarea>
                     </div>
-                    
-                    <div class="form-check form-switch mb-4">
-                        <input class="form-check-input" type="checkbox" id="es_activo" name="es_activo" checked>
-                        <label class="form-check-label" for="es_activo">
-                            Aviso Activo (Se muestra en el Dashboard)
-                        </label>
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end pt-3 border-top">
+                        <button type="submit" class="btn btn-primary btn-lg px-5">Publicar</button>
                     </div>
-
-                    <button type="submit" class="btn btn-primary w-100">
-                        <i class="fas fa-paper-plane"></i> Publicar Aviso
-                    </button>
-                    
                 </form>
             </div>
         </div>
-        
-        <div class="mt-4 text-center">
-            <a href="avisos_lista.php" class="btn btn-outline-secondary"><i class="fas fa-arrow-left"></i> Volver a la Lista de Avisos</a>
-        </div>
     </div>
-
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-    
-    <script src="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.js"></script>
-    
-    <script src="https://cdn.jsdelivr.net/npm/quill-image-resize-module@3.0.0/image-resize.min.js"></script>
-
     <script>
-        const quill = new Quill('#editor-container', {
-            theme: 'snow',
-            modules: {
-                toolbar: [
-                    [{ 'header': [1, 2, 3, false] }],
-                    ['bold', 'italic', 'underline', 'strike'],
-                    ['blockquote', 'code-block'],
-                    [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-                    [{ 'indent': '-1'}, { 'indent': '+1' }],
-                    ['link', 'image'],
-                    ['clean']
-                ],
-                // *** MÓDULO DE REDIMENSIÓN AGREGADO ***
-                imageResize: {
-                    displaySize: true // Muestra el tamaño de la imagen al arrastrar
-                }
-                // ***************************************
-            }
-        });
-
-        // Función para mover el contenido del editor al campo oculto antes de enviar
-        function submitForm() {
-            // Obtener el HTML, incluyendo los estilos de tamaño de imagen agregados por el módulo
-            const content = quill.root.innerHTML; 
-            document.getElementById('contenido_input').value = content;
-            return true;
-        }
-        
-        // Cargar contenido previo en caso de error de formulario
-        const initialContent = document.getElementById('editor-container').innerHTML;
-        if (initialContent.trim() !== '') {
-            quill.clipboard.dangerouslyPasteHTML(initialContent);
-        }
+      tinymce.init({
+        selector: '#editor', height: 600, language: 'es', menubar: true,
+        plugins: ['advlist', 'autolink', 'lists', 'link', 'image', 'charmap', 'preview', 'searchreplace', 'table', 'wordcount', 'media', 'fullscreen'],
+        toolbar: 'undo redo | blocks | bold italic backcolor | alignleft aligncenter alignright | bullist numlist | removeformat | image media | fullscreen',
+        images_upload_handler: (blobInfo, progress) => new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = () => reject('Error');
+            reader.readAsDataURL(blobInfo.blob());
+        })
+      });
     </script>
 </body>
 </html>

@@ -1,5 +1,5 @@
 <?php
-// Archivo: admin_usuarios.php (CON GESTIÓN DE GRADOS)
+// Archivo: admin_usuarios.php (CORREGIDO: Carga dinámica de roles)
 session_start();
 include 'conexion.php';
 include 'funciones_permisos.php'; 
@@ -20,7 +20,7 @@ if (isset($_SESSION['admin_usuarios_mensaje'])) {
     unset($_SESSION['admin_usuarios_alerta']);
 }
 
-// 2. Lógica CREAR USUARIO (Actualizada con Grado)
+// 2. Lógica CREAR USUARIO
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['crear_usuario'])) {
     $nombre_completo = trim($_POST['nombre_completo']); 
     $usuario = trim($_POST['usuario']); 
@@ -28,12 +28,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['crear_usuario'])) {
     $email = trim($_POST['email'] ?? ''); 
     $telefono = trim($_POST['telefono'] ?? ''); 
     $genero = strtolower(trim($_POST['genero'] ?? 'otro')); 
-    $grado = trim($_POST['grado'] ?? ''); // <-- NUEVO CAMPO
-    $rol = 'empleado';
+    $grado = trim($_POST['grado'] ?? ''); 
+    $rol = 'empleado'; // Por defecto al crear
     
     $password_hashed = password_hash($password, PASSWORD_DEFAULT);
     try {
-        // Insertamos también el GRADO
         $sql = "INSERT INTO usuarios (nombre_completo, usuario, password, rol, email, telefono, genero, grado, activo) VALUES (:nombre_completo, :usuario, :password_hashed, :rol, :email, :telefono, :genero, :grado, 1)";
         $stmt = $pdo->prepare($sql);
         $stmt->bindParam(':nombre_completo', $nombre_completo); 
@@ -43,21 +42,21 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['crear_usuario'])) {
         $stmt->bindParam(':email', $email); 
         $stmt->bindParam(':telefono', $telefono); 
         $stmt->bindParam(':genero', $genero);
-        $stmt->bindParam(':grado', $grado); // <-- BINDING
+        $stmt->bindParam(':grado', $grado); 
         
         if ($stmt->execute()) { $mensaje = "El usuario '$usuario' ha sido creado exitosamente."; $alerta_tipo = 'success'; }
         else { $mensaje = "Error desconocido al crear el usuario."; $alerta_tipo = 'danger'; }
     } catch (PDOException $e) { if ($e->getCode() == '23000') { $mensaje = "Error: El Nombre de Usuario o Email ya está registrado."; } else { $mensaje = "Error al crear el usuario: " . $e->getMessage(); error_log("Error al crear usuario: " . $e->getMessage()); } $alerta_tipo = 'danger'; }
 }
 
-// 3. Lógica ELIMINAR USUARIO (Sin Cambios)
+// 3. Lógica ELIMINAR USUARIO
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['eliminar_usuario'])) {
     $id_usuario_eliminar = (int)$_POST['id_usuario'];
     if ($id_usuario_eliminar === $_SESSION['usuario_id']) { $mensaje = "No puede eliminar su propia cuenta."; $alerta_tipo = 'danger'; }
     else { try { $pdo->beginTransaction(); $sql_transfer_tasks = "UPDATE tareas SET id_asignado = NULL WHERE id_asignado = :id_usuario"; $stmt_transfer_tasks = $pdo->prepare($sql_transfer_tasks); $stmt_transfer_tasks->bindParam(':id_usuario', $id_usuario_eliminar); $stmt_transfer_tasks->execute(); $sql_delete = "DELETE FROM usuarios WHERE id_usuario = :id_usuario"; $stmt_delete = $pdo->prepare($sql_delete); $stmt_delete->bindParam(':id_usuario', $id_usuario_eliminar); $stmt_delete->execute(); $pdo->commit(); $mensaje = "Usuario ID #{$id_usuario_eliminar} eliminado. Sus tareas asignadas ahora no tienen responsable."; $alerta_tipo = 'success'; } catch (PDOException $e) { $pdo->rollBack(); $mensaje = "Error al eliminar el usuario: " . $e->getMessage(); $alerta_tipo = 'danger'; error_log("Error al eliminar usuario: " . $e->getMessage()); } }
 }
 
-// 4. OBTENER LISTADO (Incluyendo 'grado' y 'rol')
+// 4. OBTENER LISTADO DE USUARIOS
 try {
     $sql_empleados = "SELECT id_usuario, nombre_completo, usuario, email, telefono, genero, activo, rol, grado 
                       FROM usuarios 
@@ -69,7 +68,15 @@ try {
     $usuarios_empleados = $stmt_empleados->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) { error_log("Error al cargar lista de usuarios: " . $e->getMessage()); $usuarios_empleados = []; $mensaje = "Error crítico al cargar la lista de usuarios: " . $e->getMessage(); $alerta_tipo = 'danger'; }
 
-// LISTA DE GRADOS MILITARES (Para los selectores)
+// 5. OBTENER LISTA DE ROLES (NUEVO: Dinámico desde la BD)
+try {
+    $stmt_roles = $pdo->query("SELECT nombre_rol FROM roles ORDER BY nombre_rol ASC");
+    $lista_roles_db = $stmt_roles->fetchAll(PDO::FETCH_COLUMN);
+} catch (PDOException $e) {
+    $lista_roles_db = ['empleado', 'encargado', 'auxiliar', 'admin']; // Fallback por si falla la BD
+}
+
+// LISTA DE GRADOS MILITARES
 $lista_grados = ['SM', 'SP', 'SA', 'SI', 'SS', 'SG', 'CI', 'CB', 'VP', 'VS', 'VS "ec"', 'AC'];
 ?>
 <!DOCTYPE html>
@@ -209,13 +216,13 @@ $lista_grados = ['SM', 'SP', 'SA', 'SI', 'SS', 'SG', 'CI', 'CB', 'VP', 'VS', 'VS
         <td class="text-center">
             <form action="admin_cambiar_rol.php" method="POST" style="display:inline;" onsubmit="return confirm('¿Confirmar cambio de rol para <?php echo htmlspecialchars($usuario['nombre_completo']); ?>?');">
                 <input type="hidden" name="id_usuario" value="<?php echo htmlspecialchars($usuario['id_usuario']); ?>">
-                <select name="nuevo_rol" class="form-select form-select-sm d-inline-block" style="width: 100px; max-width: 100%;">
+                <select name="nuevo_rol" class="form-select form-select-sm d-inline-block" style="width: 130px; max-width: 100%;">
                     <?php
-                    $roles_permitidos = ['admin', 'encargado', 'empleado', 'auxiliar'];
+                    // AQUI USAMOS LA LISTA DINÁMICA DE LA BD
                     $current_rol = $usuario['rol'] ?? 'empleado'; 
-                    foreach ($roles_permitidos as $rol) {
-                        $selected = ($current_rol == $rol) ? 'selected' : '';
-                        echo '<option value="' . $rol . '" ' . $selected . '>' . ucfirst($rol) . '</option>';
+                    foreach ($lista_roles_db as $rol_db) {
+                        $selected = ($current_rol == $rol_db) ? 'selected' : '';
+                        echo '<option value="' . htmlspecialchars($rol_db) . '" ' . $selected . '>' . ucfirst($rol_db) . '</option>';
                     }
                     ?>
                 </select>
@@ -235,7 +242,6 @@ $lista_grados = ['SM', 'SP', 'SA', 'SI', 'SS', 'SG', 'CI', 'CB', 'VP', 'VS', 'VS
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // --- JS Cargar Modal Editar (Actualizado con Grado) ---
         function loadEditUserModal(button) { 
             const id=button.getAttribute('data-id'); 
             const n=button.getAttribute('data-nombre'); 
@@ -243,7 +249,7 @@ $lista_grados = ['SM', 'SP', 'SA', 'SI', 'SS', 'SG', 'CI', 'CB', 'VP', 'VS', 'VS
             const e=button.getAttribute('data-email'); 
             const t=button.getAttribute('data-telefono'); 
             const g=button.getAttribute('data-genero')||'otro';
-            const grado=button.getAttribute('data-grado')||''; // <-- Capturar Grado
+            const grado=button.getAttribute('data-grado')||''; 
 
             document.getElementById('id_usuario_edit').value=id; 
             document.getElementById('nombre_completo_edit').value=n; 
@@ -251,18 +257,16 @@ $lista_grados = ['SM', 'SP', 'SA', 'SI', 'SS', 'SG', 'CI', 'CB', 'VP', 'VS', 'VS
             document.getElementById('email_edit').value=e; 
             document.getElementById('telefono_edit').value=t; 
             document.getElementById('genero_edit').value=g; 
-            document.getElementById('grado_edit').value=grado; // <-- Asignar al Select
+            document.getElementById('grado_edit').value=grado; 
             
             document.getElementById('password_edit').value=''; 
             document.getElementById('editUsuarioModalLabel').textContent=`Editar Empleado #${id} (${u})`; 
         }
         const editModal = document.getElementById('editUsuarioModal'); if (editModal) { editModal.addEventListener('hidden.bs.modal', function () { document.querySelector('#editUsuarioModal form').reset(); document.getElementById('id_usuario_edit').value=''; document.getElementById('editUsuarioModalLabel').textContent='Editar Empleado'; }); }
 
-        // ... Resto de scripts (Filtro, Reset Pass, Toggle Status) igual que antes ...
-        // (Copiar el bloque de scripts existente al final del archivo anterior si lo tienes, sino te lo paso entero en el siguiente bloque para asegurar)
-        const searchInput=document.getElementById('searchInput'); const userTable=document.getElementById('userTable'); const tableRows=userTable?userTable.querySelectorAll('tbody tr.user-row'):[]; if(searchInput&&tableRows.length>0){searchInput.addEventListener('keyup',function(){const s=this.value.toLowerCase().trim(); tableRows.forEach(r=>{const nE=r.querySelector('td.user-name'); const lE=r.querySelector('td.user-login'); const n=nE?nE.textContent.toLowerCase():''; const l=lE?lE.textContent.toLowerCase():''; if(n.includes(s)||l.includes(s)){r.style.display='';}else{r.style.display='none';}});});}else if(!searchInput){console.warn("#searchInput no encontrado.");}else{console.warn("#userTable o filas no encontradas.");}
+        const searchInput=document.getElementById('searchInput'); const userTable=document.getElementById('userTable'); const tableRows=userTable?userTable.querySelectorAll('tbody tr.user-row'):[]; if(searchInput&&tableRows.length>0){searchInput.addEventListener('keyup',function(){const s=this.value.toLowerCase().trim(); tableRows.forEach(r=>{const nE=r.querySelector('td.user-name'); const lE=r.querySelector('td.user-login'); const n=nE?nE.textContent.toLowerCase():''; const l=lE?lE.textContent.toLowerCase():''; if(n.includes(s)||l.includes(s)){r.style.display='';}else{r.style.display='none';}});});}
         const feedbackModalEl = document.getElementById('actionFeedbackModal'); const feedbackModal = feedbackModalEl ? new bootstrap.Modal(feedbackModalEl) : null; const feedbackHeader = document.getElementById('feedbackModalHeader'); const feedbackTitle = document.getElementById('actionFeedbackModalLabel'); const feedbackBody = document.getElementById('feedbackModalBody');
-        function showFeedbackModal(title, message, type = 'info') { if (!feedbackModal || !feedbackHeader || !feedbackTitle || !feedbackBody) { console.error("Elementos del modal de feedback no encontrados."); alert(message); return; } feedbackTitle.textContent = title; feedbackBody.textContent = message; feedbackHeader.className = 'modal-header'; feedbackTitle.querySelector('i')?.remove(); const btnClose = feedbackHeader.querySelector('.btn-close'); if (type === 'success') { feedbackHeader.classList.add('bg-success', 'text-white'); feedbackTitle.insertAdjacentHTML('afterbegin', '<i class="fas fa-check-circle me-2"></i>'); if(btnClose) btnClose.classList.add('btn-close-white'); } else if (type === 'danger') { feedbackHeader.classList.add('bg-danger', 'text-white'); feedbackTitle.insertAdjacentHTML('afterbegin', '<i class="fas fa-exclamation-triangle me-2"></i>'); if(btnClose) btnClose.classList.add('btn-close-white'); } else if (type === 'warning') { feedbackHeader.classList.add('bg-warning', 'text-dark'); feedbackTitle.insertAdjacentHTML('afterbegin', '<i class="fas fa-exclamation-triangle me-2"></i>'); if(btnClose) btnClose.classList.remove('btn-close-white'); } else { feedbackHeader.classList.add('bg-info', 'text-white'); feedbackTitle.insertAdjacentHTML('afterbegin', '<i class="fas fa-info-circle me-2"></i>'); if(btnClose) btnClose.classList.add('btn-close-white'); } feedbackModal.show(); }
+        function showFeedbackModal(title, message, type = 'info') { if (!feedbackModal || !feedbackHeader || !feedbackTitle || !feedbackBody) { alert(message); return; } feedbackTitle.textContent = title; feedbackBody.textContent = message; feedbackHeader.className = 'modal-header'; feedbackTitle.querySelector('i')?.remove(); const btnClose = feedbackHeader.querySelector('.btn-close'); if (type === 'success') { feedbackHeader.classList.add('bg-success', 'text-white'); feedbackTitle.insertAdjacentHTML('afterbegin', '<i class="fas fa-check-circle me-2"></i>'); if(btnClose) btnClose.classList.add('btn-close-white'); } else if (type === 'danger') { feedbackHeader.classList.add('bg-danger', 'text-white'); feedbackTitle.insertAdjacentHTML('afterbegin', '<i class="fas fa-exclamation-triangle me-2"></i>'); if(btnClose) btnClose.classList.add('btn-close-white'); } else if (type === 'warning') { feedbackHeader.classList.add('bg-warning', 'text-dark'); feedbackTitle.insertAdjacentHTML('afterbegin', '<i class="fas fa-exclamation-triangle me-2"></i>'); if(btnClose) btnClose.classList.remove('btn-close-white'); } else { feedbackHeader.classList.add('bg-info', 'text-white'); feedbackTitle.insertAdjacentHTML('afterbegin', '<i class="fas fa-info-circle me-2"></i>'); if(btnClose) btnClose.classList.add('btn-close-white'); } feedbackModal.show(); }
         function confirmResetPassword(userId, userName) { if (confirm(`¿Está seguro de resetear la contraseña para el usuario '${userName}' (ID: ${userId})? Se enviará una nueva contraseña temporal por correo.`)) { const originalButton = event.target.closest('button'); if (originalButton) { originalButton.disabled = true; originalButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; } fetch('admin_usuarios_reset_password.php', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest'}, body: `id_usuario=${userId}` }).then(response => response.json().then(data => ({ status: response.status, body: data }))).then(({ status, body }) => { if (body.success) { showFeedbackModal('Éxito', body.message || "Correo con contraseña temporal enviado.", 'success'); } else { showFeedbackModal('Error', body.message || `Error ${status}`, 'danger'); } }).catch(error => { console.error("Error en fetch reset password:", error); showFeedbackModal('Error de Conexión', "No se pudo conectar con el servidor para resetear la contraseña.", 'danger'); }).finally(() => { if (originalButton) { originalButton.disabled = false; originalButton.innerHTML = '<i class="fas fa-key"></i>'; } }); } }
         function confirmToggleStatus(userId, userName, newStatus) { const actionText = newStatus === 1 ? 'ACTIVAR' : 'DESACTIVAR'; const confirmationMessage = `¿Está seguro de ${actionText} al usuario '${userName}' (ID: ${userId})?`; if (confirm(confirmationMessage)) { const originalButton = event.target.closest('button'); if (originalButton) { originalButton.disabled = true; originalButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; } fetch('admin_usuarios_toggle_status.php', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest'}, body: `id_usuario=${userId}&nuevo_estado=${newStatus}` }).then(response => response.json().then(data => ({ status: response.status, body: data }))).then(({ status, body }) => { if (body.success) { showFeedbackModal('Éxito', body.message || `Usuario ${actionText.toLowerCase()}do.`, 'success'); if(feedbackModalEl) { feedbackModalEl.addEventListener('hidden.bs.modal', () => { window.location.reload(); }, { once: true }); } else { window.location.reload(); } } else { showFeedbackModal('Error', body.message || `Error ${status}`, 'danger'); if (originalButton) { originalButton.disabled = false; originalButton.innerHTML = `<i class="fas ${newStatus === 0 ? 'fa-user-slash' : 'fa-user-check'}"></i>`; } } }).catch(error => { console.error("Error en fetch toggle status:", error); showFeedbackModal('Error de Conexión', "No se pudo conectar con el servidor para cambiar el estado.", 'danger'); if (originalButton) { originalButton.disabled = false; originalButton.innerHTML = `<i class="fas ${newStatus === 0 ? 'fa-user-slash' : 'fa-user-check'}"></i>`; } }); } }
     </script>
