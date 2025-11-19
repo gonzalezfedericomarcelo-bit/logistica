@@ -104,7 +104,7 @@ try {
 // ---> DEFINIR NOMBRE Y RUTA PÚBLICA DEL PDF ANTES DE GENERAR QR <---
 $pdf_public_dir = 'pdfs_publicos';
 $pdf_filename_base = 'Pedido_Trabajo_' . str_replace('/', '-', $num_orden_display);
-$pdf_filename = $pdf_filename_base . ($modo === 'final' ? '_Completo' : '_Inicial') . '.pdf';
+$pdf_filename = $pdf_filename_basCompletoe . ($modo === 'final' ? '_' : '_Inicial') . '.pdf';
 $pdf_save_path = __DIR__ . DIRECTORY_SEPARATOR . $pdf_public_dir . DIRECTORY_SEPARATOR . $pdf_filename;
 
 // Crear directorio si no existe (con manejo de error)

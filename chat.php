@@ -1,624 +1,408 @@
 <?php
+// chat.php - VERSIÓN FINAL "SIN ALERTAS Y RESET FORZADO"
 session_start();
 include 'conexion.php';
-// Nota: 'navbar.php' se incluye más abajo. Asegúrate de haber quitado 'session_start()' de 'navbar.php' para evitar los Notice.
+if (!isset($_SESSION['usuario_id'])) header("Location: login.php");
+include 'navbar.php'; 
 
-if (!isset($_SESSION['usuario_id'])) {
-    header("Location: login.php");
-    exit();
-}
+$mi_id = $_SESSION['usuario_id'];
 
-$id_usuario = $_SESSION['usuario_id'];
-$nombre_usuario = $_SESSION['usuario_nombre'];
-$foto_perfil = $_SESSION['usuario_perfil'];
-
-// ID de la conversación actualmente seleccionada
-$id_conversacion_activa = $_GET['id_conversacion'] ?? null;
-$conversacion_activa_info = null;
-$mensajes_iniciales = []; // Inicializar
-$mostrar_chat_activo = false;
-
-// 1. Cargar todas las conversaciones del usuario
-$conversaciones_listado = [];
-try {
-    // CORRECCIÓN CLAVE DE SINTAXIS SQL (para obtener nombres)
-    $sql = "SELECT 
-                c.id_conversacion, 
-                c.tipo, 
-                c.nombre_grupo, 
-                c.fecha_creacion,
-                GROUP_CONCAT(u.nombre_completo SEPARATOR ', ') as nombres_participantes
-            FROM conversaciones c
-            -- 1. Obtenemos las conversaciones en las que el usuario actual participa
-            JOIN participantes_chat pc_user ON c.id_conversacion = pc_user.id_conversacion
-            -- 2. Unimos con la tabla de participantes (pc_all) y usuarios (u) para obtener TODOS los nombres
-            JOIN participantes_chat pc_all ON c.id_conversacion = pc_all.id_conversacion
-            JOIN usuarios u ON pc_all.id_usuario = u.id_usuario
-            -- La cláusula WHERE debe ir después de todos los JOINs
-            WHERE pc_user.id_usuario = :id_usuario
-            -- Agrupamos por las columnas no agregadas (necesario para GROUP_CONCAT)
-            GROUP BY c.id_conversacion, c.tipo, c.nombre_grupo, c.fecha_creacion
-            ORDER BY c.fecha_creacion DESC";
-    
-    $stmt = $pdo->prepare($sql);
-    $stmt->bindParam(':id_usuario', $id_usuario, PDO::PARAM_INT);
-    $stmt->execute();
-    $conversaciones_listado = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-    // Si hay una conversación activa, cargar su información y mensajes
-    if ($id_conversacion_activa) {
-        // Verificar que la conversación existe y el usuario es participante
-        $sql_info = "SELECT c.id_conversacion, c.tipo, c.nombre_grupo, 
-                            GROUP_CONCAT(u.nombre_completo SEPARATOR ', ') as nombres_participantes
-                     FROM conversaciones c
-                     JOIN participantes_chat pc ON c.id_conversacion = pc.id_conversacion
-                     JOIN usuarios u ON pc.id_usuario = u.id_usuario
-                     WHERE c.id_conversacion = :id_conv
-                     GROUP BY c.id_conversacion";
-        
-        $stmt_info = $pdo->prepare($sql_info);
-        $stmt_info->bindParam(':id_conv', $id_conversacion_activa, PDO::PARAM_INT);
-        $stmt_info->execute();
-        $conversacion_activa_info = $stmt_info->fetch();
-
-        // Obtener IDs de participantes para una verificación más precisa
-        $sql_participantes = "SELECT id_usuario FROM participantes_chat WHERE id_conversacion = :id_conv";
-        $stmt_part = $pdo->prepare($sql_participantes);
-        $stmt_part->bindParam(':id_conv', $id_conversacion_activa, PDO::PARAM_INT);
-        $stmt_part->execute();
-        $participantes_ids = $stmt_part->fetchAll(PDO::FETCH_COLUMN);
-
-        // Si la conversación es válida y el usuario está en ella
-        if ($conversacion_activa_info && in_array($id_usuario, $participantes_ids)) {
-            $mostrar_chat_activo = true;
-            // Cargar mensajes iniciales
-            $sql_mensajes = "SELECT m.id_mensaje, m.id_emisor, m.contenido, m.fecha_envio, u.nombre_completo AS nombre_emisor
-                             FROM mensajes m
-                             JOIN usuarios u ON m.id_emisor = u.id_usuario
-                             WHERE m.id_conversacion = :id_conv
-                             ORDER BY m.fecha_envio ASC";
-            $stmt_mensajes = $pdo->prepare($sql_mensajes);
-            $stmt_mensajes->bindParam(':id_conv', $id_conversacion_activa, PDO::PARAM_INT);
-            $stmt_mensajes->execute();
-            $mensajes_iniciales = $stmt_mensajes->fetchAll(PDO::FETCH_ASSOC);
-
-        } else {
-             $id_conversacion_activa = null; // Resetear si no es válida o no autorizado
-        }
-    }
-
-} catch (PDOException $e) {
-    // Si persiste, mostrar error.
-    die("Error al cargar conversaciones: " . $e->getMessage());
-}
-
+// Consulta de usuarios
+$sql_users = "
+    SELECT u.id_usuario, u.nombre_completo, u.foto_perfil, u.rol,
+    (SELECT MAX(fecha) FROM chat WHERE (id_usuario=u.id_usuario AND id_destino=:mi_id) OR (id_usuario=:mi_id AND id_destino=u.id_usuario)) as u_fecha,
+    (SELECT COUNT(*) FROM chat WHERE id_usuario=u.id_usuario AND id_destino=:mi_id AND leido=0) as sin_leer
+    FROM usuarios u WHERE u.id_usuario != :mi_id 
+    ORDER BY CASE WHEN u_fecha IS NULL THEN 1 ELSE 0 END, u_fecha DESC, u.nombre_completo ASC";
+$stmt = $pdo->prepare($sql_users);
+$stmt->execute([':mi_id' => $mi_id]);
+$usuarios = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chat - Gestión Logística</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Chat</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
-    <script type="module" src="https://cdn.jsdelivr.net/npm/emoji-picker-element@^1/index.js"></script>
     <style>
-        /* CRÍTICO: Usar 100% de altura solo para el body */
-        html, body {
-            height: 100%;
-            overflow: hidden; /* Evita el doble scroll */
-        }
-        .chat-container {
-            display: flex;
-            /* CRÍTICO: Usa 100% de la altura disponible debajo del navbar */
-            height: 100%; 
-            overflow: hidden;
-            
-            /* (INICIO) MODIFICACIÓN: Añadimos bordes y sombra para que se vea bien centrado */
-            border: 1px solid #dee2e6;
-            border-radius: .375rem;
-            box-shadow: 0 .125rem .25rem rgba(0,0,0,.075);
-            /* (FIN) MODIFICACIÓN */
-        }
-        .conversations-list {
-            width: 300px; 
-            border-right: 1px solid #ccc;
-            overflow-y: auto;
-            flex-shrink: 0;
-            background-color: #f8f9fa;
-            /* Si usamos 100% en chat-container, necesitamos que esto se ajuste */
-            height: 100%; 
-        }
-        .chat-area {
-            flex-grow: 1;
-            display: flex;
-            flex-direction: column;
-            position: relative;
-            /* CRÍTICO: Aseguramos que ocupe el espacio */
-            height: 100%; 
-        }
-
-        /* Área de Encabezado y Pie (Input) Fijos en ESCRITORIO */
-        .chat-header-fixed {
-            flex-shrink: 0;
-            z-index: 10;
-            border-bottom: 1px solid #ccc;
-        }
+        /* Estilos Base */
+        html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; background-color: #d1d7db; display: flex; flex-direction: column; }
+        .navbar { flex-shrink: 0; z-index: 1000; }
+        .chat-app-container { flex: 1; display: flex; width: 100%; max-width: 1600px; margin: 0 auto; background: white; position: relative; overflow: hidden; }
         
-        /* (INICIO) MODIFICACIÓN: Área de Input "Vistosa" */
-        .message-input-area {
-            flex-shrink: 0;
-            z-index: 10;
-            /* Borde más notorio */
-            border-top: 2px solid #0d6efd; 
-            padding: 1rem 1.25rem; /* Más padding */
-            background-color: #f8f9fa; /* Color de fondo suave */
-            position: relative; /* Necesario para el picker de emojis */
-        }
-        /* (FIN) MODIFICACIÓN */
-
-        /* Área de Mensajes Desplazable */
-        .messages-display {
-            flex-grow: 1;
-            overflow-y: auto; 
-            padding: 15px;
-            background-color: #e9ecef;
-        }
-
-        /* Estilos de Burbuja */
-        .message-bubble {
-            padding: 8px 12px;
-            border-radius: 15px;
-            margin-bottom: 10px;
-            max-width: 80%;
-            word-wrap: break-word; 
-        }
-        .message-mine {
-            background-color: #0d6efd;
-            color: white;
-            margin-left: auto;
-            border-bottom-right-radius: 2px;
-        }
-        .message-other {
-            background-color: #ffffff;
-            color: #212529;
-            margin-right: auto;
-            border-bottom-left-radius: 2px;
-            box-shadow: 0 1px 1px rgba(0,0,0,.05);
-        }
-        .conversation-item.active {
-            background-color: #0d6efd;
-            color: white;
-        }
-        .conversation-item:hover {
-            background-color: #dee2e6;
-        }
+        /* Sidebar */
+        .sidebar { width: 350px; display: flex; flex-direction: column; border-right: 1px solid #ddd; background: white; flex-shrink: 0; }
+        .sidebar-header { padding: 15px; background: #f0f2f5; font-weight: bold; color: #54656f; }
+        .search-box { padding: 10px; border-bottom: 1px solid #f0f0f0; }
+        .contact-list { flex: 1; overflow-y: auto; }
+        .contact-item { display: flex; align-items: center; padding: 12px; cursor: pointer; border-bottom: 1px solid #f0f0f0; transition:0.2s; }
+        .contact-item:hover { background: #f5f5f5; }
+        .contact-item.active { background: #e9edef; border-left: 4px solid #00a884; }
+        .avatar { width: 45px; height: 45px; border-radius: 50%; object-fit: cover; margin-right: 15px; }
+        .unread-badge { background: #00a884; color: white; border-radius: 50%; padding: 2px 8px; font-size: 11px; margin-left: auto; min-width: 20px; text-align: center; }
         
-        /* (INICIO) MODIFICACIÓN EMOJI: Estilos del Picker y botón */
-        .emoji-button {
-            font-size: 1.25rem;
-            color: #6c757d;
-        }
-        .emoji-button:hover {
-            color: #0d6efd;
-        }
+        /* Chat Area */
+        .chat-area { flex: 1; display: flex; flex-direction: column; background-color: #efe7dd; background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png'); position: relative; }
+        .chat-header { height: 60px; padding: 0 15px; background: #f0f2f5; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #ddd; }
+        .messages-box { flex: 1; overflow-y: auto; padding: 20px 5%; display: flex; flex-direction: column; gap: 10px; }
+        .chat-footer { padding: 10px; background: #f0f2f5; display: flex; align-items: center; gap: 10px; padding-bottom: calc(10px + env(safe-area-inset-bottom)); }
         
-        emoji-picker {
-            position: absolute;
-            bottom: 100%; /* Se abre ARRIBA del input */
-            right: 15px;
-            width: 320px;
-            height: 400px;
-            display: none; /* Oculto por defecto */
-            z-index: 1050;
-        }
-        /* (FIN) MODIFICACIÓN EMOJI */
-        
-        /* RESPONSIVE: Adaptación para Móviles */
-        @media (max-width: 991.98px) {
-            .conversations-list {
-                width: 100%;
-                display: <?php echo $mostrar_chat_activo ? 'none' : 'block'; ?>;
-            }
-            .chat-area-responsive {
-                width: 100%;
-                display: <?php echo $mostrar_chat_activo ? 'flex' : 'none'; ?>;
-                /* Eliminamos el height del flex para que lo calcule el JS */
-            }
-            .chat-container {
-                flex-direction: column;
-                /* El JS calculará esta altura, pero forzamos 100% de la ventana por si acaso */
-                height: calc(100vh - 56px); 
-                
-                /* (INICIO) MODIFICACIÓN: En móvil quitamos bordes/sombra */
-                border: none;
-                border-radius: 0;
-                box-shadow: none;
-                /* (FIN) MODIFICACIÓN */
-            }
-            
-            /* CRÍTICO PARA MÓVILES: FIJAR LA BARRA DE INPUT EN LA PARTE INFERIOR */
-            .message-input-area {
-                /* Usamos 'fixed' para que no se mueva con el teclado */
-                position: fixed; 
-                bottom: 0;
-                left: 0;
-                right: 0;
-                width: 100%;
-                margin: 0;
-                padding: 10px; /* Reducimos padding en móvil */
-                box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.1);
-                border-top: 1px solid #ccc; /* Borde más simple en móvil */
-            }
-            
-            /* CRÍTICO: Padding extra para que el último mensaje no quede oculto bajo la barra de input fijo */
-            .messages-display {
-                padding-bottom: 90px; /* (MODIFICADO) Aumentado para el input más grande */
-            }
+        /* Input */
+        .msg-input { flex: 1; border: none; padding: 12px 20px; border-radius: 25px; resize: none; height: 45px; outline: none; background: white; }
+        .btn-circle { width: 45px; height: 45px; border-radius: 50%; border: none; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; cursor: pointer; transition: 0.2s; }
+        .btn-send { background-color: #00a884; color: white; }
+        .btn-mic { background-color: #f0f2f5; color: #54656f; }
+        .btn-stop { background-color: #dc3545; color: white; animation: pulse 1s infinite; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
 
-            .btn-volver-mobile {
-                 display: inline-block;
-            }
-            
-            /* (INICIO) MODIFICACIÓN EMOJI: Posición del picker en móvil */
-            emoji-picker {
-                width: 95%;
-                left: 50%;
-                transform: translateX(-50%);
-                height: 350px;
-            }
-            /* (FIN) MODIFICACIÓN EMOJI */
+        /* Mensajes */
+        .msg-row { display: flex; width: 100%; }
+        .msg-row.me { justify-content: flex-end; }
+        .bubble { max-width: 80%; padding: 8px 12px; border-radius: 10px; font-size: 15px; position: relative; box-shadow: 0 1px 1px rgba(0,0,0,0.1); background: white; word-wrap: break-word; }
+        .msg-row.me .bubble { background: #dcf8c6; border-top-right-radius: 0; }
+        .msg-row.other .bubble { background: #fff; border-top-left-radius: 0; }
+        .msg-time { font-size: 10px; color: #999; text-align: right; margin-top: 4px; }
+        
+        /* Multimedia */
+        .msg-media img { max-width: 100%; border-radius: 8px; cursor: pointer; max-height: 300px; object-fit: contain; margin-bottom: 5px; }
+        audio { max-width: 100%; margin-top: 5px; }
+        
+        /* Preview Flotante */
+        #preview-float { position: absolute; bottom: 80px; left: 15px; right: 15px; background: white; padding: 10px; border-radius: 10px; box-shadow: 0 -2px 10px rgba(0,0,0,0.1); display: none; z-index: 50; }
+        #preview-img { max-height: 150px; width: 100%; border-radius: 5px; display: none; object-fit: contain; margin-bottom: 10px; }
+
+        /* Toast */
+        .toast-container { z-index: 2050; cursor: pointer; }
+        .toast { background-color: #25D366; color: white; border: none; }
+
+        /* Móvil */
+        .btn-back { display: none; font-size: 1.5rem; margin-right: 10px; color: #54656f; background: none; border: none; }
+        @media (max-width: 768px) {
+            .sidebar { width: 100%; }
+            .chat-area { position: absolute; top: 0; left: 0; width: 100%; height: 100%; transform: translateX(100%); transition: transform 0.2s; z-index: 100; }
+            .chat-area.active { transform: translateX(0); }
+            .btn-back { display: block; }
         }
     </style>
 </head>
 <body>
 
-<?php include 'navbar.php'; ?>
-
-<div class="d-flex justify-content-center px-2 py-4">
-
-    <div class="chat-container" style="width: 100%; max-width: 1400px;">
-    <div class="conversations-list" id="conversations-list">
-            <div class="p-3 border-bottom d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">Chats</h5>
-                <a href="chat_crear.php" class="btn btn-sm btn-success" title="Crear nuevo chat">
-                    <i class="fas fa-plus"></i>
-                </a>
+<div class="chat-app-container">
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">Chats</div>
+        <div class="p-2"><input type="text" id="buscador" class="form-control rounded-pill border-0 bg-light" placeholder="🔍 Buscar..." onkeyup="filtrarContactos()"></div>
+        <div class="contact-list">
+            <div class="contact-item" id="contact-0" onclick="abrirChat(0, 'Grupo General', 'assets/grupo_icon.png', this)">
+                <div class="bg-success text-white rounded-circle d-flex align-items-center justify-content-center avatar"><i class="fas fa-users"></i></div>
+                <div><div class="fw-bold">Grupo General</div><small class="text-muted">Todos</small></div>
             </div>
-            <ul class="list-group list-group-flush">
-                <?php if (empty($conversaciones_listado)): ?>
-                    <li class="list-group-item text-center text-muted">No tienes chats.</li>
-                <?php endif; ?>
-                <?php foreach ($conversaciones_listado as $conv): ?>
-                    <?php
-                        // Lógica para mostrar el nombre del otro usuario en chats individuales (individuales)
-                        $nombre_display = $conv['nombre_grupo'];
-                        if ($conv['tipo'] === 'individual') {
-                             // Usamos la columna 'nombres_participantes' obtenida en la consulta principal
-                             $participantes = explode(', ', $conv['nombres_participantes']);
-                             $participantes = array_filter($participantes, function($nombre) use ($nombre_usuario) {
-                                 // Filtra el nombre del usuario actual para mostrar el del otro
-                                 return $nombre !== $nombre_usuario;
-                             });
-                             // El nombre a mostrar es el del otro participante, o 'Chat Individual' si no se encuentra
-                             $nombre_display = !empty($participantes) ? reset($participantes) : 'Chat Individual';
-                        }
-                        // Si es grupal, se usa $conv['nombre_grupo'], que es el valor inicial de $nombre_display.
-                    ?>
-                    <li class="list-group-item conversation-item <?php echo ($id_conversacion_activa == $conv['id_conversacion']) ? 'active' : ''; ?>">
-                        <a href="chat.php?id_conversacion=<?php echo $conv['id_conversacion']; ?>" class="text-decoration-none d-block <?php echo ($id_conversacion_activa == $conv['id_conversacion']) ? 'text-white' : 'text-dark'; ?>">
-                            <div class="fw-bold text-truncate"><?php echo htmlspecialchars($nombre_display); ?></div>
-                            <small class="<?php echo ($id_conversacion_activa == $conv['id_conversacion']) ? 'text-white-50' : 'text-muted'; ?>">Iniciado: <?php echo (new DateTime($conv['fecha_creacion']))->format('d/m H:i'); ?></small>
-                        </a>
+            <?php foreach($usuarios as $u): ?>
+            <div class="contact-item user-item" id="contact-<?php echo $u['id_usuario']; ?>" onclick="abrirChat(<?php echo $u['id_usuario']; ?>, '<?php echo $u['nombre_completo']; ?>', 'uploads/perfiles/<?php echo $u['foto_perfil'] ?? 'default.png'; ?>', this)" data-nombre="<?php echo strtolower($u['nombre_completo']); ?>">
+                <img src="uploads/perfiles/<?php echo $u['foto_perfil'] ?? 'default.png'; ?>" class="avatar">
+                <div style="flex:1;"><div class="fw-bold"><?php echo $u['nombre_completo']; ?></div><small class="text-muted"><?php echo ucfirst($u['rol']); ?></small></div>
+                <?php if($u['sin_leer'] > 0): ?><div class="unread-badge"><?php echo $u['sin_leer']; ?></div><?php endif; ?>
+            </div>
+            <?php endforeach; ?>
+        </div>
+    </div>
+
+    <div class="chat-area" id="chatArea">
+        <div class="chat-header">
+            <div class="d-flex align-items-center">
+                <button class="btn-back" onclick="cerrarChat()"><i class="fas fa-arrow-left"></i></button>
+                <img src="assets/default.png" class="avatar" id="headerAvatar" style="width: 35px; height: 35px;">
+                <div class="d-flex flex-column"><span class="fw-bold" id="headerName">Selecciona un chat</span><small class="text-muted" id="headerStatus"></small></div>
+            </div>
+        </div>
+
+        <div class="messages-box" id="msgBox">
+            <div class="text-center mt-5 opacity-50"><i class="fas fa-comments fa-4x mb-3"></i><p>Selecciona un contacto</p></div>
+        </div>
+
+        <div id="preview-float">
+            <div class="d-flex flex-column align-items-center">
+                <img id="preview-img" src="">
+                <div class="d-flex justify-content-between w-100 align-items-center mt-2">
+                    <span><i class="fas fa-paperclip text-primary"></i> <span id="fileName">archivo</span></span>
+                    <button class="btn btn-sm btn-danger rounded-circle" onclick="cancelFile()">X</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="chat-footer">
+            <div class="dropup">
+                <button class="btn btn-light rounded-circle text-secondary fs-5" data-bs-toggle="dropdown"><i class="fas fa-plus"></i></button>
+                <ul class="dropdown-menu shadow border-0 mb-2">
+                    <li><a class="dropdown-item" href="#" onclick="abrirModalItems('tareas')"><i class="fas fa-tasks text-warning me-2"></i> Tareas</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="abrirModalItems('pedidos')"><i class="fas fa-box text-info me-2"></i> Pedidos</a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li>
+                        <label class="dropdown-item cursor-pointer">
+                            <i class="fas fa-image text-success me-2"></i> Foto/Archivo
+                            <input type="file" id="adjunto" hidden onchange="handleFile(this)">
+                        </label>
                     </li>
-                <?php endforeach; ?>
-            </ul>
+                </ul>
+            </div>
+
+            <div class="input-wrapper" id="text-wrapper" style="flex:1; position:relative;">
+                <textarea id="inputMsg" class="msg-input shadow-sm" rows="1" placeholder="Escribe un mensaje..."></textarea>
+                <button class="btn-magic" onclick="magicAI()" title="Mejorar con IA" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); border:none; background:none; color:#ffc107; font-size:1.2rem;"><i class="fas fa-magic"></i></button>
+            </div>
+
+            <div id="audio-bar" class="d-none align-items-center flex-grow-1 bg-white rounded-pill px-3 shadow-sm">
+                <button class="btn btn-link text-danger p-0 me-3" onclick="cancelAudio()"><i class="fas fa-trash-alt"></i></button>
+                <div class="recording-waves" style="flex:1; color: red; font-weight: bold;">Grabando...</div>
+                <span class="text-danger fw-bold flex-grow-1 text-end" id="recTime">00:00</span>
+            </div>
+            
+            <button id="btnAction" class="btn-circle btn-mic shadow-sm ms-2" onclick="handleAction()">
+                <i class="fas fa-microphone"></i>
+            </button>
         </div>
-
-        <div class="chat-area chat-area-responsive" id="chat-area">
-            <?php if ($mostrar_chat_activo): ?>
-                <div class="p-3 bg-white d-flex align-items-center flex-shrink-0 chat-header-fixed">
-                    <a href="chat.php" class="btn btn-sm btn-light me-2 btn-volver-mobile" title="Volver a chats">
-                         <i class="fas fa-arrow-left"></i>
-                    </a>
-                    <h5 class="mb-0 me-3 text-truncate">
-                        <?php 
-                            $titulo = $conversacion_activa_info['nombre_grupo'];
-                            if ($conversacion_activa_info['tipo'] === 'individual') {
-                                $participantes = explode(', ', $conversacion_activa_info['nombres_participantes']);
-                                $participantes = array_filter($participantes, function($nombre) use ($nombre_usuario) {
-                                    return $nombre !== $nombre_usuario;
-                                });
-                                $titulo = !empty($participantes) ? reset($participantes) : 'Chat Individual';
-                            }
-                            echo htmlspecialchars($titulo);
-                        ?>
-                    </h5>
-                    <span class="badge bg-secondary flex-shrink-0"><?php echo ucfirst($conversacion_activa_info['tipo']); ?></span>
-                </div>
-
-                <div class="messages-display" id="messages-display">
-                    <?php foreach ($mensajes_iniciales as $mensaje): ?>
-                        <?php $is_mine = $mensaje['id_emisor'] == $id_usuario; ?>
-                        <div class="d-flex <?php echo $is_mine ? 'justify-content-end' : 'justify-content-start'; ?>">
-                            <div class="message-bubble <?php echo $is_mine ? 'message-mine' : 'message-other'; ?>">
-                                <?php if (!$is_mine): ?>
-                                    <small class="fw-bold d-block mb-1"><?php echo htmlspecialchars($mensaje['nombre_emisor']); ?></small>
-                                <?php endif; ?>
-                                <p class="mb-0"><?php echo htmlspecialchars($mensaje['contenido']); ?></p>
-                                <small class="text-end d-block <?php echo $is_mine ? 'text-white-50' : 'text-muted'; ?>">
-                                    <?php echo (new DateTime($mensaje['fecha_envio']))->format('H:i'); ?>
-                                </small>
-                            </div>
-                        </div>
-                    <?php endforeach; ?>
-                </div>
-
-                <div class="message-input-area">
-                    <emoji-picker class="light" id="emoji-picker"></emoji-picker>
-                    
-                    <form id="chat-form" action="chat_enviar.php" method="POST">
-                        <input type="hidden" name="id_conversacion" value="<?php echo htmlspecialchars($id_conversacion_activa); ?>">
-                        <div class="input-group">
-                            
-                            <button class="btn btn-outline-secondary emoji-button" type="button" id="emoji-toggle-button" title="Mostrar emojis">
-                                <i class="far fa-smile"></i>
-                            </button>
-                            
-                            <textarea class="form-control flex-grow-1" id="message-content" name="contenido" rows="2" placeholder="Escribe un mensaje..." required oninput="this.style.height='auto'; this.style.height=(this.scrollHeight)+'px';"></textarea>
-                            
-                            <button class="btn btn-primary" type="submit" id="send-button">
-                                <i class="fas fa-paper-plane"></i> Enviar
-                            </button>
-                        </div>
-                    </form>
-                </div>
-                <?php else: ?>
-                <div class="chat-area d-flex justify-content-center align-items-center text-center">
-                    <div>
-                        <i class="fas fa-comments fa-5x text-muted mb-3"></i>
-                        <h2>Selecciona o Inicia un Chat</h2>
-                        <p class="text-muted">Elige una conversación de la lista de la izquierda o haz clic en <i class="fas fa-plus"></i> para crear una nueva.</p>
-                    </div>
-                </div>
-            <?php endif; ?>
-        </div>
-    </div> </div> <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-
-<?php if ($mostrar_chat_activo): ?>
-    <script>
-        // Variables globales
-        const MESSAGES_DISPLAY = document.getElementById('messages-display');
-        const CHAT_FORM = document.getElementById('chat-form');
-        const MESSAGE_CONTENT_INPUT = document.getElementById('message-content');
-        const SEND_BUTTON = document.getElementById('send-button'); 
-        const CURRENT_USER_ID = <?php echo json_encode($id_usuario); ?>;
-        
-        let lastMessageId = 0; 
-        const initialMessages = <?php echo json_encode($mensajes_iniciales ?? []); ?>;
-        if (initialMessages.length > 0) {
-            const messageIds = initialMessages.map(m => parseInt(m.id_mensaje)).filter(id => !isNaN(id));
-            if (messageIds.length > 0) {
-                lastMessageId = Math.max(...messageIds);
-            }
-        }
-        
-        // =========================================================
-        // CRÍTICO MÓVIL: FUNCIÓN PARA AJUSTAR LA ALTURA EN REAL-TIME
-        // Esto soluciona el conflicto del teclado virtual con 100vh.
-        // =========================================================
-        function setFullHeight() {
-            // Calcula la altura real de la ventana menos el navbar (56px)
-            const navbarHeight = 56;
-            const fullHeight = window.innerHeight;
-            
-            // (INICIO) MODIFICACIÓN: Aplicamos el cálculo de altura al wrapper si existe, o al chat-container
-            const chatWrapper = document.querySelector('.d-flex.justify-content-center.px-2.py-4');
-            const chatContainer = document.querySelector('.chat-container');
-
-            if (window.innerWidth < 992) {
-                 // En móvil, usamos la lógica original para que ocupe 100vh - navbar
-                 if (chatContainer) {
-                     chatContainer.style.height = `${fullHeight - navbarHeight}px`;
-                 }
-                 if(chatWrapper) {
-                     chatWrapper.style.padding = '0'; // Quitamos padding en móvil
-                 }
-            } else {
-                // En escritorio, usamos la lógica de 80vh (definida en CSS) 
-                // pero nos aseguramos que el wrapper (d-flex) tenga la altura correcta
-                // para contener el chat (100vh - 56px - paddings)
-                if(chatWrapper) {
-                    const wrapperPaddingY = (16 * 2); // py-4 (1rem * 2)
-                    chatWrapper.style.height = `${fullHeight - navbarHeight}px`;
-                }
-                if (chatContainer) {
-                    // (INICIO) MODIFICACIÓN: En escritorio, le decimos que ocupe el 100% de la altura del wrapper
-                    chatContainer.style.height = '100%';
-                    // (FIN) MODIFICACIÓN
-                }
-            }
-        }
-
-        // 1. Función para desplazar el scroll al final
-        function autoScroll() {
-             // Si hay elementos, desplazar el último a la vista
-            if (MESSAGES_DISPLAY.lastElementChild) {
-                // Usamos 'end' para que la burbuja quede en la parte inferior visible
-                MESSAGES_DISPLAY.lastElementChild.scrollIntoView({ behavior: 'smooth', block: 'end' });
-            } else {
-                 // Fallback: desplaza el contenedor directamente
-                MESSAGES_DISPLAY.scrollTop = MESSAGES_DISPLAY.scrollHeight;
-            }
-        }
-
-        // 2. Función para añadir un mensaje al DOM
-        function appendMessage(msg) {
-            const is_mine = msg.id_emisor == CURRENT_USER_ID;
-            const messageClass = is_mine ? 'message-mine' : 'message-other';
-            const alignmentClass = is_mine ? 'justify-content-end' : 'justify-content-start';
-            const timestampClass = is_mine ? 'text-white-50' : 'text-muted';
-            
-            // Reemplazar guiones por barras para compatibilidad en algunos navegadores al crear Date
-            const dbDate = new Date(msg.fecha_envio.replace(/-/g, "/")); 
-            const timeString = dbDate.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
-
-            const senderNameHtml = is_mine ? '' : `<small class="fw-bold d-block mb-1">${msg.nombre_emisor}</small>`;
-
-            const messageHtml = `
-                <div class="d-flex ${alignmentClass}">
-                    <div class="message-bubble ${messageClass}">
-                        ${senderNameHtml}
-                        <p class="mb-0">${msg.contenido}</p>
-                        <small class="text-end d-block ${timestampClass}">
-                            ${timeString}
-                        </small>
-                    </div>
-                </div>
-            `;
-            MESSAGES_DISPLAY.insertAdjacentHTML('beforeend', messageHtml);
-        }
-        
-        // 3. Función de Polling (para recibir mensajes nuevos)
-        function fetchNewMessages() {
-            const conversationId = <?php echo json_encode($id_conversacion_activa); ?>;
-            
-            if (!conversationId || conversationId <= 0) return;
-
-            fetch(`chat_fetch.php?id_conversacion=${conversationId}&last_id=${lastMessageId}`) 
-                .then(response => {
-                    if (!response.ok) {
-                         throw new Error(`Respuesta de red no satisfactoria: ${response.status}`);
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    if (data.success && data.messages.length > 0) {
-                        let shouldScroll = false;
-                        // Chequea si el usuario está cerca del final (últimos 300px)
-                        if (MESSAGES_DISPLAY.scrollHeight - MESSAGES_DISPLAY.scrollTop < MESSAGES_DISPLAY.clientHeight + 300) {
-                            shouldScroll = true;
-                        }
-
-                        data.messages.forEach(msg => {
-                            appendMessage(msg); 
-                            lastMessageId = Math.max(lastMessageId, parseInt(msg.id_mensaje)); 
-                        });
-                        
-                        if (shouldScroll) {
-                            autoScroll();
-                        }
-                    }
-                })
-                .catch(error => {
-                    console.error('Error en el polling de chat:', error);
-                });
-        }
-
-        // 4. Lógica de Envío de Mensajes
-        if (CHAT_FORM) {
-            CHAT_FORM.addEventListener('submit', function(e) {
-                e.preventDefault();
-                
-                const contenido = MESSAGE_CONTENT_INPUT.value.trim();
-                if (contenido === '') return;
-
-                SEND_BUTTON.disabled = true;
-
-                const formData = new FormData(CHAT_FORM);
-
-                fetch(CHAT_FORM.action, {
-                    method: 'POST',
-                    body: formData
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        // El mensaje enviado es el primer mensaje nuevo, así que lo añadimos y actualizamos el lastMessageId
-                        appendMessage(data.message_data); 
-                        
-                        MESSAGE_CONTENT_INPUT.value = '';
-                        MESSAGE_CONTENT_INPUT.style.height='auto'; // Restablece la altura del textarea
-
-                        lastMessageId = data.message_data.id_mensaje;
-                        autoScroll(); 
-                        MESSAGE_CONTENT_INPUT.focus();
-
-                    } else if (data.error) {
-                        console.error('Error al enviar mensaje:', data.error);
-                        alert('Error al enviar mensaje: ' + data.error);
-                    }
-                })
-                .catch(error => {
-                    console.error('Error de conexión al enviar:', error);
-                    alert('Error de red al enviar el mensaje. Revise la consola: ' + error.message);
-                })
-                .finally(() => {
-                    SEND_BUTTON.disabled = false;
-                });
-            });
-        }
-
-        // 5. Iniciar la autocarga inicial y el Polling
-        document.addEventListener('DOMContentLoaded', () => {
-             // 1. Scroll inicial
-             autoScroll();
-
-             // 2. Ejecutar la corrección de altura al cargar y al cambiar el tamaño (ej. rotación, teclado)
-             // Esto es clave para el móvil
-             setFullHeight();
-             window.addEventListener('resize', setFullHeight);
-             
-             // 3. Iniciar el polling de mensajes nuevos cada 3 segundos
-             setInterval(fetchNewMessages, 3000);
-             
-             
-             // --- (INICIO) MODIFICACIÓN EMOJI: Lógica del Picker ---
-             const emojiPicker = document.getElementById('emoji-picker');
-             const emojiButton = document.getElementById('emoji-toggle-button');
-             
-             if (emojiPicker && emojiButton && MESSAGE_CONTENT_INPUT) {
-                 
-                 // Mostrar/Ocultar el picker
-                 emojiButton.addEventListener('click', (e) => {
-                     e.stopPropagation();
-                     const isVisible = emojiPicker.style.display === 'block';
-                     emojiPicker.style.display = isVisible ? 'none' : 'block';
-                 });
-                 
-                 // Ocultar el picker si se hace clic fuera de él
-                 document.addEventListener('click', (e) => {
-                     if (emojiPicker.style.display === 'block' && !emojiPicker.contains(e.target) && e.target !== emojiButton) {
-                         emojiPicker.style.display = 'none';
-                     }
-                 });
-
-                 // Insertar el emoji en el textarea
-                 emojiPicker.addEventListener('emoji-click', event => {
-                     const emoji = event.detail.unicode;
-                     const textarea = MESSAGE_CONTENT_INPUT;
-                     const start = textarea.selectionStart;
-                     const end = textarea.selectionEnd;
-                     
-                     // Insertar el emoji en la posición actual del cursor
-                     textarea.value = textarea.value.substring(0, start) + emoji + textarea.value.substring(end);
-                     
-                     // Mover el cursor después del emoji insertado
-                     textarea.selectionStart = textarea.selectionEnd = start + emoji.length;
-                     
-                     // Ocultar el picker después de seleccionar
-                     emojiPicker.style.display = 'none';
-                     textarea.focus();
-                 });
-             }
-             // --- (FIN) MODIFICACIÓN EMOJI ---
-             
-        });
-
-    </script>
-<?php endif; ?>
-<div class="toast-container position-fixed bottom-0 end-0 p-3" id="notificationToastContainer" style="z-index: 1080;">
+    </div>
 </div>
+
+<div class="toast-container position-fixed bottom-0 end-0 p-3">
+  <div id="notifToast" class="toast align-items-center border-0" role="alert"><div class="d-flex"><div class="toast-body pointer-event" id="toastBody"><i class="fas fa-bell me-2"></i> <span id="notifText"></span></div><button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div></div>
+</div>
+<audio id="notifSound" src="https://assets.mixkit.co/sfx/preview/mixkit-software-interface-start-2574.mp3" preload="auto"></audio>
+
+<div class="modal fade" id="itemModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-body p-0 list-group list-group-flush" id="itemList"></div></div></div></div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    let currentChatId = -1, lastMsgId = 0, isInitialLoad = true;
+    const msgBox = document.getElementById('msgBox'), inputMsg = document.getElementById('inputMsg'), btnAction = document.getElementById('btnAction');
+    const miId = <?php echo $mi_id; ?>;
+    const toastEl = document.getElementById('notifToast'), notifToast = new bootstrap.Toast(toastEl), notifSound = document.getElementById('notifSound');
+    
+    let isRecording = false, mediaRecorder, audioChunks, audioBlobFinal, recInterval;
+    let currentStream = null; // Variable para controlar el hardware del mic
+
+    if(window.innerWidth > 768) abrirChat(0, 'Grupo General', 'assets/grupo_icon.png', document.getElementById('contact-0'));
+
+    inputMsg.addEventListener('keydown', (e) => { 
+        if(e.key === 'Enter' && !e.shiftKey) { 
+            e.preventDefault(); 
+            if(inputMsg.value.trim() || audioBlobFinal || document.getElementById('adjunto').value) enviarMensaje(); 
+        } 
+    });
+    
+    inputMsg.addEventListener('input', updateBtns);
+
+    function updateBtns() {
+        if(inputMsg.value.trim() || audioBlobFinal || document.getElementById('adjunto').value) {
+            btnAction.className = "btn-circle btn-send shadow-sm ms-2";
+            btnAction.innerHTML = '<i class="fas fa-paper-plane"></i>';
+            btnAction.onclick = enviarMensaje;
+        } else {
+            if(isRecording) {
+                btnAction.className = "btn-circle btn-stop bg-danger text-white shadow-sm ms-2";
+                btnAction.innerHTML = '<i class="fas fa-stop"></i>';
+                btnAction.onclick = detenerGrabacion;
+            } else {
+                btnAction.className = "btn-circle btn-mic shadow-sm ms-2";
+                btnAction.innerHTML = '<i class="fas fa-microphone"></i>';
+                btnAction.onclick = iniciarGrabacion;
+            }
+        }
+    }
+
+    function handleAction() {
+        if(isRecording) detenerGrabacion();
+        else if(inputMsg.value.trim() || audioBlobFinal || document.getElementById('adjunto').value) enviarMensaje();
+        else iniciarGrabacion();
+    }
+
+    function abrirChat(id, nombre, foto, el) {
+        currentChatId = id; lastMsgId = 0; isInitialLoad = true;
+        document.getElementById('headerName').innerText = nombre;
+        document.getElementById('headerAvatar').src = foto;
+        document.getElementById('headerStatus').innerText = (id===0) ? 'Grupo' : 'En línea';
+        document.getElementById('chatArea').classList.add('active');
+        
+        document.querySelectorAll('.contact-item').forEach(c => c.classList.remove('active'));
+        if(el) { el.classList.add('active'); if(el.querySelector('.unread-badge')) el.querySelector('.unread-badge').remove(); }
+        if(id > 0) { const fd=new FormData(); fd.append('remitente_id', id); fetch('chat_marcar_leido.php', {method:'POST', body:fd}); }
+        
+        msgBox.innerHTML = '<div class="text-center mt-5"><div class="spinner-border text-success"></div></div>';
+        cargarMensajes();
+    }
+    function cerrarChat() { document.getElementById('chatArea').classList.remove('active'); currentChatId = -1; }
+
+    function cargarMensajes() {
+        if(currentChatId === -1) return;
+        const audios = document.querySelectorAll('audio'); for(let a of audios) { if(!a.paused) return; }
+
+        fetch(`chat_fetch.php?chat_id=${currentChatId}&last_id=${lastMsgId}`)
+            .then(r => r.json())
+            .then(data => {
+                if(lastMsgId === 0) msgBox.innerHTML = '';
+                data.forEach(msg => {
+                    const div = document.createElement('div');
+                    div.className = `msg-row ${msg.es_mio ? 'me' : 'other'}`;
+                    div.innerHTML = `<div class="bubble">${!msg.es_mio && currentChatId===0 ? `<div class="fw-bold text-success small mb-1">${msg.nombre}</div>` : ''}${msg.media_html ? `<div class="msg-media">${msg.media_html}</div>` : ''}<div>${msg.mensaje}</div><div class="msg-time">${msg.hora} ${msg.es_mio?'<i class="fas fa-check-double text-primary"></i>':''}</div></div>`;
+                    msgBox.appendChild(div);
+                    
+                    if (!isInitialLoad && !msg.es_mio) {
+                        document.getElementById('notifText').innerText = "De: " + msg.remitente_nombre;
+                        document.getElementById('toastBody').onclick = () => { 
+                            const item = document.getElementById(`contact-${msg.remitente_id}`);
+                            if(item) item.click(); else abrirChat(msg.remitente_id, msg.remitente_nombre, msg.remitente_foto, null);
+                            notifToast.hide();
+                        };
+                        notifToast.show();
+                        notifSound.play().catch(()=>{});
+                    }
+                    lastMsgId = msg.id;
+                });
+                if(data.length > 0) msgBox.scrollTop = msgBox.scrollHeight;
+                isInitialLoad = false;
+            }).catch(e=>{});
+    }
+    setInterval(cargarMensajes, 3000);
+
+    function enviarMensaje() {
+        if(currentChatId === -1) return alert("Selecciona un chat");
+        const fd = new FormData();
+        fd.append('destino_id', currentChatId);
+        let hasContent = false;
+        
+        if(inputMsg.value.trim()){ fd.append('mensaje', inputMsg.value); hasContent=true; }
+        if(audioBlobFinal){ fd.append('audio', audioBlobFinal, 'voice.webm'); hasContent=true; }
+        if(document.getElementById('adjunto').files[0]){ fd.append('adjunto', document.getElementById('adjunto').files[0]); hasContent=true; }
+        
+        if(!hasContent) return;
+
+        const prevIcon = btnAction.innerHTML;
+        btnAction.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; btnAction.disabled = true;
+
+        fetch('chat_enviar.php', {method:'POST', body:fd})
+            .then(r => {
+                // Intenta leer el JSON, si falla (error de red), no importa, seguimos
+                return r.json().catch(() => { return {status: 'ok_forced'}; }); 
+            })
+            .then(res => {
+                // SIN IMPORTAR LA RESPUESTA: LIMPIAMOS TODO
+                limpiarInterfazCompleta();
+            })
+            .catch(() => {
+                 // SI HAY ERROR FATAL: LIMPIAMOS TODO IGUAL
+                 limpiarInterfazCompleta();
+            })
+            .finally(() => {
+                btnAction.disabled = false; 
+                btnAction.innerHTML = prevIcon;
+            });
+            
+        // Función local para resetear todo a la fuerza
+        function limpiarInterfazCompleta() {
+             inputMsg.value = ''; 
+             cancelAudio(); // Esto apaga el mic
+             cancelFile(); 
+             updateBtns(); 
+             setTimeout(cargarMensajes, 500); // Recargar chat
+        }
+    }
+
+    // --- FUNCIONES DE AUDIO (BLINDADO) ---
+    async function iniciarGrabacion() {
+        try {
+            currentStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            mediaRecorder = new MediaRecorder(currentStream);
+            audioChunks = []; mediaRecorder.start(); isRecording = true;
+            
+            document.getElementById('text-wrapper').classList.add('d-none');
+            document.getElementById('audio-bar').classList.remove('d-none');
+            document.getElementById('audio-bar').classList.add('d-flex');
+            updateBtns();
+            
+            let sec = 0; document.getElementById('recTime').innerText = "00:00";
+            recInterval = setInterval(() => { sec++; const m=Math.floor(sec/60).toString().padStart(2,'0'), s=(sec%60).toString().padStart(2,'0'); document.getElementById('recTime').innerText = `${m}:${s}`; }, 1000);
+
+            mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+            mediaRecorder.onstop = () => {
+                clearInterval(recInterval);
+                audioBlobFinal = new Blob(audioChunks, { type: 'audio/webm' });
+                enviarMensaje(); 
+            };
+        } catch(e) { 
+            // Error silencioso o console log
+            console.error("Mic error", e);
+        }
+    }
+
+    function detenerGrabacion() { if(mediaRecorder) mediaRecorder.stop(); }
+    
+    window.cancelAudio = () => { 
+        // APAGAR MICRÓFONO (HARDWARE)
+        if(currentStream) {
+            currentStream.getTracks().forEach(track => track.stop());
+            currentStream = null;
+        }
+
+        // RESETEAR VARIABLES
+        audioBlobFinal = null; isRecording = false; 
+        if(mediaRecorder && mediaRecorder.state!='inactive') {
+            // Evitar eventos recursivos si ya paró
+            mediaRecorder.onstop = null; 
+            mediaRecorder.stop(); 
+        }
+        mediaRecorder = null;
+
+        clearInterval(recInterval); 
+        document.getElementById('audio-bar').classList.add('d-none'); 
+        document.getElementById('audio-bar').classList.remove('d-flex'); 
+        document.getElementById('text-wrapper').classList.remove('d-none'); 
+        updateBtns(); 
+    };
+    // --- FIN FUNCIONES AUDIO ---
+
+    // Archivos
+    window.handleFile = (inp) => { 
+        if(inp.files[0]) { 
+            const f = inp.files[0];
+            const p = document.getElementById('preview-float');
+            p.classList.remove('d-none'); 
+            p.style.display = 'block';    
+            document.getElementById('fileName').innerText = f.name;
+            
+            const imgPrev = document.getElementById('preview-img');
+            if (f.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = e => { imgPrev.src = e.target.result; imgPrev.style.display = 'block'; };
+                reader.readAsDataURL(f);
+            } else {
+                imgPrev.style.display = 'none';
+            }
+            updateBtns(); 
+        } 
+    };
+    
+    window.cancelFile = () => { 
+        document.getElementById('adjunto').value=''; 
+        document.getElementById('preview-float').classList.add('d-none'); 
+        document.getElementById('preview-float').style.display = 'none';
+        document.getElementById('preview-img').src = '';
+        updateBtns(); 
+    };
+    
+    window.filtrarContactos = () => { const t = document.getElementById('buscador').value.toLowerCase(); document.querySelectorAll('.user-item').forEach(el => el.style.display = el.dataset.name.includes(t) ? 'flex' : 'none'); };
+    window.magicAI = () => { const t = inputMsg.value; if(t) fetch('https://text.pollinations.ai/'+encodeURIComponent("Mejora formalmente: "+t)).then(r=>r.text()).then(d=>inputMsg.value=d.trim()); };
+    
+    window.abrirModalItems = (tipo) => {
+        const m = new bootstrap.Modal(document.getElementById('itemModal'));
+        document.getElementById('itemList').innerHTML = '<div class="text-center p-3"><div class="spinner-border"></div></div>';
+        m.show();
+        fetch(`chat_listar_items.php?tipo=${tipo}`).then(r=>r.json()).then(items=>{
+            const html = items.length ? items.map(i=>`<button class="list-group-item list-group-item-action" onclick="insertTag('${i.tag}')"><b>${i.tag}</b> ${i.texto}</button>`).join('') : '<div class="p-3 text-center">Sin datos</div>';
+            document.getElementById('itemList').innerHTML = html;
+        });
+        window.insertTag = (t) => { inputMsg.value += t + " "; m.hide(); inputMsg.focus(); updateBtns(); };
+    };
+</script>
 </body>
 </html>

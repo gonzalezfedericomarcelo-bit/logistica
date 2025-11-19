@@ -2,8 +2,13 @@
 session_start();
 include 'conexion.php';
 
-// Si el usuario ya está logueado, redirigir al dashboard
+// Si el usuario ya está logueado, verificar si tiene foto antes de mandarlo al dashboard
 if (isset($_SESSION['usuario_id'])) {
+    // Si por alguna razón quedó logueado pero sin foto personalizada (es default o vacía)
+    if (isset($_SESSION['usuario_perfil']) && ($_SESSION['usuario_perfil'] == 'default.png' || empty($_SESSION['usuario_perfil']))) {
+        header("Location: perfil.php?modo=bienvenida");
+        exit();
+    }
     header("Location: dashboard.php");
     exit();
 }
@@ -24,33 +29,38 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $stmt->execute();
             $usuario_db = $stmt->fetch();
 
-            // **MODIFICADO**: Añadido chequeo de 'activo' y 'reset_pendiente'
+            // Verificar contraseña
             if ($usuario_db && password_verify($password, $usuario_db['password'])) {
                 // Contraseña correcta, ahora verificar estado
                 if ($usuario_db['activo'] != 1) { 
                     $error = "Su cuenta está inactiva. Contacte al administrador.";
                 } elseif ($usuario_db['reset_pendiente'] == 1) {
                     // Contraseña correcta y reset pendiente -> Forzar cambio
-                    $_SESSION['usuario_id_reset'] = $usuario_db['id_usuario']; // Guardar solo ID temporalmente
+                    $_SESSION['usuario_id_reset'] = $usuario_db['id_usuario']; 
                     $_SESSION['force_password_change'] = true;
-                    header("Location: forzar_cambio_pass.php"); // Redirigir a la nueva página
+                    header("Location: forzar_cambio_pass.php"); 
                     exit();
                 } else {
-                    // Contraseña correcta, activo y sin reset pendiente -> Login normal
+                    // LOGIN EXITOSO
                     $_SESSION['usuario_id'] = $usuario_db['id_usuario'];
                     $_SESSION['usuario_nombre'] = $usuario_db['nombre_completo'];
                     $_SESSION['usuario_rol'] = $usuario_db['rol'];
                     $_SESSION['usuario_perfil'] = $usuario_db['foto_perfil'];
-                    // $_SESSION['usuario_genero'] = $usuario_db['genero']; // Podrías añadir genero si lo usas
+                    
+                    // --- VALIDACIÓN DE AVATAR ---
+                    // Si la foto es 'default.png' o está vacía, forzar ir al perfil
+                    if (empty($usuario_db['foto_perfil']) || $usuario_db['foto_perfil'] == 'default.png') {
+                        header("Location: perfil.php?modo=bienvenida");
+                        exit();
+                    }
 
-                    // Redirigir al dashboard
+                    // Si todo está bien, ir al dashboard
                     header("Location: dashboard.php");
                     exit();
                 }
             } else {
-                 // Usuario/Contraseña incorrectos (o inactivo si no entramos al if de 'activo')
+                 // Usuario/Contraseña incorrectos
                  if ($usuario_db && $usuario_db['activo'] != 1 && !$error) {
-                      // Si el usuario existe pero está inactivo y no hay otro error
                       $error = "Su cuenta está inactiva. Contacte al administrador.";
                  } elseif (!$error) {
                       $error = "Usuario o contraseña incorrectos.";
@@ -70,9 +80,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <title>Iniciar Sesión - Gestión de Tareas</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        body {
-            background-color: #f8f9fa;
-        }
+        body { background-color: #f8f9fa; }
         .login-container {
             max-width: 400px;
             margin-top: 100px;
