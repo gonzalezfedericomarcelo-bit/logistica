@@ -73,36 +73,119 @@ if ($id_usuario_nav > 0 && isset($pdo)) {
 }
 ?>
 <style> 
+    /* Estilos Generales */
     .logo-invertido { height: 32px; margin-right: 10px; filter: invert(100%) grayscale(100%) brightness(200%); } 
     #notifications-list { max-height: 400px; overflow-y: auto; } 
+    .toast-container { z-index: 1090; }
+
+    /* --- ESTILOS NAVBAR RESPONSIVE --- */
     
-    /* ESTILOS NAVBAR VERTICAL (Icono arriba) */
+    /* Estilos base para los links (Aplica a Móvil por defecto) */
     .navbar-nav .nav-link {
         display: flex !important;
-        flex-direction: column;
+        flex-direction: row; /* Lado a lado en móvil */
         align-items: center;
-        justify-content: center;
-        text-align: center;
-        font-size: 0.8rem; 
-        padding: 0.5rem 1rem !important;
+        justify-content: flex-start; /* Alineado a la izquierda */
+        text-align: left;
+        font-size: 0.9rem; 
+        padding: 0.8rem 1rem !important; /* Más espacio para el dedo */
+        transition: background-color 0.2s ease, color 0.2s ease;
+        border-radius: 5px;
     }
+
+    /* Iconos en móvil */
     .navbar-nav .nav-link i {
-        margin-bottom: 4px; 
-        font-size: 1.2rem;  
-        margin-right: 0 !important; 
+        margin-bottom: 0; 
+        font-size: 1.1rem;  
+        margin-right: 10px !important; /* Separación entre ícono y texto */
+        width: 20px; /* Ancho fijo para alinear textos verticalmente */
+        text-align: center;
     }
+
+    /* Hover suave */
+    .navbar-nav .nav-link:hover {
+        background-color: rgba(255,255,255,0.1);
+    }
+
+    /* Badge de notificaciones */
+    #notification-badge { 
+        font-size: 0.6em; 
+        padding: 0.2em 0.4em; 
+        position: absolute; 
+    }
+
+    /* Flecha del dropdown */
     .dropdown-toggle::after {
-        margin-left: 0 !important;
-        margin-top: 2px;
-        border-top: 0.3em solid;
-        border-right: 0.3em solid transparent;
-        border-left: 0.3em solid transparent;
+        margin-left: auto !important; /* Empuja la flecha a la derecha en móvil */
     }
-    
-    /* Ajuste Campana */
-    #notificationsDropdown i { margin-top: 8px; }
-    #notification-badge { top: 8px !important; font-size: 0.6em; padding: 0.2em 0.4em; position: absolute; left: 1.2rem; transform: translate(-50%, -50%); } 
-    .toast-container { z-index: 1090; }
+
+    /* --- MEDIA QUERY: SOLO ESCRITORIO (LG > 992px) --- */
+    @media (min-width: 992px) {
+        .navbar-nav .nav-link {
+            flex-direction: column; /* Icono arriba */
+            justify-content: center;
+            text-align: center;
+            font-size: 0.8rem;
+            padding: 0.5rem 1rem !important;
+        }
+        
+        .navbar-nav .nav-link i {
+            margin-bottom: 4px; 
+            font-size: 1.2rem;
+            margin-right: 0 !important; 
+            width: auto;
+        }
+
+        .dropdown-toggle::after {
+            margin-left: 0 !important;
+            margin-top: 2px;
+        }
+
+        /* Ajuste específico del badge en escritorio */
+        #notification-badge {
+            top: 8px !important; 
+            left: 50%; 
+            transform: translate(10px, -50%);
+            position: absolute;
+        }
+        
+        /* Separación del menú derecho (perfil/notif) en escritorio */
+        .navbar-nav.ms-auto {
+            align-items: center;
+        }
+    }
+
+    /* Ajuste específico para el badge en Móvil si queda desalineado */
+    @media (max-width: 991px) {
+        #notification-badge {
+            top: 10px !important;
+            left: 25px !important; /* Ajustado para que quede sobre el icono */
+        }
+        
+        /* Fondo un poco más oscuro en el menú desplegado móvil para contraste */
+        .navbar-collapse {
+            background-color: #2c3034; /* Un poco más claro que bg-dark */
+            padding: 10px;
+            border-radius: 0 0 10px 10px;
+            margin-top: 10px;
+        }
+        
+        .dropdown-menu {
+            border: none;
+            background-color: #3a3f44; /* Submenú oscuro en móvil */
+        }
+        .dropdown-item {
+            color: #e0e0e0;
+        }
+        .dropdown-item:hover {
+            background-color: #4a5056;
+            color: #fff;
+        }
+        /* Divider oscuro */
+        .dropdown-divider {
+            border-top: 1px solid #555;
+        }
+    }
 </style>
 
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
@@ -244,7 +327,7 @@ if ($id_usuario_nav > 0 && isset($pdo)) {
                         data-bs-toggle="dropdown" aria-expanded="false" data-bs-auto-close="outside">
                         <i class="fas fa-bell"></i>
                         <span class="d-lg-none ms-2">Notif.</span>
-                        <span class="badge bg-danger rounded-pill position-absolute top-0 start-100 translate-middle"
+                        <span class="badge bg-danger rounded-pill"
                             id="notification-badge"
                             style="display: <?php echo $notificaciones_no_leidas > 0 ? 'inline-block' : 'none'; ?>;">
                             <?php echo $notificaciones_no_leidas > 99 ? '99+' : $notificaciones_no_leidas; ?>
