@@ -37,7 +37,7 @@ try {
     $id_parte = $pdo->lastInsertId();
 
     // 3. Insertar Detalles
-    $sql_det = "INSERT INTO asistencia_detalles (id_parte, id_usuario, presente, observacion) VALUES (:id_parte, :id_user, :presente, :obs)";
+    $sql_det = "INSERT INTO asistencia_detalles (id_parte, id_usuario, presente, observacion_individual) VALUES (:id_parte, :id_user, :presente, :obs)";
     $stmt_det = $pdo->prepare($sql_det);
 
     foreach ($datos as $id_user => $info) {

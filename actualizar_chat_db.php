@@ -1,56 +1,46 @@
 <?php
-// Script de actualización automática para la tabla de Chat
+// Archivo: actualizar_chat_db.php (Maneja la solicitud AJAX para marcar como leído)
 session_start();
-include 'conexion.php';
+// Incluimos conexion.php para acceder a la variable $pdo
+include 'conexion.php'; 
 
-echo "<h3>Iniciando actualización de base de datos para el Chat...</h3>";
+// Verificamos que el usuario esté autenticado para seguridad
+if (!isset($_SESSION['usuario_id'])) {
+    header("HTTP/1.1 403 Forbidden");
+    exit();
+}
 
-try {
-    // 1. Verificar si la tabla 'chat' existe
-    $checkTable = $pdo->query("SHOW TABLES LIKE 'chat'");
-    if ($checkTable->rowCount() == 0) {
-        // Si no existe, la creamos desde cero
-        $sql = "CREATE TABLE chat (
-            id_chat INT(11) AUTO_INCREMENT PRIMARY KEY,
-            id_usuario INT(11) NOT NULL,
-            mensaje TEXT,
-            fecha DATETIME DEFAULT CURRENT_TIMESTAMP,
-            tipo_mensaje VARCHAR(20) DEFAULT 'texto',
-            archivo_url VARCHAR(255) DEFAULT NULL,
-            archivo_nombre VARCHAR(255) DEFAULT NULL
-        )";
-        $pdo->exec($sql);
-        echo "<div style='color:green'>✅ Tabla 'chat' creada correctamente.</div>";
-    } else {
-        echo "<div>ℹ️ La tabla 'chat' ya existe. Verificando columnas...</div>";
-    }
-
-    // 2. Verificar y agregar columnas faltantes una por una
-    $columnas_necesarias = [
-        'tipo_mensaje' => "VARCHAR(20) DEFAULT 'texto'",
-        'archivo_url' => "VARCHAR(255) DEFAULT NULL",
-        'archivo_nombre' => "VARCHAR(255) DEFAULT NULL"
-    ];
-
-    foreach ($columnas_necesarias as $columna => $definicion) {
-        // Verificar si la columna existe
-        $stmt = $pdo->prepare("SHOW COLUMNS FROM chat LIKE :col");
-        $stmt->execute([':col' => $columna]);
-        
-        if ($stmt->rowCount() == 0) {
-            // No existe, agregarla
-            $sql = "ALTER TABLE chat ADD COLUMN $columna $definicion";
-            $pdo->exec($sql);
-            echo "<div style='color:green'>✅ Columna '$columna' agregada.</div>";
-        } else {
-            echo "<div style='color:gray'>ℹ️ Columna '$columna' ya existe.</div>";
-        }
+// Verificamos que sea una solicitud POST (que viene del JavaScript)
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    
+    $id_usuario = $_SESSION['usuario_id'];
+    
+    // 1. Intentamos añadir la columna (Esto es por si la ejecutan antes de que el dashboard lo haga)
+    try {
+        $sql_add_column = "ALTER TABLE usuarios ADD COLUMN chat_notificacion_leida BOOLEAN DEFAULT 0";
+        $pdo->exec($sql_add_column);
+    } catch (PDOException $e) {
+        // El error 42S21 o 42S01 significa que la columna ya existe. Es seguro ignorarlo.
     }
     
-    echo "<hr><h4>¡Listo! La base de datos está actualizada. Ya puedes usar el nuevo chat.</h4>";
-    echo "<a href='chat.php'>Ir al Chat</a>";
-
-} catch (PDOException $e) {
-    echo "<div style='color:red'>❌ Error: " . $e->getMessage() . "</div>";
+    // 2. Marcamos al usuario actual como "Enterado" (1)
+    try {
+        $sql_update = "UPDATE usuarios SET chat_notificacion_leida = 1 WHERE id_usuario = :id";
+        $stmt = $pdo->prepare($sql_update);
+        
+        if ($stmt->execute([':id' => $id_usuario])) {
+            echo "success";
+        } else {
+            http_response_code(500);
+            echo "error_update";
+        }
+        
+    } catch (PDOException $e) {
+        http_response_code(500);
+        // error_log("Error de DB al actualizar estado de chat: " . $e->getMessage());
+        echo "error_db";
+    }
+} else {
+    http_response_code(400);
 }
 ?>

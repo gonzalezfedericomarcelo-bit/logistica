@@ -3,12 +3,58 @@
 session_start();
 include 'conexion.php';
 
+// ... Tu código existente (session_start, includes, etc.)
+
+// --- INICIO CÓDIGO NUEVO: LÓGICA DE NOTIFICACIÓN DE CHAT ---
+
+try {
+    // Aseguramos que la columna exista (solo lo hará si es la primera vez que se ejecuta en el servidor)
+    $sql_check_column = "ALTER TABLE usuarios ADD COLUMN chat_notificacion_leida BOOLEAN DEFAULT 0";
+    $pdo->exec($sql_check_column);
+
+    // 1. Obtener el estado de la notificación del usuario actual
+    $usuario_id = $_SESSION['usuario_id'];
+    $stmt = $pdo->prepare("SELECT chat_notificacion_leida FROM usuarios WHERE id_usuario = :id");
+    $stmt->execute([':id' => $usuario_id]);
+    $usuario_data = $stmt->fetch();
+
+    $mostrar_chat_modal = ($usuario_data && $usuario_data['chat_notificacion_leida'] == 0);
+
+} catch (PDOException $e) {
+    // Manejo de errores si la conexión o la consulta fallan
+    // En producción, podrías simplemente asumir que no se muestra para no romper la página.
+    $mostrar_chat_modal = false;
+    // error_log("Error al verificar estado de notificación de chat: " . $e->getMessage());
+}
+
+// --- FIN CÓDIGO NUEVO: LÓGICA DE NOTIFICACIÓN DE CHAT ---
+
 // 1. SEGURIDAD
 if (!isset($_SESSION['usuario_id'])) { header("Location: login.php"); exit(); }
 $id_usuario = $_SESSION['usuario_id'];
 $rol_usuario = $_SESSION['usuario_rol'];
 $nombre_usuario = $_SESSION['usuario_nombre'] ?? 'Usuario';
+// --- INICIO CÓDIGO NUEVO: LÓGICA DE NOTIFICACIÓN DE CHAT ---
+$mostrar_chat_modal = false;
+try {
+    // 1. Asegurarse de que la columna exista (tolerar error si ya existe)
+    // ESTE COMANDO ES NECESARIO SI NO LO HICISTE MANUALMENTE EN LA DB.
+    $sql_check_column = "ALTER TABLE usuarios ADD COLUMN chat_notificacion_leida BOOLEAN DEFAULT 0";
+    $pdo->exec($sql_check_column); 
+    
+    // 2. Obtener el estado de la notificación del usuario actual
+    $stmt = $pdo->prepare("SELECT chat_notificacion_leida FROM usuarios WHERE id_usuario = :id");
+    $stmt->execute([':id' => $id_usuario]);
+    $usuario_data = $stmt->fetch();
 
+    $mostrar_chat_modal = ($usuario_data && $usuario_data['chat_notificacion_leida'] == 0);
+
+} catch (PDOException $e) {
+    // Si la columna ya existía y el ALTER falló, no importa.
+    // Si hay un error grave de conexión o consulta, el modal no se muestra.
+    $mostrar_chat_modal = false; 
+}
+// --- FIN CÓDIGO NUEVO: LÓGICA DE NOTIFICACIÓN DE CHAT ---
 // 2. HELPER IMAGEN
 function get_first_image_url($html) {
     if (preg_match('/<img.*?src=["\'](.*?)["\'].*?>/i', $html, $matches)) { return $matches[1]; }
@@ -418,5 +464,205 @@ $_SESSION['dashboard_loaded_once'] = true;
     <div class="modal fade" id="modalPop" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header bg-primary text-white"><h5 class="modal-title">Aviso</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" onclick="read(<?php echo $popup['id_aviso'];?>)"></button></div><div class="modal-body"><h4><?php echo htmlspecialchars($popup['titulo']);?></h4><div><?php echo $popup['contenido'];?></div></div><div class="modal-footer"><button class="btn btn-primary" onclick="read(<?php echo $popup['id_aviso'];?>)" data-bs-dismiss="modal">Entendido</button></div></div></div></div>
     <script>setTimeout(()=>{new bootstrap.Modal(document.getElementById('modalPop')).show();},1000); function read(id){fetch('marcar_aviso_leido.php',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'id_aviso='+id});}</script>
     <?php endif; ?>
+    <?php if ($mostrar_chat_modal): ?>
+<div class="modal fade" id="chatUpdateModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="chatUpdateModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 1rem;">
+            <div class="modal-header text-white" style="background-color: #007bff; border-bottom: none; border-top-left-radius: 1rem; border-top-right-radius: 1rem;">
+                <h5 class="modal-title w-100 text-center" id="chatUpdateModalLabel">
+                    <i class="fas fa-bullhorn me-2"></i> ¡Importante: Nuevas Funcionalidades del Chat!
+                </h5>
+            </div>
+            <div class="modal-body p-4">
+                <p class="lead text-center mb-4 text-primary">
+                    Hemos habilitado el **Sistema de Comunicación Interna** con grandes mejoras:
+                </p>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <div class="card h-100 border-success">
+                            <div class="card-body">
+                                <h6 class="card-title text-success"><i class="fas fa-tags me-2"></i> **Etiquetado de Tareas y Pedidos**</h6>
+                                <p class="card-text">
+                                    Ahora puedes **etiquetar Tareas** (`#T123`) y **Pedidos** (`#P456`) en cualquier mensaje. ¡Las menciones son **clicables**!
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <div class="card h-100 border-success">
+                            <div class="card-body">
+                                <h6 class="card-title text-success"><i class="fas fa-microphone me-2"></i> **Mensajes de Audio (Tiempo Real)**</h6>
+                                <p class="card-text">
+                                    Envía **audios** o **grabaciones de voz** directamente en cualquier conversación del chat.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-12 mb-3">
+                         <div class="card h-100 border-success">
+                            <div class="card-body">
+                                <h6 class="card-title text-success"><i class="fas fa-palette me-2"></i> **Formato de Texto Enriquecido**</h6>
+                                <p class="card-text">
+                                    ¡Dale formato a tus mensajes! Usa **Negritas**, *Cursivas*, colores y más para destacar la información importante.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer d-flex justify-content-between align-items-center" style="border-top: none;">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" value="" id="entendidoCheck">
+                    <label class="form-check-label" for="entendidoCheck">
+                        **He leído y estoy enterado/a.**
+                    </label>
+                </div>
+                <button type="button" class="btn btn-primary" id="closeModalButton" disabled>
+                    Cerrar y Continuar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const modalElement = document.getElementById('chatUpdateModal');
+        const entendidoCheck = document.getElementById('entendidoCheck');
+        const closeModalButton = document.getElementById('closeModalButton');
+        const chatUpdateModal = new bootstrap.Modal(modalElement);
+        
+        // El modal se muestra automáticamente si la variable PHP lo permite
+        chatUpdateModal.show();
+
+        // Lógica para habilitar el botón de cierre al marcar el checkbox
+        entendidoCheck.addEventListener('change', function() {
+            closeModalButton.disabled = !this.checked;
+        });
+
+        // Lógica al hacer clic en el botón de cierre
+        closeModalButton.addEventListener('click', function() {
+            // 1. Ocultar el modal
+            chatUpdateModal.hide();
+            
+            // 2. Enviar petición AJAX para actualizar la DB (marcar como leído)
+            fetch('actualizar_chat_db.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                // El contenido del body no es necesario si usas el ID de la SESSION en actualizar_chat_db.php
+                body: 'update=true' 
+            })
+            .then(response => response.text())
+            .then(data => {
+                // Opcional: mostrar un mensaje de éxito, pero el modal ya se cerró.
+            })
+            .catch(error => {
+                console.error('Error al actualizar DB:', error);
+            });
+        });
+    });
+</script>
+<?php endif; ?>
+<?php if ($mostrar_chat_modal): ?>
+<div class="modal fade" id="chatUpdateModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="chatUpdateModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 1rem;">
+            <div class="modal-header text-white" style="background-color: #007bff; border-bottom: none; border-top-left-radius: 1rem; border-top-right-radius: 1rem;">
+                <h5 class="modal-title w-100 text-center" id="chatUpdateModalLabel">
+                    <i class="fas fa-bullhorn me-2"></i> ¡Novedades Importantes del Sistema de Comunicación!
+                </h5>
+            </div>
+            <div class="modal-body p-4">
+                <p class="lead text-center mb-4 text-primary">
+                    ¡El chat ha sido actualizado! Estas son las nuevas funcionalidades:
+                </p>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <div class="card h-100 border-success">
+                            <div class="card-body">
+                                <h6 class="card-title text-success"><i class="fas fa-tags me-2"></i> **Etiquetado de Tareas/Pedidos**</h6>
+                                <p class="card-text">
+                                    Puedes **etiquetar Tareas** (`#T123`) y **Pedidos** (`#P456`) en cualquier mensaje. ¡Las menciones son **clicables**!
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <div class="card h-100 border-success">
+                            <div class="card-body">
+                                <h6 class="card-title text-success"><i class="fas fa-microphone me-2"></i> **Mensajes de Audio (Tiempo Real)**</h6>
+                                <p class="card-text">
+                                    Envía **audios** o **grabaciones de voz** directamente en cualquier conversación.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-12 mb-3">
+                         <div class="card h-100 border-success">
+                            <div class="card-body">
+                                <h6 class="card-title text-success"><i class="fas fa-palette me-2"></i> **Formato de Texto Enriquecido**</h6>
+                                <p class="card-text">
+                                    Usa **Negritas**, *Cursivas*, colores y más para destacar información.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer d-flex justify-content-between align-items-center" style="border-top: none;">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" value="" id="entendidoCheck">
+                    <label class="form-check-label" for="entendidoCheck">
+                        **He leído y estoy enterado/a.**
+                    </label>
+                </div>
+                <button type="button" class="btn btn-primary" id="closeModalButton" disabled>
+                    Cerrar y Continuar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const modalElement = document.getElementById('chatUpdateModal');
+        const entendidoCheck = document.getElementById('entendidoCheck');
+        const closeModalButton = document.getElementById('closeModalButton');
+        
+        // Inicializa y muestra el modal
+        const chatUpdateModal = new bootstrap.Modal(modalElement, {
+            backdrop: 'static', // Evita que se cierre al hacer clic fuera
+            keyboard: false     // Evita que se cierre con la tecla ESC
+        });
+        chatUpdateModal.show();
+
+        // Lógica para habilitar el botón de cierre al marcar el checkbox
+        entendidoCheck.addEventListener('change', function() {
+            closeModalButton.disabled = !this.checked;
+        });
+
+        // Lógica al hacer clic en el botón de cierre
+        closeModalButton.addEventListener('click', function() {
+            // 1. Ocultar el modal
+            chatUpdateModal.hide();
+            
+            // 2. Enviar petición AJAX para actualizar la DB (marcar como leído)
+            fetch('actualizar_chat_db.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: 'update=true' 
+            })
+            .catch(error => {
+                console.error('Error al actualizar DB:', error);
+            });
+        });
+    });
+</script>
+<?php endif; ?>
 </body>
 </html>
