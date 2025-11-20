@@ -1,58 +1,34 @@
 <?php
-// Archivo: navbar.php (CON ESTILOS RESPONSIVE Y LÓGICA DE TOAST DE AVISO GLOBAL)
+// Archivo: navbar.php (RESTAURADO: ÍCONOS, SUBMENÚS Y CENTRADO DE CAMPANA CORREGIDO)
 if (session_status() == PHP_SESSION_NONE) { session_start(); }
 
-// 1. INCLUIR DEPENDENCIAS PRIMERO
-if (!isset($pdo)) {
-    include_once 'conexion.php';
-}
-if (!function_exists('tiene_permiso')) {
-    include_once 'funciones_permisos.php'; 
-}
+if (!isset($pdo)) { include_once 'conexion.php'; }
+if (!function_exists('tiene_permiso')) { include_once 'funciones_permisos.php'; }
 
-// 2. AHORA SÍ PODEMOS USAR LAS FUNCIONES
-// Verificación de permisos para Asistencia
 $mostrar_novedades = false;
 if (function_exists('tiene_permiso') && isset($pdo)) {
     $mostrar_novedades = tiene_permiso('acceso_asistencia', $pdo);
 }
 
-// Helper para permisos múltiples (si no existe ya)
 if (!function_exists('tiene_algun_permiso')) {
     function tiene_algun_permiso($claves_permiso, $pdo_conn) {
-        if (isset($_SESSION['usuario_rol']) && $_SESSION['usuario_rol'] === 'admin') {
-            return true;
-        }
         if (isset($pdo_conn) && function_exists('tiene_permiso')) { 
             foreach ($claves_permiso as $clave) {
-                if (tiene_permiso($clave, $pdo_conn)) {
-                    return true;
-                }
+                if (tiene_permiso($clave, $pdo_conn)) return true;
             }
         }
         return false;
     }
 }
 
-$permisos_del_menu_admin = [
-    'acceso_pedidos_lista_encargado',
-    'admin_usuarios',
-    'admin_roles', 
-    'admin_categorias',
-    'admin_areas',
-    'admin_destinos',
-    'admin_remitos'
-];
-
+$permisos_del_menu_admin = ['acceso_pedidos_lista_encargado', 'admin_usuarios', 'admin_roles', 'admin_categorias', 'admin_areas', 'admin_destinos', 'admin_remitos'];
 $mostrar_menu_admin = tiene_algun_permiso($permisos_del_menu_admin, $pdo);
 
-// Variables de usuario
 $rol_usuario_nav = $_SESSION['usuario_rol'] ?? 'empleado'; 
 $nombre_usuario_nav = $_SESSION['usuario_nombre'] ?? 'Invitado'; 
 $foto_perfil_nav = $_SESSION['usuario_perfil'] ?? 'default.png'; 
 $id_usuario_nav = $_SESSION['usuario_id'] ?? 0;
 
-// Conteo de notificaciones
 $notificaciones_no_leidas = 0; 
 if ($id_usuario_nav > 0 && isset($pdo)) { 
     try { 
@@ -61,7 +37,6 @@ if ($id_usuario_nav > 0 && isset($pdo)) {
         $stmt_notif->execute([':id_user' => $id_usuario_nav]); 
         $notificaciones_no_leidas = $stmt_notif->fetchColumn(); 
     } catch (PDOException $e) { 
-        // Fallback
         try {
             $sql_notif = "SELECT COUNT(*) FROM notificaciones WHERE id_usuario_destino = :id_user AND leida = 0"; 
             $stmt_notif = $pdo->prepare($sql_notif); 
@@ -72,118 +47,49 @@ if ($id_usuario_nav > 0 && isset($pdo)) {
 }
 ?>
 <style> 
-    /* Estilos Generales */
     .logo-invertido { height: 32px; margin-right: 10px; filter: invert(100%) grayscale(100%) brightness(200%); } 
     #notifications-list { max-height: 400px; overflow-y: auto; } 
     .toast-container { z-index: 1090; }
-
-    /* --- ESTILOS NAVBAR RESPONSIVE --- */
     
-    /* Estilos base para los links (Aplica a Móvil por defecto) */
-    .navbar-nav .nav-link {
-        display: flex !important;
-        flex-direction: row; /* Lado a lado en móvil */
-        align-items: center;
-        justify-content: flex-start; /* Alineado a la izquierda */
-        text-align: left;
-        font-size: 0.9rem; 
-        padding: 0.8rem 1rem !important; /* Más espacio para el dedo */
-        transition: background-color 0.2s ease, color 0.2s ease;
-        border-radius: 5px;
-    }
+    /* Estilos Móvil (Default) */
+    .navbar-nav .nav-link { display: flex !important; flex-direction: row; align-items: center; justify-content: flex-start; text-align: left; font-size: 0.9rem; padding: 0.8rem 1rem !important; transition: background-color 0.2s ease, color 0.2s ease; border-radius: 5px; }
+    .navbar-nav .nav-link i { margin-bottom: 0; font-size: 1.1rem; margin-right: 10px !important; width: 20px; text-align: center; }
+    .navbar-nav .nav-link:hover { background-color: rgba(255,255,255,0.1); }
+    #notification-badge { font-size: 0.6em; padding: 0.2em 0.4em; position: absolute; }
+    .dropdown-toggle::after { margin-left: auto !important; }
 
-    /* Iconos en móvil */
-    .navbar-nav .nav-link i {
-        margin-bottom: 0; 
-        font-size: 1.1rem;  
-        margin-right: 10px !important; /* Separación entre ícono y texto */
-        width: 20px; /* Ancho fijo para alinear textos verticalmente */
-        text-align: center;
-    }
-
-    /* Hover suave */
-    .navbar-nav .nav-link:hover {
-        background-color: rgba(255,255,255,0.1);
-    }
-
-    /* Badge de notificaciones */
-    #notification-badge { 
-        font-size: 0.6em; 
-        padding: 0.2em 0.4em; 
-        position: absolute; 
-    }
-
-    /* Flecha del dropdown */
-    .dropdown-toggle::after {
-        margin-left: auto !important; /* Empuja la flecha a la derecha en móvil */
-    }
-
-    /* --- MEDIA QUERY: SOLO ESCRITORIO (LG > 992px) --- */
+    /* --- ESCRITORIO (LG > 992px) --- */
     @media (min-width: 992px) {
-        .navbar-nav .nav-link {
-            flex-direction: column; /* Icono arriba */
-            justify-content: center;
-            text-align: center;
-            font-size: 0.8rem;
-            padding: 0.5rem 1rem !important;
-        }
-        
-        .navbar-nav .nav-link i {
-            margin-bottom: 4px; 
-            font-size: 1.2rem;
-            margin-right: 0 !important; 
-            width: auto;
-        }
+        .navbar-nav .nav-link { flex-direction: column; justify-content: center; text-align: center; font-size: 0.8rem; padding: 0.5rem 1rem !important; }
+        .navbar-nav .nav-link i { margin-bottom: 4px; font-size: 1.2rem; margin-right: 0 !important; width: auto; }
+        .dropdown-toggle::after { margin-left: 0 !important; margin-top: 2px; }
+        .navbar-nav.ms-auto { align-items: center; }
 
-        .dropdown-toggle::after {
-            margin-left: 0 !important;
-            margin-top: 2px;
+        /* CENTRADO VISUAL DE LA CAMPANA SIN ROMPER EL DROPDOWN */
+        /* No usamos flex en el 'a', sino margin en el 'i' para bajarlo visualmente */
+        #notificationsDropdown i {
+            margin-top: 15px; /* Empuja el icono hacia abajo para centrarlo */
+            margin-bottom: 0 !important;
         }
-
-        /* Ajuste específico del badge en escritorio */
-        #notification-badge {
-            top: 8px !important; 
-            left: 50%; 
-            transform: translate(10px, -50%);
-            position: absolute;
+        #notifications-list {
+            /* Usa números NEGATIVOS para SUBIR el menú y pegarlo a la campana. */
+            margin-top: -15px !important; /* <--- AGREGAR O MODIFICAR ESTA LÍNEA (Prueba -10px, -20px) */
         }
-        
-        /* Separación del menú derecho (perfil/notif) en escritorio */
-        .navbar-nav.ms-auto {
-            align-items: center;
+        /* Ajuste del badge para acompañar al icono bajado */
+        #notificationsDropdown #notification-badge {
+            top: 10px !important; 
+            left: 40% !important; 
+            transform: translateX(10px);
         }
     }
 
-    /* Ajuste específico para el badge en Móvil si queda desalineado */
     @media (max-width: 991px) {
-        #notification-badge {
-            top: 10px !important;
-            left: 25px !important; /* Ajustado para que quede sobre el icono */
-        }
-        
-        /* Fondo un poco más oscuro en el menú desplegado móvil para contraste */
-        .navbar-collapse {
-            background-color: #2c3034; /* Un poco más claro que bg-dark */
-            padding: 10px;
-            border-radius: 0 0 10px 10px;
-            margin-top: 10px;
-        }
-        
-        .dropdown-menu {
-            border: none;
-            background-color: #3a3f44; /* Submenú oscuro en móvil */
-        }
-        .dropdown-item {
-            color: #e0e0e0;
-        }
-        .dropdown-item:hover {
-            background-color: #4a5056;
-            color: #fff;
-        }
-        /* Divider oscuro */
-        .dropdown-divider {
-            border-top: 1px solid #555;
-        }
+        #notification-badge { top: 10px !important; left: 25px !important; }
+        .navbar-collapse { background-color: #2c3034; padding: 10px; border-radius: 0 0 10px 10px; margin-top: 10px; }
+        .dropdown-menu { border: none; background-color: #3a3f44; }
+        .dropdown-item { color: #e0e0e0; }
+        .dropdown-item:hover { background-color: #4a5056; color: #fff; }
+        .dropdown-divider { border-top: 1px solid #555; }
     }
 </style>
 
@@ -196,7 +102,7 @@ if ($id_usuario_nav > 0 && isset($pdo)) {
             <span class="navbar-toggler-icon"></span>
         </button>
         <div class="collapse navbar-collapse" id="navbarNavDropdown">
-
+            
             <ul class="navbar-nav me-auto mb-2 mb-lg-0">
                 
                 <?php if (tiene_permiso('acceso_pedidos_crear', $pdo) || tiene_permiso('acceso_pedidos_lista_encargado', $pdo)): ?>
@@ -224,10 +130,10 @@ if ($id_usuario_nav > 0 && isset($pdo)) {
                         <i class="fas fa-clipboard-check"></i> Personal
                     </a>
                     <ul class="dropdown-menu">
-                        <li><a class="dropdown-item" href="asistencia_tomar.php"><i class="fas fa-pen-square me-2"></i>Generar Parte</a></li>
+                        <li><a class="dropdown-item" href="asistencia_tomar.php"><i class="fas fa-pen-square me-2"></i> Generar Parte</a></li>
                         <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" href="asistencia_estadisticas.php"><i class="fas fa-chart-bar me-2"></i>Estadísticas</a></li>
-                        <li><a class="dropdown-item" href="asistencia_listado_general.php"><i class="fas fa-history me-2"></i>Historial de Partes</a></li>
+                        <li><a class="dropdown-item" href="asistencia_estadisticas.php"><i class="fas fa-chart-bar me-2"></i> Estadísticas</a></li>
+                        <li><a class="dropdown-item" href="asistencia_listado_general.php"><i class="fas fa-history me-2"></i> Historial de Partes</a></li>
                     </ul>
                 </li>
                 <?php endif; ?>
@@ -247,21 +153,21 @@ if ($id_usuario_nav > 0 && isset($pdo)) {
                 </li>
 
                 <?php 
-                // Verificamos si tiene permiso de ADMIN (gestionar todo) o CREAR (solo publicar)
-                $puede_crear_avisos = tiene_permiso('crear_aviso', $pdo) || tiene_permiso('acceso_avisos_admin', $pdo);
+                $puede_crear_avisos = tiene_permiso('acceso_avisos_crear', $pdo) || tiene_permiso('acceso_avisos_gestionar', $pdo);
                 ?>
-                
                 <?php if ($puede_crear_avisos): ?>
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle <?php echo (strpos(basename($_SERVER['PHP_SELF']), 'avisos_') !== false || basename($_SERVER['PHP_SELF']) == 'avisos.php') ? 'active' : ''; ?>"
                             href="#" id="avisosDropdown" role="button" data-bs-toggle="dropdown">
-                            <i class="fas fa-bullhorn"></i> Avisos
+                            <i class="fas fa-blog"></i> Blog
                         </a>
                         <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" href="avisos.php"><i class="fas fa-eye me-2"></i> Ver Tablero</a></li>
+                            <li><a class="dropdown-item" href="avisos.php"><i class="fas fa-eye me-2"></i> Ver Blog</a></li>
                             <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="avisos_crear.php"><i class="fas fa-plus-circle me-2 text-success"></i> Crear Aviso</a></li>
-                            <?php if (tiene_permiso('acceso_avisos_admin', $pdo)): ?>
+                            <?php if (tiene_permiso('acceso_avisos_crear', $pdo)): ?>
+                                <li><a class="dropdown-item" href="avisos_crear.php"><i class="fas fa-plus-circle me-2 text-success"></i> Crear Entrada</a></li>
+                            <?php endif; ?>
+                            <?php if (tiene_permiso('acceso_avisos_gestionar', $pdo)): ?>
                                 <li><a class="dropdown-item" href="avisos_lista.php"><i class="fas fa-list-alt me-2 text-warning"></i> Administrar</a></li>
                             <?php endif; ?>
                         </ul>
@@ -269,20 +175,14 @@ if ($id_usuario_nav > 0 && isset($pdo)) {
                 <?php else: ?>
                     <li class="nav-item">
                         <a class="nav-link <?php echo basename($_SERVER['PHP_SELF']) == 'avisos.php' ? 'active' : ''; ?>" href="avisos.php">
-                            <i class="fas fa-bullhorn"></i> Avisos
+                            <i class="fas fa-blog"></i> Blog
                         </a>
                     </li>
                 <?php endif; ?>
 
-
                 <li class="nav-item">
                     <a class="nav-link <?php echo basename($_SERVER['PHP_SELF']) == 'chat.php' ? 'active' : ''; ?>" href="chat.php">
                         <i class="fas fa-comments"></i> Chat
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link <?php echo basename($_SERVER['PHP_SELF']) == 'noticias_ffaa.php' ? 'active' : ''; ?>" href="noticias_ffaa.php">
-                        <i class="fas fa-bullhorn"></i> Noticias
                     </a>
                 </li>
                 
@@ -293,28 +193,13 @@ if ($id_usuario_nav > 0 && isset($pdo)) {
                             <i class="fas fa-cog"></i> Admin
                         </a>
                         <ul class="dropdown-menu">
-                            <?php if (tiene_permiso('admin_usuarios', $pdo)): ?>
-                                <li><a class="dropdown-item" href="admin_usuarios.php"><i class="fas fa-users-cog me-2"></i>Usuarios</a></li>
-                            <?php endif; ?>
-                            <?php if (tiene_permiso('admin_roles', $pdo)): ?>
-                                <li><a class="dropdown-item" href="admin_roles.php"><i class="fas fa-user-shield me-2"></i>Roles y Permisos</a></li>
-                            <?php endif; ?>
-                            <?php if (tiene_permiso('admin_usuarios', $pdo) || tiene_permiso('admin_roles', $pdo)): ?>
-                                <li><hr class="dropdown-divider"></li>
-                            <?php endif; ?>
-                            <?php if (tiene_permiso('admin_categorias', $pdo)): ?>
-                                <li><a class="dropdown-item" href="admin_categorias.php"><i class="fas fa-tags me-2"></i>Categorías</a></li>
-                            <?php endif; ?>
-                            <?php if (tiene_permiso('admin_areas', $pdo)): ?>
-                                <li><a class="dropdown-item" href="admin_areas.php"><i class="fas fa-map-marker-alt me-2"></i>Gestionar Áreas</a></li>
-                            <?php endif; ?>
-                            <?php if (tiene_permiso('admin_destinos', $pdo)): ?>
-                                <li><a class="dropdown-item" href="admin_destinos.php"><i class="fas fa-compass me-2"></i>Gestionar Destinos</a></li>
-                            <?php endif; ?>
-                            <?php if (tiene_permiso('admin_remitos', $pdo)): ?>
-                                <li><hr class="dropdown-divider"></li>
-                                <li><a class="dropdown-item" href="admin_remitos.php"><i class="fas fa-file-invoice-dollar me-2 text-success"></i> Ver Remitos/Facturas</a></li>
-                            <?php endif; ?>
+                            <?php if (tiene_permiso('admin_usuarios', $pdo)): ?> <li><a class="dropdown-item" href="admin_usuarios.php"><i class="fas fa-users-cog me-2"></i>Usuarios</a></li> <?php endif; ?>
+                            <?php if (tiene_permiso('admin_roles', $pdo)): ?> <li><a class="dropdown-item" href="admin_roles.php"><i class="fas fa-user-shield me-2"></i>Roles y Permisos</a></li> <?php endif; ?>
+                            <?php if (tiene_permiso('admin_usuarios', $pdo) || tiene_permiso('admin_roles', $pdo)): ?> <li><hr class="dropdown-divider"></li> <?php endif; ?>
+                            <?php if (tiene_permiso('admin_categorias', $pdo)): ?> <li><a class="dropdown-item" href="admin_categorias.php"><i class="fas fa-tags me-2"></i>Categorías</a></li> <?php endif; ?>
+                            <?php if (tiene_permiso('admin_areas', $pdo)): ?> <li><a class="dropdown-item" href="admin_areas.php"><i class="fas fa-map-marker-alt me-2"></i>Gestionar Áreas</a></li> <?php endif; ?>
+                            <?php if (tiene_permiso('admin_destinos', $pdo)): ?> <li><a class="dropdown-item" href="admin_destinos.php"><i class="fas fa-compass me-2"></i>Gestionar Destinos</a></li> <?php endif; ?>
+                            <?php if (tiene_permiso('admin_remitos', $pdo)): ?> <li><hr class="dropdown-divider"></li> <li><a class="dropdown-item" href="admin_remitos.php"><i class="fas fa-file-invoice-dollar me-2 text-success"></i> Ver Remitos/Facturas</a></li> <?php endif; ?>
                         </ul>
                     </li>
                 <?php endif; ?>
@@ -356,7 +241,6 @@ if ($id_usuario_nav > 0 && isset($pdo)) {
         </div>
     </div>
 </nav>
-
 <div id="notificationToastContainer" class="toast-container position-fixed bottom-0 end-0 p-3"></div>
 
 <script>
@@ -374,8 +258,6 @@ if ($id_usuario_nav > 0 && isset($pdo)) {
     });
 
     function pollNotifications(isFirstLoad) {
-        // NOTA: Esta llamada fetch es la que necesita la lógica en notificaciones_fetch.php
-        // para buscar el aviso global (tipo: aviso_global) y enviarlo a todos.
         fetch(`notificaciones_fetch.php?last_id=${lastNotificationId}`)
             .then(r => r.json())
             .then(data => {
@@ -408,24 +290,11 @@ if ($id_usuario_nav > 0 && isset($pdo)) {
         let icon='fa-info-circle', color='bg-info', title='Notificación';
         let delay = 8000;
 
-        // *** LÓGICA DE AVISO GLOBAL LLAMATIVO ***
         if (notif.tipo === 'aviso_global') { 
-            icon='fa-bullhorn'; 
-            color='bg-danger'; 
-            title='🚨 ALERTA DE NUEVO AVISO'; 
-            delay = 15000; // 15 segundos de visibilidad
+            icon='fa-bullhorn'; color='bg-danger'; title='🚨 ALERTA DE NUEVO AVISO'; delay = 15000; 
         } 
-        // *** FIN LÓGICA AVISO GLOBAL ***
-        
-        else if(notif.tipo === 'chat') { 
-            icon='fa-comment-dots'; 
-            color='bg-primary'; 
-            title='Nuevo Mensaje'; 
-        } else if(notif.tipo.includes('tarea')) { 
-            icon='fa-tasks'; 
-            color='bg-success'; 
-            title='Novedad Tarea'; 
-        }
+        else if(notif.tipo === 'chat') { icon='fa-comment-dots'; color='bg-primary'; title='Nuevo Mensaje'; } 
+        else if(notif.tipo.includes('tarea')) { icon='fa-tasks'; color='bg-success'; title='Novedad Tarea'; }
         
         const html = `
             <div class="toast align-items-center text-white ${color} border-0" role="alert" aria-live="assertive" aria-atomic="true" data-bs-autohide="true" data-bs-delay="${delay}">
@@ -444,7 +313,7 @@ if ($id_usuario_nav > 0 && isset($pdo)) {
 
     function loadFullList() {
         const list = document.getElementById('notifications-list');
-        list.innerHTML = '<li class="text-center p-3"><i class="fas fa-spinner fa-spin"></i></li>';
+        list.innerHTML = '<li class="text-center p-3"><i class="fas fa-spinner fa-spin me-2"></i>Cargando...</a></li>';
         fetch('notificaciones_fetch.php?last_id=0') 
             .then(r => r.json())
             .then(data => {

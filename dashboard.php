@@ -1,64 +1,28 @@
 <?php
-// Archivo: dashboard.php (VERSIÓN FINAL INTEGRA: ESTRUCTURA CORREGIDA + NOVEDADES VISUALES + WIDGETS SÓLIDOS)
+// Archivo: dashboard.php (OPTIMIZADO: IMÁGENES ASÍNCRONAS)
 session_start();
 include 'conexion.php';
-
-// ... Tu código existente (session_start, includes, etc.)
-
-// --- INICIO CÓDIGO NUEVO: LÓGICA DE NOTIFICACIÓN DE CHAT ---
-
-try {
-    // Aseguramos que la columna exista (solo lo hará si es la primera vez que se ejecuta en el servidor)
-    $sql_check_column = "ALTER TABLE usuarios ADD COLUMN chat_notificacion_leida BOOLEAN DEFAULT 0";
-    $pdo->exec($sql_check_column);
-
-    // 1. Obtener el estado de la notificación del usuario actual
-    $usuario_id = $_SESSION['usuario_id'];
-    $stmt = $pdo->prepare("SELECT chat_notificacion_leida FROM usuarios WHERE id_usuario = :id");
-    $stmt->execute([':id' => $usuario_id]);
-    $usuario_data = $stmt->fetch();
-
-    $mostrar_chat_modal = ($usuario_data && $usuario_data['chat_notificacion_leida'] == 0);
-
-} catch (PDOException $e) {
-    // Manejo de errores si la conexión o la consulta fallan
-    // En producción, podrías simplemente asumir que no se muestra para no romper la página.
-    $mostrar_chat_modal = false;
-    // error_log("Error al verificar estado de notificación de chat: " . $e->getMessage());
-}
-
-// --- FIN CÓDIGO NUEVO: LÓGICA DE NOTIFICACIÓN DE CHAT ---
 
 // 1. SEGURIDAD
 if (!isset($_SESSION['usuario_id'])) { header("Location: login.php"); exit(); }
 $id_usuario = $_SESSION['usuario_id'];
 $rol_usuario = $_SESSION['usuario_rol'];
 $nombre_usuario = $_SESSION['usuario_nombre'] ?? 'Usuario';
-// --- INICIO CÓDIGO NUEVO: LÓGICA DE NOTIFICACIÓN DE CHAT ---
+
+// --- LÓGICA DE NOTIFICACIÓN DE CHAT ---
 $mostrar_chat_modal = false;
 try {
-    // 1. Asegurarse de que la columna exista (tolerar error si ya existe)
-    // ESTE COMANDO ES NECESARIO SI NO LO HICISTE MANUALMENTE EN LA DB.
     $sql_check_column = "ALTER TABLE usuarios ADD COLUMN chat_notificacion_leida BOOLEAN DEFAULT 0";
-    $pdo->exec($sql_check_column); 
-    
-    // 2. Obtener el estado de la notificación del usuario actual
+    @$pdo->exec($sql_check_column); 
     $stmt = $pdo->prepare("SELECT chat_notificacion_leida FROM usuarios WHERE id_usuario = :id");
     $stmt->execute([':id' => $id_usuario]);
     $usuario_data = $stmt->fetch();
-
     $mostrar_chat_modal = ($usuario_data && $usuario_data['chat_notificacion_leida'] == 0);
+} catch (PDOException $e) { $mostrar_chat_modal = false; }
 
-} catch (PDOException $e) {
-    // Si la columna ya existía y el ALTER falló, no importa.
-    // Si hay un error grave de conexión o consulta, el modal no se muestra.
-    $mostrar_chat_modal = false; 
-}
-// --- FIN CÓDIGO NUEVO: LÓGICA DE NOTIFICACIÓN DE CHAT ---
-// 2. HELPER IMAGEN
-function get_first_image_url($html) {
-    if (preg_match('/<img.*?src=["\'](.*?)["\'].*?>/i', $html, $matches)) { return $matches[1]; }
-    return null;
+// 2. HELPER: Detectar si HAY imagen (No extrae la data pesada, solo verifica existencia)
+function tiene_imagen($html) {
+    return (strpos($html, 'data:image') !== false);
 }
 
 // 3. HELPER SALUDO
@@ -72,11 +36,7 @@ $frases_motivadoras = [
     "¡El éxito es la suma de pequeños esfuerzos repetidos día tras día!",
     "La logística no es solo mover cosas, es mover el futuro.",
     "La calidad no es un acto, es un hábito.",
-    "Si te cansas, aprende a descansar, no a renunciar.",
-    "La disciplina es el puente entre las metas y el logro.",
-    "No cuentes los días, haz que los días cuenten.",
-    "La excelencia es hacer cosas comunes de manera poco común.",
-    "La optimización es la clave para la eficiencia en cada paso."
+    "Si te cansas, aprende a descansar, no a renunciar."
 ];
 if (!isset($_SESSION['frase_del_dia'])) { $_SESSION['frase_del_dia'] = $frases_motivadoras[array_rand($frases_motivadoras)]; }
 $frase_del_dia = $_SESSION['frase_del_dia'];
@@ -89,8 +49,7 @@ if ($rol_usuario === 'empleado') {
     $params_filtro[':uid'] = $id_usuario;
 }
 
-// --- DATOS PARA GRÁFICOS (PHP) ---
-
+// --- DATOS PARA GRÁFICOS (PHP - RÁPIDO) ---
 // A. CATEGORÍA
 $cat_labels = []; $cat_data = []; $cat_ids = []; $cat_colors = [];
 try {
@@ -115,7 +74,7 @@ try {
     foreach($res_prio as $row) { $p=strtolower($row['prioridad']); $prio_labels[]=ucfirst($p); $prio_data[]=$row['total']; $prio_colors[]=$map_colores[$p]??'#6c757d'; }
 } catch (Exception $e) {}
 
-// C. TENDENCIA FINALIZADAS (7 Días)
+// C. TENDENCIA FINALIZADAS
 $trend_labels = []; $trend_data = [];
 try {
     $sql_trend = "SELECT DATE(fecha_cierre) as fecha, COUNT(*) as total FROM tareas t WHERE t.estado = 'verificada' AND t.fecha_cierre >= DATE_SUB(CURDATE(), INTERVAL 6 DAY) $sql_filtro_usuario GROUP BY DATE(fecha_cierre)";
@@ -123,8 +82,7 @@ try {
     $db_data = $stmt_trend->fetchAll(PDO::FETCH_KEY_PAIR); 
     for ($i = 6; $i >= 0; $i--) {
         $date = date('Y-m-d', strtotime("-$i days"));
-        $label = date('d/m', strtotime("-$i days"));
-        $trend_labels[] = $label;
+        $trend_labels[] = date('d/m', strtotime("-$i days"));
         $trend_data[] = isset($db_data[$date]) ? (int)$db_data[$date] : 0;
     }
 } catch (Exception $e) {}
@@ -143,11 +101,14 @@ try {
     $stmt_c = $pdo->prepare($sql_c); $stmt_c->execute($params_filtro); $counts = $stmt_c->fetch(PDO::FETCH_ASSOC);
 } catch (Exception $e) {}
 
-// --- AVISOS ---
+// --- AVISOS (LIGERO: Solo traemos texto necesario) ---
 $avisos_recientes = [];
-try { $stmt = $pdo->query("SELECT id_aviso, titulo, contenido, fecha_publicacion FROM avisos WHERE es_activo = 1 ORDER BY fecha_publicacion DESC LIMIT 5"); $avisos_recientes = $stmt->fetchAll(PDO::FETCH_ASSOC); } catch (Exception $e) {}
+try { 
+    $stmt = $pdo->query("SELECT id_aviso, titulo, contenido, fecha_publicacion FROM avisos WHERE es_activo = 1 ORDER BY fecha_publicacion DESC LIMIT 5"); 
+    $avisos_recientes = $stmt->fetchAll(PDO::FETCH_ASSOC); 
+} catch (Exception $e) {}
 
-// --- EFECTIVIDAD ---
+// --- OTROS WIDGETS ---
 $mi_efectividad = 0;
 try {
     $stmt_eff = $pdo->prepare("SELECT COUNT(*) as total, SUM(CASE WHEN estado='verificada' THEN 1 ELSE 0 END) as ok FROM tareas WHERE id_asignado = :uid AND estado != 'cancelada'");
@@ -155,21 +116,18 @@ try {
     if($row_eff['total'] > 0) $mi_efectividad = round(($row_eff['ok'] / $row_eff['total']) * 100);
 } catch(Exception $e) {}
 
-// --- VENCIMIENTOS ---
 $mis_vencimientos = [];
 try {
     $stmt_venc = $pdo->prepare("SELECT id_tarea, titulo, fecha_limite, prioridad FROM tareas WHERE id_asignado = :uid AND fecha_limite BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 7 DAY) AND estado NOT IN ('verificada', 'cancelada') ORDER BY fecha_limite ASC LIMIT 5");
     $stmt_venc->execute([':uid' => $id_usuario]); $mis_vencimientos = $stmt_venc->fetchAll(PDO::FETCH_ASSOC);
 } catch (Exception $e) {}
 
-// --- RANKING ---
 $ranking_users = [];
 try {
     $sql_rank = "SELECT u.nombre_completo, u.foto_perfil, COUNT(t.id_tarea) as total FROM tareas t JOIN usuarios u ON t.id_asignado = u.id_usuario WHERE t.estado = 'verificada' AND MONTH(t.fecha_cierre) = MONTH(CURRENT_DATE()) GROUP BY t.id_asignado ORDER BY total DESC LIMIT 5";
     $ranking_users = $pdo->query($sql_rank)->fetchAll(PDO::FETCH_ASSOC);
 } catch(Exception $e){}
 
-// --- ASISTENCIA ---
 $att_present = 0; $att_absent = 0; $att_title = "";
 try {
     if ($rol_usuario === 'admin' || $rol_usuario === 'encargado') {
@@ -184,18 +142,15 @@ try {
     $att_present = (int)($res_att['pres']??0); $att_absent = (int)($res_att['aus']??0);
 } catch (Exception $e) {}
 
-// --- WORKLOAD ---
 $workload_labels = []; $workload_data = []; $workload_ids = [];
+$lista_empleados = [];
 if (in_array($rol_usuario, ['admin', 'encargado', 'auxiliar'])) {
     try {
         $stmt_wl = $pdo->query("SELECT u.id_usuario, u.nombre_completo, COUNT(t.id_tarea) as total FROM usuarios u LEFT JOIN tareas t ON u.id_usuario = t.id_asignado AND t.estado NOT IN ('verificada','cancelada') WHERE u.rol IN ('empleado','auxiliar') AND u.activo = 1 GROUP BY u.id_usuario ORDER BY total DESC LIMIT 10");
         $res_wl = $stmt_wl->fetchAll(PDO::FETCH_ASSOC);
         foreach($res_wl as $w) { $parts = explode(' ', $w['nombre_completo']); $workload_labels[] = $parts[0]; $workload_data[] = $w['total']; $workload_ids[] = $w['id_usuario']; }
+        $lista_empleados = $pdo->query("SELECT id_usuario, nombre_completo FROM usuarios WHERE rol = 'empleado' AND activo = 1 ORDER BY nombre_completo")->fetchAll(PDO::FETCH_ASSOC);
     } catch (Exception $e) {}
-}
-$lista_empleados = [];
-if (in_array($rol_usuario, ['admin', 'encargado', 'auxiliar'])) {
-    try { $lista_empleados = $pdo->query("SELECT id_usuario, nombre_completo FROM usuarios WHERE rol = 'empleado' AND activo = 1 ORDER BY nombre_completo")->fetchAll(PDO::FETCH_ASSOC); } catch(Exception $e){}
 }
 
 $show_loader = !isset($_SESSION['dashboard_loaded_once']);
@@ -213,12 +168,8 @@ $_SESSION['dashboard_loaded_once'] = true;
     <style>
         body { background-color: #f4f6f9; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         #full-loader { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #fff; z-index: 9999; display: flex; justify-content: center; align-items: center; transition: opacity 0.5s ease-out, visibility 0.5s ease-out; }
-        
-        /* Cards */
         .card { border: none; border-radius: 12px; box-shadow: 0 2px 15px rgba(0,0,0,0.04); transition: transform 0.2s; }
         .hover-card:hover { transform: translateY(-4px); box-shadow: 0 8px 25px rgba(0,0,0,0.08) !important; }
-        
-        /* Gráficos */
         .chart-container { position: relative; height: 250px; width: 100%; }
         #categoryDoughnutChart, #priorityDoughnutChart, #trendChart { cursor: pointer; }
     </style>
@@ -245,6 +196,7 @@ $_SESSION['dashboard_loaded_once'] = true;
                     </div>
                 </div>
             </div>
+            
             <div class="col-md-4 mt-3 mt-md-0">
                 <div class="card bg-white shadow-sm h-100 border-0" id="weatherCard" style="display:none;">
                     <div class="card-body p-3 d-flex align-items-center justify-content-between">
@@ -278,16 +230,18 @@ $_SESSION['dashboard_loaded_once'] = true;
                      
                      <div class="list-group list-group-flush">
                         <?php if(!empty($avisos_recientes)): foreach($avisos_recientes as $aviso): 
-                            // Lógica Visual
-                            $img_src = get_first_image_url($aviso['contenido']);
+                            // Detectar si tiene imagen (sin cargarla todavía)
+                            $tiene_imagen = tiene_imagen($aviso['contenido']);
+                            
+                            // Si tiene imagen, usamos el script de carga asíncrona. Si no, un color random.
                             $colores = ['primary', 'success', 'danger', 'warning', 'info', 'dark'];
                             $bg_color = $colores[$aviso['id_aviso'] % count($colores)];
                         ?>
                         <a href="avisos.php?show_id=<?php echo $aviso['id_aviso'];?>" class="list-group-item list-group-item-action py-3 border-0 border-bottom d-flex align-items-center" style="transition:background 0.2s">
                             <div class="flex-shrink-0 me-3">
-                                <?php if($img_src): ?>
+                                <?php if($tiene_imagen): ?>
                                     <div style="width: 48px; height: 48px; border-radius: 8px; overflow: hidden; border: 1px solid #eee;">
-                                        <img src="<?php echo htmlspecialchars($img_src); ?>" style="width: 100%; height: 100%; object-fit: cover;">
+                                        <img src="ver_imagen_aviso.php?id=<?php echo $aviso['id_aviso']; ?>" style="width: 100%; height: 100%; object-fit: cover;">
                                     </div>
                                 <?php else: ?>
                                     <div class="bg-<?php echo $bg_color; ?> bg-opacity-10 text-<?php echo $bg_color; ?> d-flex align-items-center justify-content-center" style="width: 48px; height: 48px; border-radius: 8px;">
@@ -406,9 +360,18 @@ $_SESSION['dashboard_loaded_once'] = true;
         document.addEventListener('DOMContentLoaded', () => {
             // Loader
             const showLoader = <?php echo json_encode($show_loader); ?>;
-            if (showLoader) { setTimeout(() => { document.getElementById('full-loader').style.display='none'; document.body.style.overflow=''; }, 1500); }
+            if (showLoader) { 
+                const loader = document.getElementById('full-loader');
+                if(loader) {
+                     loader.style.opacity = '0';
+                     setTimeout(() => { 
+                        loader.style.display='none'; 
+                        document.body.style.overflow=''; 
+                     }, 500); 
+                }
+            }
             
-            // Clima
+            // CLIMA: Restaurado y optimizado con caché
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(pos => {
                     fetch(`fetch_weather.php?lat=${pos.coords.latitude}&lon=${pos.coords.longitude}`).then(r => r.json()).then(d => {
@@ -455,214 +418,28 @@ $_SESSION['dashboard_loaded_once'] = true;
         });
     </script>
     
-    <?php
-    $popup = null;
-    if(isset($_SESSION['usuario_id'])){
-        try{ $s = $pdo->prepare("SELECT * FROM avisos WHERE es_activo=1 AND fecha_publicacion > '2025-11-19 23:59:59' AND id_aviso NOT IN (SELECT id_aviso FROM avisos_lecturas WHERE id_usuario=:u) ORDER BY fecha_publicacion DESC LIMIT 1"); $s->execute([':u'=>$_SESSION['usuario_id']]); $popup = $s->fetch(PDO::FETCH_ASSOC); } catch(Exception $e){}
-    }
-    if($popup): ?>
-    <div class="modal fade" id="modalPop" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header bg-primary text-white"><h5 class="modal-title">Aviso</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" onclick="read(<?php echo $popup['id_aviso'];?>)"></button></div><div class="modal-body"><h4><?php echo htmlspecialchars($popup['titulo']);?></h4><div><?php echo $popup['contenido'];?></div></div><div class="modal-footer"><button class="btn btn-primary" onclick="read(<?php echo $popup['id_aviso'];?>)" data-bs-dismiss="modal">Entendido</button></div></div></div></div>
-    <script>setTimeout(()=>{new bootstrap.Modal(document.getElementById('modalPop')).show();},1000); function read(id){fetch('marcar_aviso_leido.php',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'id_aviso='+id});}</script>
-    <?php endif; ?>
     <?php if ($mostrar_chat_modal): ?>
-<div class="modal fade" id="chatUpdateModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="chatUpdateModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
-        <div class="modal-content border-0 shadow-lg" style="border-radius: 1rem;">
-            <div class="modal-header text-white" style="background-color: #007bff; border-bottom: none; border-top-left-radius: 1rem; border-top-right-radius: 1rem;">
-                <h5 class="modal-title w-100 text-center" id="chatUpdateModalLabel">
-                    <i class="fas fa-bullhorn me-2"></i> ¡Importante: Nuevas Funcionalidades del Chat!
-                </h5>
-            </div>
-            <div class="modal-body p-4">
-                <p class="lead text-center mb-4 text-primary">
-                    Hemos habilitado el **Sistema de Comunicación Interna** con grandes mejoras:
-                </p>
-                <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <div class="card h-100 border-success">
-                            <div class="card-body">
-                                <h6 class="card-title text-success"><i class="fas fa-tags me-2"></i> **Etiquetado de Tareas y Pedidos**</h6>
-                                <p class="card-text">
-                                    Ahora puedes **etiquetar Tareas** (`#T123`) y **Pedidos** (`#P456`) en cualquier mensaje. ¡Las menciones son **clicables**!
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-6 mb-3">
-                        <div class="card h-100 border-success">
-                            <div class="card-body">
-                                <h6 class="card-title text-success"><i class="fas fa-microphone me-2"></i> **Mensajes de Audio (Tiempo Real)**</h6>
-                                <p class="card-text">
-                                    Envía **audios** o **grabaciones de voz** directamente en cualquier conversación del chat.
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-12 mb-3">
-                         <div class="card h-100 border-success">
-                            <div class="card-body">
-                                <h6 class="card-title text-success"><i class="fas fa-palette me-2"></i> **Formato de Texto Enriquecido**</h6>
-                                <p class="card-text">
-                                    ¡Dale formato a tus mensajes! Usa **Negritas**, *Cursivas*, colores y más para destacar la información importante.
-                                </p>
-                            </div>
-                        </div>
-                    </div>
+    <div class="modal fade" id="chatUpdateModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="chatUpdateModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 1rem;">
+                <div class="modal-header text-white" style="background-color: #007bff;">
+                    <h5 class="modal-title w-100 text-center"><i class="fas fa-bullhorn me-2"></i> ¡Novedades!</h5>
                 </div>
-            </div>
-            <div class="modal-footer d-flex justify-content-between align-items-center" style="border-top: none;">
-                <div class="form-check">
-                    <input class="form-check-input" type="checkbox" value="" id="entendidoCheck">
-                    <label class="form-check-label" for="entendidoCheck">
-                        **He leído y estoy enterado/a.**
-                    </label>
+                <div class="modal-body p-4"><p class="text-center">Nuevas funciones de chat habilitadas.</p></div>
+                <div class="modal-footer d-flex justify-content-between align-items-center">
+                    <div class="form-check"><input class="form-check-input" type="checkbox" id="entendidoCheck"><label class="form-check-label" for="entendidoCheck">Entendido</label></div>
+                    <button type="button" class="btn btn-primary" id="closeModalButton" disabled>Cerrar</button>
                 </div>
-                <button type="button" class="btn btn-primary" id="closeModalButton" disabled>
-                    Cerrar y Continuar
-                </button>
             </div>
         </div>
     </div>
-</div>
-
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const modalElement = document.getElementById('chatUpdateModal');
-        const entendidoCheck = document.getElementById('entendidoCheck');
-        const closeModalButton = document.getElementById('closeModalButton');
-        const chatUpdateModal = new bootstrap.Modal(modalElement);
-        
-        // El modal se muestra automáticamente si la variable PHP lo permite
-        chatUpdateModal.show();
-
-        // Lógica para habilitar el botón de cierre al marcar el checkbox
-        entendidoCheck.addEventListener('change', function() {
-            closeModalButton.disabled = !this.checked;
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const m = new bootstrap.Modal(document.getElementById('chatUpdateModal')); m.show();
+            document.getElementById('entendidoCheck').addEventListener('change', function() { document.getElementById('closeModalButton').disabled = !this.checked; });
+            document.getElementById('closeModalButton').addEventListener('click', function() { m.hide(); fetch('actualizar_chat_db.php', {method:'POST',body:'update=true'}); });
         });
-
-        // Lógica al hacer clic en el botón de cierre
-        closeModalButton.addEventListener('click', function() {
-            // 1. Ocultar el modal
-            chatUpdateModal.hide();
-            
-            // 2. Enviar petición AJAX para actualizar la DB (marcar como leído)
-            fetch('actualizar_chat_db.php', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                },
-                // El contenido del body no es necesario si usas el ID de la SESSION en actualizar_chat_db.php
-                body: 'update=true' 
-            })
-            .then(response => response.text())
-            .then(data => {
-                // Opcional: mostrar un mensaje de éxito, pero el modal ya se cerró.
-            })
-            .catch(error => {
-                console.error('Error al actualizar DB:', error);
-            });
-        });
-    });
-</script>
-<?php endif; ?>
-<?php if ($mostrar_chat_modal): ?>
-<div class="modal fade" id="chatUpdateModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="chatUpdateModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
-        <div class="modal-content border-0 shadow-lg" style="border-radius: 1rem;">
-            <div class="modal-header text-white" style="background-color: #007bff; border-bottom: none; border-top-left-radius: 1rem; border-top-right-radius: 1rem;">
-                <h5 class="modal-title w-100 text-center" id="chatUpdateModalLabel">
-                    <i class="fas fa-bullhorn me-2"></i> ¡Novedades Importantes del Sistema de Comunicación!
-                </h5>
-            </div>
-            <div class="modal-body p-4">
-                <p class="lead text-center mb-4 text-primary">
-                    ¡El chat ha sido actualizado! Estas son las nuevas funcionalidades:
-                </p>
-                <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <div class="card h-100 border-success">
-                            <div class="card-body">
-                                <h6 class="card-title text-success"><i class="fas fa-tags me-2"></i> **Etiquetado de Tareas/Pedidos**</h6>
-                                <p class="card-text">
-                                    Puedes **etiquetar Tareas** (`#T123`) y **Pedidos** (`#P456`) en cualquier mensaje. ¡Las menciones son **clicables**!
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-6 mb-3">
-                        <div class="card h-100 border-success">
-                            <div class="card-body">
-                                <h6 class="card-title text-success"><i class="fas fa-microphone me-2"></i> **Mensajes de Audio (Tiempo Real)**</h6>
-                                <p class="card-text">
-                                    Envía **audios** o **grabaciones de voz** directamente en cualquier conversación.
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-12 mb-3">
-                         <div class="card h-100 border-success">
-                            <div class="card-body">
-                                <h6 class="card-title text-success"><i class="fas fa-palette me-2"></i> **Formato de Texto Enriquecido**</h6>
-                                <p class="card-text">
-                                    Usa **Negritas**, *Cursivas*, colores y más para destacar información.
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="modal-footer d-flex justify-content-between align-items-center" style="border-top: none;">
-                <div class="form-check">
-                    <input class="form-check-input" type="checkbox" value="" id="entendidoCheck">
-                    <label class="form-check-label" for="entendidoCheck">
-                        **He leído y estoy enterado/a.**
-                    </label>
-                </div>
-                <button type="button" class="btn btn-primary" id="closeModalButton" disabled>
-                    Cerrar y Continuar
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const modalElement = document.getElementById('chatUpdateModal');
-        const entendidoCheck = document.getElementById('entendidoCheck');
-        const closeModalButton = document.getElementById('closeModalButton');
-        
-        // Inicializa y muestra el modal
-        const chatUpdateModal = new bootstrap.Modal(modalElement, {
-            backdrop: 'static', // Evita que se cierre al hacer clic fuera
-            keyboard: false     // Evita que se cierre con la tecla ESC
-        });
-        chatUpdateModal.show();
-
-        // Lógica para habilitar el botón de cierre al marcar el checkbox
-        entendidoCheck.addEventListener('change', function() {
-            closeModalButton.disabled = !this.checked;
-        });
-
-        // Lógica al hacer clic en el botón de cierre
-        closeModalButton.addEventListener('click', function() {
-            // 1. Ocultar el modal
-            chatUpdateModal.hide();
-            
-            // 2. Enviar petición AJAX para actualizar la DB (marcar como leído)
-            fetch('actualizar_chat_db.php', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                },
-                body: 'update=true' 
-            })
-            .catch(error => {
-                console.error('Error al actualizar DB:', error);
-            });
-        });
-    });
-</script>
-<?php endif; ?>
+    </script>
+    <?php endif; ?>
 </body>
 </html>

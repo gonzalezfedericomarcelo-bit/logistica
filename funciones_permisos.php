@@ -15,12 +15,14 @@ function tiene_permiso(string $clave_permiso, PDO $pdo): bool {
 
     $rol_usuario = $_SESSION['usuario_rol'];
     
-    // 2. Seguridad: El rol 'admin' siempre tiene acceso total (hardcodeado por si falla la BD)
+    // 2. SEGURIDAD CRÍTICA: El rol 'admin' siempre tiene acceso total.
+    // Esto es necesario porque si la tabla de permisos se vacía o hay un error,
+    // el administrador nunca debe perder el acceso para poder arreglarlo.
     if ($rol_usuario === 'admin') {
         return true;
     }
 
-    // 3. Consultar la base de datos
+    // 3. Consultar la base de datos para ver si el rol tiene el permiso asignado
     try {
         $sql = "SELECT COUNT(*) 
                 FROM rol_permiso 
@@ -33,6 +35,7 @@ function tiene_permiso(string $clave_permiso, PDO $pdo): bool {
         return $stmt->fetchColumn() > 0;
 
     } catch (PDOException $e) {
+        // En caso de error de BD, por seguridad denegamos, pero el admin (paso 2) ya pasó.
         error_log("Error de BD al verificar permiso: " . $e->getMessage());
         return false;
     }
