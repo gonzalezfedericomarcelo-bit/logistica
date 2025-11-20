@@ -1,8 +1,8 @@
 <?php
-// Archivo: navbar.php (CORREGIDO: Orden de carga para evitar pantalla blanca)
+// Archivo: navbar.php (CON ESTILOS RESPONSIVE Y LÓGICA DE TOAST DE AVISO GLOBAL)
 if (session_status() == PHP_SESSION_NONE) { session_start(); }
 
-// 1. INCLUIR DEPENDENCIAS PRIMERO (Esto arregla el error)
+// 1. INCLUIR DEPENDENCIAS PRIMERO
 if (!isset($pdo)) {
     include_once 'conexion.php';
 }
@@ -13,7 +13,6 @@ if (!function_exists('tiene_permiso')) {
 // 2. AHORA SÍ PODEMOS USAR LAS FUNCIONES
 // Verificación de permisos para Asistencia
 $mostrar_novedades = false;
-// Verificamos con la función segura (incluso si falla la BD devuelve false)
 if (function_exists('tiene_permiso') && isset($pdo)) {
     $mostrar_novedades = tiene_permiso('acceso_asistencia', $pdo);
 }
@@ -375,6 +374,8 @@ if ($id_usuario_nav > 0 && isset($pdo)) {
     });
 
     function pollNotifications(isFirstLoad) {
+        // NOTA: Esta llamada fetch es la que necesita la lógica en notificaciones_fetch.php
+        // para buscar el aviso global (tipo: aviso_global) y enviarlo a todos.
         fetch(`notificaciones_fetch.php?last_id=${lastNotificationId}`)
             .then(r => r.json())
             .then(data => {
@@ -400,15 +401,34 @@ if ($id_usuario_nav > 0 && isset($pdo)) {
                 return; 
             }
         }
+        
         const container = document.getElementById('notificationToastContainer');
         if(!container) return;
 
         let icon='fa-info-circle', color='bg-info', title='Notificación';
-        if(notif.tipo === 'chat') { icon='fa-comment-dots'; color='bg-primary'; title='Nuevo Mensaje'; }
-        if(notif.tipo.includes('tarea')) { icon='fa-tasks'; color='bg-success'; title='Novedad Tarea'; }
+        let delay = 8000;
+
+        // *** LÓGICA DE AVISO GLOBAL LLAMATIVO ***
+        if (notif.tipo === 'aviso_global') { 
+            icon='fa-bullhorn'; 
+            color='bg-danger'; 
+            title='🚨 ALERTA DE NUEVO AVISO'; 
+            delay = 15000; // 15 segundos de visibilidad
+        } 
+        // *** FIN LÓGICA AVISO GLOBAL ***
+        
+        else if(notif.tipo === 'chat') { 
+            icon='fa-comment-dots'; 
+            color='bg-primary'; 
+            title='Nuevo Mensaje'; 
+        } else if(notif.tipo.includes('tarea')) { 
+            icon='fa-tasks'; 
+            color='bg-success'; 
+            title='Novedad Tarea'; 
+        }
         
         const html = `
-            <div class="toast align-items-center text-white ${color} border-0" role="alert" aria-live="assertive" aria-atomic="true" data-bs-autohide="true" data-bs-delay="8000">
+            <div class="toast align-items-center text-white ${color} border-0" role="alert" aria-live="assertive" aria-atomic="true" data-bs-autohide="true" data-bs-delay="${delay}">
                 <div class="d-flex">
                     <div class="toast-body cursor-pointer" onclick="location.href='${notif.url}'" style="cursor:pointer;">
                         <i class="fas ${icon} me-2"></i> <strong>${title}</strong>
