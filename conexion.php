@@ -1,4 +1,5 @@
 <?php
+date_default_timezone_set('America/Argentina/Buenos_Aires');
 // Configuración de la conexión a la base de datos
 $servidor = "localhost"; // Servidor de la base de datos (XAMPP)
 $usuario = "u415354546_logistica";       // Usuario de la base de datos

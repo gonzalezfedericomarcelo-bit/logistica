@@ -200,11 +200,11 @@ class PDF_Final extends FPDF {
         
         // Info Derecha (Sistema)
         $this->SetXY(-60, $y_qr + 3);
-        $this->SetFont('Arial', 'B', 7);
-        $this->Cell(50, 3, convertir_texto('SISTEMA DE GESTIÓN LOGÍSTICA'), 0, 1, 'R');
+        $this->SetFont('Arial', 'B',6);
+        $this->Cell(50, 3, convertir_texto('SISTEMA DE GESTIÓN AVANZADO DE LOGÍSTICA Y PERSONAL'), 0, 1, 'R');
         $this->SetXY(-60, $y_qr + 7);
         $this->SetFont('Arial', '', 6);
-        $this->Cell(50, 3, convertir_texto('v2.0 - SG Mec Info Federico González'), 0, 1, 'R');
+        $this->Cell(50, 3, convertir_texto('v2.0 - DESARROLLO BY SG MEC INFO FEDERICO GONZÁLEZ'), 0, 1, 'R');
 
         // Paginación
         $this->SetY(-10);

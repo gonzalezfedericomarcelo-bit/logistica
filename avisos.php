@@ -1,5 +1,5 @@
 <?php
-// Archivo: avisos.php (DISEÑO BLOG COMPLETO + SIDEBAR + HIGHLIGHT)
+// Archivo: avisos.php (RESPONSIVE MEJORADO)
 session_start();
 include 'conexion.php';
 include 'funciones_permisos.php'; 
@@ -38,13 +38,10 @@ try {
 
 // 4. Datos para el Sidebar
 try {
-    // Categorías
     $cats = $pdo->query("SELECT categoria, COUNT(*) as total FROM avisos WHERE es_activo=1 GROUP BY categoria ORDER BY total DESC")->fetchAll(PDO::FETCH_ASSOC);
-    // Populares (Suma de reacciones y comentarios)
     $populares = $pdo->query("SELECT id_aviso, titulo, (SELECT COUNT(*) FROM avisos_reacciones WHERE id_aviso=a.id_aviso) + (SELECT COUNT(*) FROM avisos_comentarios WHERE id_aviso=a.id_aviso) as score FROM avisos a WHERE es_activo=1 ORDER BY score DESC LIMIT 5")->fetchAll(PDO::FETCH_ASSOC);
 } catch (Exception $e) { $cats=[]; $populares=[]; }
 
-// Helper Extracto
 function obtener_extracto_limpio($html) {
     $texto = trim(str_replace('&nbsp;', ' ', strip_tags(str_replace(['<br>', '</p>'], ' ', $html))));
     return empty($texto) ? "Ver detalles..." : mb_substr($texto, 0, 120) . '...';
@@ -54,13 +51,14 @@ function obtener_extracto_limpio($html) {
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Blog Institucional</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"> <title>Blog Institucional</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <style>
         body { background-color: #f8f9fa; font-family: 'Segoe UI', sans-serif; }
+        
         /* Estilos Tarjeta */
-        .blog-card { border:none; border-radius:12px; background:#fff; overflow:hidden; transition:0.3s; box-shadow:0 2px 10px rgba(0,0,0,0.05); margin-bottom: 30px; }
+        .blog-card { border:none; border-radius:12px; background:#fff; overflow:hidden; transition:0.3s; box-shadow:0 2px 10px rgba(0,0,0,0.05); margin-bottom: 30px; cursor: pointer; }
         .blog-card:hover { transform:translateY(-5px); box-shadow:0 15px 30px rgba(0,0,0,0.1); }
         .blog-img { height:200px; width:100%; object-fit:cover; }
         .blog-body { padding:20px; }
@@ -80,19 +78,28 @@ function obtener_extracto_limpio($html) {
         /* Highlight Anim */
         @keyframes highlightFade { 0% { background-color: #fff3cd; border: 2px solid #ffc107; } 100% { background-color: #fff; border: 1px solid #dee2e6; } }
         .highlight-comment { animation: highlightFade 3s ease-out forwards; }
+
+        /* RESPONSIVE TWEAKS */
+        @media (max-width: 768px) {
+            .blog-img { height: 180px; }
+            .blog-title { font-size: 1.2rem; }
+            .container { padding-left: 15px; padding-right: 15px; }
+            .modal-header { padding: 1rem; }
+            .modal-body .container { padding: 1rem !important; }
+        }
     </style>
 </head>
 <body>
     <?php include 'navbar.php'; ?>
 
-    <div class="container py-5">
+    <div class="container py-4 py-md-5">
         <div class="row">
             
             <div class="col-lg-8">
-                <div class="d-flex justify-content-between align-items-center mb-4">
-                    <h2 class="fw-bold"><i class="fas fa-rss text-warning me-2"></i> Últimas Publicaciones</h2>
+                <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-3">
+                    <h2 class="fw-bold mb-0"><i class="fas fa-rss text-warning me-2"></i> Últimas Publicaciones</h2>
                     <?php if($es_admin_avisos): ?>
-                        <a href="avisos_crear.php" class="btn btn-primary rounded-pill fw-bold"><i class="fas fa-plus me-2"></i>Nueva Entrada</a>
+                        <a href="avisos_crear.php" class="btn btn-primary rounded-pill fw-bold w-100 w-md-auto"><i class="fas fa-plus me-2"></i>Nueva Entrada</a>
                     <?php endif; ?>
                 </div>
 
@@ -104,18 +111,17 @@ function obtener_extracto_limpio($html) {
                         $img = !empty($aviso['imagen_destacada']) ? 'uploads/avisos/'.$aviso['imagen_destacada'] : 'assets/img/placeholder_news.jpg';
                         $leido = in_array($aviso['id_aviso'], $leidos_ids);
                     ?>
-                        <div class="col-md-6">
-                            <div id="card_<?php echo $aviso['id_aviso']; ?>" class="blog-card" onclick="abrirAviso(<?php echo $aviso['id_aviso']; ?>, '<?php echo addslashes($aviso['titulo']); ?>')">
+                        <div class="col-md-6 mb-3"> <div id="card_<?php echo $aviso['id_aviso']; ?>" class="blog-card h-100" onclick="abrirAviso(<?php echo $aviso['id_aviso']; ?>, '<?php echo addslashes($aviso['titulo']); ?>')">
                                 <img src="<?php echo $img; ?>" class="blog-img">
-                                <div class="blog-body">
+                                <div class="blog-body d-flex flex-column h-100">
                                     <div class="d-flex justify-content-between">
                                         <span class="blog-cat"><?php echo htmlspecialchars($aviso['categoria']); ?></span>
                                         <?php if(!$leido): ?><span class="badge bg-danger rounded-pill">NUEVO</span><?php endif; ?>
                                     </div>
                                     <h3 class="blog-title"><?php echo htmlspecialchars($aviso['titulo']); ?></h3>
                                     <div class="blog-meta"><i class="far fa-clock me-1"></i> <?php echo date('d M', strtotime($aviso['fecha_publicacion'])); ?> &bull; <i class="far fa-user me-1"></i> <?php echo explode(' ', $aviso['creador'])[0]; ?></div>
-                                    <p class="text-muted small"><?php echo obtener_extracto_limpio($aviso['extracto_crudo']); ?></p>
-                                    <div class="d-flex justify-content-between pt-3 border-top">
+                                    <p class="text-muted small flex-grow-1"><?php echo obtener_extracto_limpio($aviso['extracto_crudo']); ?></p>
+                                    <div class="d-flex justify-content-between pt-3 border-top mt-auto">
                                         <span class="text-primary fw-bold small">Leer más <i class="fas fa-arrow-right"></i></span>
                                         <div class="text-muted small">
                                             <i class="far fa-thumbs-up me-1"></i> <?php echo $aviso['c_reac']; ?>
@@ -130,7 +136,7 @@ function obtener_extracto_limpio($html) {
                 <?php endif; ?>
             </div>
 
-            <div class="col-lg-4">
+            <div class="col-lg-4 mt-4 mt-lg-0">
                 <div class="sidebar-widget">
                     <h5 class="widget-title">Buscar</h5>
                     <div class="input-group">
@@ -156,8 +162,8 @@ function obtener_extracto_limpio($html) {
                     <h5 class="widget-title">Más Populares</h5>
                     <?php foreach($populares as $p): ?>
                         <div class="pop-item" onclick="abrirAviso(<?php echo $p['id_aviso']; ?>, '<?php echo addslashes($p['titulo']); ?>')">
-                            <div class="bg-light rounded d-flex align-items-center justify-content-center text-secondary fw-bold" style="width:40px; height:40px; font-size:1.2rem;">#</div>
-                            <div class="pop-title"><?php echo htmlspecialchars($p['titulo']); ?></div>
+                            <div class="bg-light rounded d-flex align-items-center justify-content-center text-secondary fw-bold flex-shrink-0" style="width:40px; height:40px; font-size:1.2rem;">#</div>
+                            <div class="pop-title text-wrap"><?php echo htmlspecialchars($p['titulo']); ?></div>
                         </div>
                     <?php endforeach; ?>
                 </div>
@@ -175,14 +181,14 @@ function obtener_extracto_limpio($html) {
     <div class="modal fade" id="modalVisor" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-fullscreen">
             <div class="modal-content border-0">
-                <div class="modal-header border-bottom px-4 py-3 sticky-top bg-white shadow-sm">
-                    <button type="button" class="btn btn-light rounded-circle me-3" data-bs-dismiss="modal"><i class="fas fa-arrow-left"></i></button>
-                    <h5 class="modal-title fw-bold text-dark text-truncate" id="modalTitulo"></h5>
+                <div class="modal-header border-bottom px-3 py-2 sticky-top bg-white shadow-sm">
+                    <button type="button" class="btn btn-light rounded-circle me-2" data-bs-dismiss="modal"><i class="fas fa-arrow-left"></i></button>
+                    <h5 class="modal-title fw-bold text-dark text-truncate flex-grow-1" id="modalTitulo" style="font-size: 1rem;"></h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body bg-light p-0">
-                    <div class="container py-5" style="max-width: 900px;">
-                        <div class="bg-white p-4 p-md-5 rounded shadow-sm" id="modalContenido"></div>
+                    <div class="container py-4" style="max-width: 900px;">
+                        <div class="bg-white p-3 p-md-5 rounded shadow-sm" id="modalContenido"></div>
                     </div>
                 </div>
             </div>
@@ -213,7 +219,7 @@ function obtener_extracto_limpio($html) {
                                 el.classList.add('highlight-comment');
                             }
                             targetCommentId = null; // Reset
-                        }, 500); // Pequeño delay para asegurar renderizado
+                        }, 500); 
                     }
                     
                     // Marcar como leído
@@ -221,7 +227,6 @@ function obtener_extracto_limpio($html) {
                 });
         }
 
-        // Interacciones (Social)
         function enviarReaccion(id, tipo) {
             const fd = new FormData(); fd.append('accion','reaccionar'); fd.append('id_aviso',id); fd.append('tipo',tipo);
             fetch('avisos_interaccion.php', {method:'POST', body:fd}).then(r=>r.json()).then(d=>{ if(d.success) reloadContent(id); });
@@ -253,20 +258,17 @@ function obtener_extracto_limpio($html) {
             fetch(`obtener_contenido_aviso.php?id=${id}`).then(r=>r.text()).then(html => { document.getElementById('modalContenido').innerHTML = html; });
         }
 
-        // Auto-Apertura desde Dashboard y Notificaciones
         document.addEventListener('DOMContentLoaded', () => {
             const urlParams = new URLSearchParams(window.location.search);
             const showId = urlParams.get('show_id');
-            const cid = urlParams.get('cid'); // ID del comentario desde la notificación
+            const cid = urlParams.get('cid');
             
             if (showId) {
-                if (cid) targetCommentId = cid; // Guardar para usar tras la carga AJAX
-                
+                if (cid) targetCommentId = cid;
                 const card = document.getElementById('card_' + showId);
                 if (card) card.click();
             }
             
-            // Buscador local simple
             document.getElementById('searchInput').addEventListener('keyup', function() {
                 let v = this.value.toLowerCase();
                 document.querySelectorAll('.blog-card').forEach(c => {

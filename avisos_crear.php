@@ -1,5 +1,5 @@
 <?php
-// Archivo: avisos_crear.php (CORREGIDO: CON FONT AWESOME)
+// Archivo: avisos_crear.php (RESPONSIVE)
 session_start();
 include 'conexion.php';
 include 'funciones_permisos.php';
@@ -12,11 +12,45 @@ if (!isset($_SESSION['usuario_id']) || !tiene_permiso('acceso_avisos_crear', $pd
 $mensaje = '';
 $alerta_tipo = '';
 
-// Categorías predefinidas
+// Categorías
 $categorias_blog = ['Institucional', 'Novedades', 'Eventos', 'Urgente', 'Capacitación', 'Sociales'];
 
+function crear_miniatura($ruta_origen, $ruta_destino, $ancho_max = 200) {
+    list($ancho_orig, $alto_orig, $tipo) = getimagesize($ruta_origen);
+    if (!$ancho_orig) return false;
+
+    $ratio = $ancho_orig / $alto_orig;
+    $ancho_nuevo = $ancho_max;
+    $alto_nuevo = $ancho_max / $ratio;
+
+    $thumb = imagecreatetruecolor($ancho_nuevo, $alto_nuevo);
+    $origen = null;
+
+    switch ($tipo) {
+        case IMAGETYPE_JPEG: $origen = imagecreatefromjpeg($ruta_origen); break;
+        case IMAGETYPE_PNG: 
+            $origen = imagecreatefrompng($ruta_origen); 
+            imagealphablending($thumb, false); imagesavealpha($thumb, true);
+            break;
+        case IMAGETYPE_WEBP: $origen = imagecreatefromwebp($ruta_origen); break;
+        case IMAGETYPE_GIF: $origen = imagecreatefromgif($ruta_origen); break;
+    }
+
+    if ($origen) {
+        imagecopyresampled($thumb, $origen, 0, 0, 0, 0, $ancho_nuevo, $alto_nuevo, $ancho_orig, $alto_orig);
+        switch ($tipo) {
+            case IMAGETYPE_JPEG: imagejpeg($thumb, $ruta_destino, 80); break;
+            case IMAGETYPE_PNG: imagepng($thumb, $ruta_destino, 8); break;
+            case IMAGETYPE_WEBP: imagewebp($thumb, $ruta_destino, 80); break;
+            case IMAGETYPE_GIF: imagegif($thumb, $ruta_destino); break;
+        }
+        imagedestroy($thumb); imagedestroy($origen);
+        return true;
+    }
+    return false;
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // ... (Misma lógica PHP que antes) ...
     $titulo = trim($_POST['titulo']);
     $contenido = $_POST['contenido']; 
     $categoria = $_POST['categoria'] ?? 'General';
@@ -28,8 +62,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $ext = strtolower(pathinfo($_FILES['imagen_destacada']['name'], PATHINFO_EXTENSION));
         if (in_array($ext, ['jpg', 'jpeg', 'png', 'webp', 'gif'])) {
             $new_name = 'aviso_' . time() . '_' . uniqid() . '.' . $ext;
+            $upload_path = 'uploads/avisos/' . $new_name;
             if (!is_dir('uploads/avisos')) mkdir('uploads/avisos', 0777, true);
-            if (move_uploaded_file($file_tmp, 'uploads/avisos/' . $new_name)) $imagen_destacada = $new_name;
+            
+            if (move_uploaded_file($file_tmp, $upload_path)) {
+                $imagen_destacada = $new_name;
+                $thumb_name = pathinfo($new_name, PATHINFO_FILENAME) . '_thumb.' . $ext;
+                crear_miniatura($upload_path, 'uploads/avisos/' . $thumb_name);
+            }
         }
     }
 
@@ -48,6 +88,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Crear Entrada de Blog</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
@@ -56,6 +97,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         .tox-promotion, .tox-statusbar__branding { display: none !important; visibility: hidden !important; }
         .tox-tinymce { border-radius: 8px!important; border: 1px solid #dee2e6!important; }
         @media (min-width: 992px) { .container-xl-responsive { max-width: 1200px; } }
+        /* Ajuste para móvil */
+        @media (max-width: 768px) {
+            .card-body { padding: 1.5rem !important; }
+            .btn-lg { width: 100%; margin-top: 10px; }
+        }
     </style>
 </head>
 <body>
@@ -63,18 +109,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <div class="container-fluid container-xl-responsive mt-4 mb-5 p-3">
         <div class="card shadow-lg border-0 mx-auto" style="max-width: 1200px;">
             <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center py-3">
-                <h4 class="mb-0"><i class="fas fa-pen-fancy me-2"></i>Redactar Entrada</h4>
-                <a href="avisos.php" class="btn btn-sm btn-outline-light rounded-pill px-3">Volver al Blog</a>
+                <h4 class="mb-0 fs-5"><i class="fas fa-pen-fancy me-2"></i>Redactar</h4>
+                <a href="avisos.php" class="btn btn-sm btn-outline-light rounded-pill px-3">Volver</a>
             </div>
             <div class="card-body p-4 p-md-5">
                 <?php if($mensaje): ?><div class="alert alert-<?php echo $alerta_tipo; ?>"><?php echo $mensaje; ?></div><?php endif; ?>
                 <form method="POST" enctype="multipart/form-data">
-                    <div class="row mb-4">
-                        <div class="col-md-6">
+                    <div class="row mb-4 g-3"> <div class="col-12 col-md-6">
                             <label class="form-label fw-bold">TÍTULO</label>
                             <input type="text" name="titulo" class="form-control form-control-lg" required>
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-12 col-md-3">
                             <label class="form-label fw-bold">CATEGORÍA</label>
                             <select name="categoria" class="form-select form-select-lg">
                                 <?php foreach($categorias_blog as $cat): ?>
@@ -82,7 +127,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 <?php endforeach; ?>
                             </select>
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-12 col-md-3">
                             <label class="form-label fw-bold">PORTADA (Opcional)</label>
                             <input type="file" name="imagen_destacada" class="form-control form-control-lg" accept="image/*">
                         </div>

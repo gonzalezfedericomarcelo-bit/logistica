@@ -95,8 +95,8 @@ if ($id_usuario_nav > 0 && isset($pdo)) {
 
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
     <div class="container-fluid">
-        <a class="navbar-brand" href="dashboard.php">
-            <img src="assets/img/sglap.png" alt="Logo" class="logo-invertido">
+        <a class="navbar-brand" href="dashboard.php" style="margin-left: 100px;">
+            <img src="assets/img/sgalp.png" alt="Logo" class="logo-invertido">
         </a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNavDropdown">
             <span class="navbar-toggler-icon"></span>
@@ -242,7 +242,98 @@ if ($id_usuario_nav > 0 && isset($pdo)) {
     </div>
 </nav>
 <div id="notificationToastContainer" class="toast-container position-fixed bottom-0 end-0 p-3"></div>
+<?php
+// --- CÓDIGO DE NAVIDAD GLOBAL (Pegar al final de navbar.php) ---
+$mostrar_navidad_global = false;
+if (isset($pdo)) {
+    try {
+        $stmt_nav = $pdo->query("SELECT valor FROM configuracion_sistema WHERE clave = 'modo_navidad'");
+        $res_nav = $stmt_nav->fetch();
+        if ($res_nav && $res_nav['valor'] == '1') {
+            $mostrar_navidad_global = true;
+        }
+    } catch (Exception $e) {}
+}
 
+if ($mostrar_navidad_global): 
+?>
+<style>
+    .navidad-esquina {
+        position: fixed;
+        bottom: 0; /* Pegado abajo */
+        width: 150px; /* Tamaño del adorno (ajústalo si es muy grande) */
+        height: 150px;
+        z-index: 9999; /* Por encima de todo */
+        pointer-events: none; /* IMPORTANTE: Permite hacer clic a través de la imagen */
+        background-image: url('navidad1.png'); /* Tu nueva imagen */
+        background-size: contain;
+        background-repeat: no-repeat;
+    }
+
+    /* Configuración Izquierda */
+    .esquina-izq {
+        left: 0;
+        background-position: bottom left;
+    }
+
+    /* Configuración Derecha (Modo espejo para que mire al otro lado) */
+    .esquina-der {
+        right: 0;
+        background-position: bottom right;
+        transform: scaleX(-1); /* Invierte la imagen horizontalmente */
+    }
+
+    /* Ocultar en móviles si tapa mucho */
+    @media (max-width: 768px) {
+        .navidad-esquina { width: 150px; height: 150px; }
+    }
+</style>
+
+<!--div class="navidad-esquina esquina-izq"></div-->
+
+<!--div class="navidad-esquina esquina-der"></div-->
+
+
+<?php
+// --- CÓDIGO DE NAVIDAD (Pegar al final de navbar.php) ---
+$mostrar_navidad = false;
+if (isset($pdo)) {
+    try {
+        $stmt_nav = $pdo->query("SELECT valor FROM configuracion_sistema WHERE clave = 'modo_navidad'");
+        $res_nav = $stmt_nav->fetch();
+        if ($res_nav && $res_nav['valor'] == '1') {
+            $mostrar_navidad = true;
+        }
+    } catch (Exception $e) {}
+}
+
+if ($mostrar_navidad): 
+?>
+<style>
+    /* GUIRNALDA ESQUINA SUPERIOR IZQUIERDA (Donde hicimos el hueco) */
+    .navidad-esquina-top-izq {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 150px; /* Tamaño de la guirnalda */
+        height: 150px;
+        z-index: 10000; /* Por encima del menú */
+        pointer-events: none; /* Para que no moleste el clic */
+        
+        /* PON AQUÍ TU IMAGEN DE ESQUINA (ej: image_74d25e.png si es esa) */
+        background-image: url('navidad3.png'); 
+        background-size: contain;
+        background-repeat: no-repeat;
+        background-position: top left;
+    }
+</style>
+
+<div class="navidad-esquina-top-izq"></div>
+
+<?php endif; ?>
+
+
+<?php endif; ?>
 <script>
     let lastNotificationId = 0; 
     const currentUserId = <?php echo json_encode($id_usuario_nav); ?>;
@@ -336,4 +427,5 @@ if ($id_usuario_nav > 0 && isset($pdo)) {
     }
     function markRead(id) { fetch(`notificaciones_mark_read.php?id=${id}`); }
     function playSound() { try { notificationSound.play().catch(e=>{}); } catch(e){} }
+    
 </script>
