@@ -1,50 +1,33 @@
 <?php
-// Archivo: helper_efemerides.php (ACTUALIZACIÓN CADA 12 HORAS)
+// Archivo: helper_efemerides.php (VERSIÓN FINAL: DOBLE BOTÓN)
 
 function obtenerEfemerideHoy() {
     $dia = date('d');
     $mes = date('m');
-    // Usamos un nombre fijo para el día, pero validaremos la hora abajo
-    $cache_file = __DIR__ . "/efemeride_cache_{$dia}_{$mes}.json";
+    
+    // CAMBIO CLAVE: Nuevo nombre para forzar actualización inmediata
+    $cache_file = __DIR__ . "/efemeride_vFinal_{$dia}_{$mes}.json";
 
-    // 1. VALIDAR CACHÉ (Solo si el archivo tiene menos de 12 HORAS de antigüedad)
-    // 43200 segundos = 12 horas
+    // 1. VALIDAR CACHÉ
     if (file_exists($cache_file) && (time() - filemtime($cache_file) < 43200)) {
         $data = json_decode(file_get_contents($cache_file), true);
-        // Verificar que la data sea válida y del tipo militar
         if ($data && !empty($data['titulo']) && $data['tipo'] === 'militar') return $data;
     }
 
     // DATOS POR DEFECTO
     $efemeride = [
         'titulo' => 'Gloria y Honor',
-        'descripcion' => 'En este día recordamos a los hombres y mujeres de las Fuerzas Armadas que forjaron la soberanía de nuestra Nación.',
-        'link' => 'https://es.wikipedia.org/wiki/Historia_de_la_Argentina',
+        'descripcion' => 'En este día recordamos a los hombres y mujeres de las Fuerzas Armadas.',
+        'link_google' => 'https://www.google.com/search?q=Historia+Militar+Argentina',
+        'link_wiki' => 'https://es.wikipedia.org/wiki/Historia_de_la_Argentina',
         'tipo' => 'militar', 
         'icono' => 'fas fa-flag'
     ];
 
-    // 2. PALABRAS CLAVE (FILTRO BLINDADO)
-    $keywords_tematicas = [
-        'Batalla', 'Combate', 'Guerra', 'Revolución', 'Independencia', 'Ejército', 'Armada', 
-        'Fuerza Aérea', 'Regimiento', 'Comando', 'General', 'Coronel', 'Almirante', 'Brigadier', 
-        'Teniente', 'Sargento', 'Cabo', 'Soldado', 'Presidente', 'Decreto', 'Ley', 'Constitución',
-        'Cabildo', 'Virreinato', 'Confederación', 'Campaña', 'Expedición', 'Soberanía', 'Tratado',
-        'Fundación', 'Creación', 'Inauguración', 'Malvinas', 'Antártida', 'Prócer', 'Héroe'
-    ];
-
-    $keywords_geo = [
-        'Argentina', 'Argentino', 'Buenos Aires', 'Río de la Plata', 'San Martín', 'Belgrano', 
-        'Sarmiento', 'Roca', 'Rosas', 'Perón', 'Yrigoyen', 'Mitre', 'Urquiza', 'Güemes', 
-        'Brown', 'Azopardo', 'Bouchard', 'Savio', 'Mosconi', 'Moreno', 'Castelli', 'Saavedra'
-    ];
-
-    $blacklist = [
-        'fútbol', 'futbolista', 'jugador', 'partido', 'gol', 'entrenador', 'DT', 'club', 'liga', 
-        'copa', 'mundial', 'olímpico', 'deporte', 'tenis', 'rugby', 'boxeo', 'automovilismo',
-        'actor', 'actriz', 'cantante', 'música', 'canción', 'álbum', 'disco', 'banda', 'rock', 
-        'telenovela', 'película', 'cine', 'teatro', 'show', 'concierto', 'modelo', 'vedette'
-    ];
+    // 2. CONFIGURACIÓN
+    $keywords_tematicas = ['Batalla', 'Combate', 'Guerra', 'Revolución', 'Ejército', 'Armada', 'Fuerza Aérea', 'Regimiento', 'General', 'Coronel', 'Presidente', 'Decreto', 'Ley', 'Constitución', 'Cabildo', 'Campaña', 'Expedición', 'Soberanía', 'Fundación', 'Malvinas', 'Antártida', 'Golpe', 'Dictadura', 'Proceso', 'Junta', 'Renuncia', 'Asume'];
+    $keywords_geo = ['Argentina', 'Argentino', 'Buenos Aires', 'Río de la Plata', 'San Martín', 'Belgrano', 'Sarmiento', 'Roca', 'Perón', 'Brown', 'Azopardo', 'Bouchard', 'Savio', 'Mosconi'];
+    $blacklist = ['fútbol', 'futbolista', 'jugador', 'partido', 'gol', 'entrenador', 'club', 'copa', 'mundial', 'olímpico', 'tenis', 'actor', 'actriz', 'cantante', 'música', 'disco', 'banda', 'telenovela', 'cine'];
 
     // 3. CONSULTAR WIKIPEDIA
     $url = "https://es.wikipedia.org/api/rest_v1/feed/onthisday/all/$mes/$dia";
@@ -65,23 +48,37 @@ function obtenerEfemerideHoy() {
         foreach ($grupos as $grupo) {
             if (!empty($data[$grupo])) {
                 foreach ($data[$grupo] as $item) {
-                    $texto = $item['text'];
-                    if (contienePalabra($texto, $blacklist)) continue; 
-                    if (!contienePalabra($texto, $keywords_geo)) continue;
-                    if (!contienePalabra($texto, $keywords_tematicas)) continue;
+                    $texto_crudo = $item['text'];
 
-                    $desc = "Información histórica.";
-                    $link = "https://es.wikipedia.org";
+                    // LIMPIEZA
+                    $texto_limpio = str_replace([' - - -', '---', ' – ', ' - '], ' ', $texto_crudo);
+                    $texto_limpio = ltrim($texto_limpio, "- \t\n\r\0\x0B");
+                    $texto_limpio = trim(preg_replace('/\s+/', ' ', $texto_limpio));
+
+                    if (contienePalabra($texto_limpio, $blacklist)) continue; 
+                    if (!contienePalabra($texto_limpio, $keywords_geo)) continue;
+                    if (!contienePalabra($texto_limpio, $keywords_tematicas)) continue;
+
+                    $year = $item['year'] ?? '';
+                    $busqueda = $texto_limpio . " " . $year;
+
+                    // --- GENERAMOS AMBOS LINKS ---
+                    // 1. Google: Búsqueda exacta (Ideal resumen IA)
+                    $link_google = "https://www.google.com/search?q=" . urlencode($busqueda);
                     
-                    if (isset($item['pages'][0])) {
-                        if (!empty($item['pages'][0]['extract'])) $desc = $item['pages'][0]['extract'];
-                        if (!empty($item['pages'][0]['content_urls']['desktop']['page'])) $link = $item['pages'][0]['content_urls']['desktop']['page'];
+                    // 2. Wikipedia: Búsqueda interna (Más seguro que el link directo roto)
+                    $link_wiki = "https://es.wikipedia.org/w/index.php?search=" . urlencode($busqueda);
+
+                    $desc = "Información histórica del año $year.";
+                    if (isset($item['pages'][0]['extract'])) {
+                        $desc = $item['pages'][0]['extract'];
                     }
 
                     $candidatos[] = [
-                        'titulo' => $item['text'],
+                        'titulo' => $texto_limpio,
                         'descripcion' => $desc,
-                        'link' => $link,
+                        'link_google' => $link_google, // Link 1
+                        'link_wiki' => $link_wiki,     // Link 2
                         'tipo' => 'militar',
                         'icono' => 'fas fa-landmark'
                     ];
@@ -94,7 +91,6 @@ function obtenerEfemerideHoy() {
         }
     }
 
-    // 4. GUARDAR (Se sobrescribirá cada 12hs gracias a la validación del inicio)
     file_put_contents($cache_file, json_encode($efemeride));
     return $efemeride;
 }

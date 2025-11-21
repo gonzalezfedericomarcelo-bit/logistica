@@ -1,51 +1,110 @@
 <?php
-// Archivo: tareas_lista.php (CON CONTAINER CENTRADO)
-// *** MODIFICADO (v2) POR GEMINI PARA MOSTRAR FILTRO ASIGNADO Y CORREGIR LÓGICA DE ROLES ***
-// *** MODIFICADO (v3) POR GEMINI PARA CORREGIR ESTILO DE BADGE 'en_reserva' ***
+// Archivo: tareas_lista.php (VERSIÓN FINAL CORREGIDA - ALINEACIÓN Y EDITAR OK)
 session_start();
 include 'conexion.php';
 
-// --- (Código PHP inicial: verificación de sesión, parámetros, filtros, SQL, etc. - SIN CAMBIOS) ---
 if (!isset($_SESSION['usuario_id'])) { header("Location: login.php"); exit(); }
 $id_usuario = $_SESSION['usuario_id']; $rol_usuario = $_SESSION['usuario_rol'];
-$allowed_sort_columns = ['id_tarea', 'titulo', 'categoria', 'prioridad', 'estado', 'fecha_limite', 'fecha_creacion', 'asignado'];
+
+// --- 1. CONFIGURACIÓN DE ORDENAMIENTO ---
+// Agregamos 'fecha_cierre' para permitir ordenar por finalización
+$allowed_sort_columns = ['id_tarea', 'titulo', 'categoria', 'prioridad', 'estado', 'fecha_limite', 'fecha_creacion', 'asignado', 'fecha_cierre'];
 $sort_column = $_GET['sort'] ?? 'fecha_creacion'; $sort_order = $_GET['order'] ?? 'desc';
-if (!in_array($sort_column, $allowed_sort_columns)) $sort_column = 'fecha_creacion'; if (!in_array(strtolower($sort_order), ['asc', 'desc'])) $sort_order = 'desc';
+if (!in_array($sort_column, $allowed_sort_columns)) $sort_column = 'fecha_creacion'; 
+if (!in_array(strtolower($sort_order), ['asc', 'desc'])) $sort_order = 'desc';
 $sort_column_sql = match ($sort_column) { 'categoria' => 'c.nombre', 'asignado' => 'asig.nombre_completo', default => 't.' . $sort_column };
-$estado_filtro = $_GET['estado'] ?? 'todas'; $categoria_filtro = $_GET['categoria'] ?? 'todas'; $prioridad_filtro = $_GET['prioridad'] ?? 'todas'; $asignado_filtro = $_GET['asignado'] ?? 'todas';
+
+// --- 2. OBTENCIÓN DE PARÁMETROS (AHORA SOPORTAN ARRAYS) ---
+$filtro_anio = $_GET['anio'] ?? '';
+$filtro_mes = $_GET['mes'] ?? '';
+
+// Arrays para checkboxes (Multi-select)
+$estado_filtro = isset($_GET['estado']) ? (is_array($_GET['estado']) ? $_GET['estado'] : [$_GET['estado']]) : [];
+$categoria_filtro = isset($_GET['categoria']) ? (is_array($_GET['categoria']) ? $_GET['categoria'] : [$_GET['categoria']]) : [];
+$prioridad_filtro = isset($_GET['prioridad']) ? (is_array($_GET['prioridad']) ? $_GET['prioridad'] : [$_GET['prioridad']]) : [];
+$asignado_filtro = isset($_GET['asignado']) ? (is_array($_GET['asignado']) ? $_GET['asignado'] : [$_GET['asignado']]) : [];
+
+// Listas para los menús
 $categorias_list = []; $usuarios_asignables = [];
 try {
-    $sql_categorias = "SELECT id_categoria, nombre FROM categorias ORDER BY nombre"; $categorias_list = $pdo->query($sql_categorias)->fetchAll(PDO::FETCH_ASSOC);
-    
-    // --- INICIO MODIFICACIÓN GEMINI (v2): Cargar la lista de usuarios asignables (para el filtro) ---
-    // Se usa la misma lógica de tarea_crear.php para que la lista sea coherente
-    $sql_usuarios = "SELECT id_usuario, nombre_completo, rol FROM usuarios 
-                     WHERE rol IN ('empleado', 'auxiliar', 'encargado') 
-                     AND activo = 1 
-                     ORDER BY nombre_completo";
+    $categorias_list = $pdo->query("SELECT id_categoria, nombre FROM categorias ORDER BY nombre")->fetchAll(PDO::FETCH_ASSOC);
+    // MODIFICACIÓN: Mostrar TODOS los usuarios activos sin importar el rol
+    $sql_usuarios = "SELECT id_usuario, nombre_completo, rol FROM usuarios WHERE activo = 1 ORDER BY nombre_completo";
     $usuarios_asignables = $pdo->query($sql_usuarios)->fetchAll(PDO::FETCH_ASSOC);
-    // --- FIN MODIFICACIÓN GEMINI (v2) ---
-
 } catch (PDOException $e) { error_log("Error listas filtros: " . $e->getMessage()); }
-$estados_map = [ 'todas' => 'Todos', 'asignada' => 'Asignada', 'en_proceso' => 'En Proceso', 'finalizada_tecnico' => 'P/Revisión', 'verificada' => 'Verificada', 'modificacion_requerida' => 'Modificación', 'cancelada' => 'Cancelada', 'atrasadas' => 'Atrasadas', 'en_reserva' => 'En Reserva' ]; // <-- Añadido 'En Reserva' al mapa
-$prioridades_map = [ 'todas' => 'Todas', 'urgente' => 'Urgente', 'alta' => 'Alta', 'media' => 'Media', 'baja' => 'Baja' ];
-$sql = "SELECT t.id_tarea, t.titulo, t.estado, t.fecha_creacion, t.fecha_limite, t.prioridad, c.nombre AS nombre_categoria, asig.nombre_completo AS nombre_asignado FROM tareas t LEFT JOIN categorias c ON t.id_categoria = c.id_categoria LEFT JOIN usuarios asig ON t.id_asignado = asig.id_usuario";
+
+// Mapas de etiquetas
+$estados_map = [ 'asignada' => 'Asignada', 'en_proceso' => 'En Proceso', 'finalizada_tecnico' => 'P/Revisión', 'verificada' => 'Verificada', 'modificacion_requerida' => 'Modificación', 'cancelada' => 'Cancelada', 'atrasadas' => 'Atrasadas', 'en_reserva' => 'En Reserva' ];
+$prioridades_map = [ 'urgente' => 'Urgente', 'alta' => 'Alta', 'media' => 'Media', 'baja' => 'Baja' ];
+
+// Obtener años disponibles
+$lista_anios = [];
+try { $lista_anios = $pdo->query("SELECT DISTINCT YEAR(fecha_creacion) FROM tareas ORDER BY fecha_creacion DESC")->fetchAll(PDO::FETCH_COLUMN); } catch (Exception $e) {}
+if (empty($lista_anios)) $lista_anios = [date('Y')];
+$meses_map = [1=>'Ene', 2=>'Feb', 3=>'Mar', 4=>'Abr', 5=>'May', 6=>'Jun', 7=>'Jul', 8=>'Ago', 9=>'Sep', 10=>'Oct', 11=>'Nov', 12=>'Dic'];
+
+// --- 3. CONSTRUCCIÓN DE SQL ---
+// Se agrega t.fecha_cierre al SELECT
+$sql = "SELECT t.id_tarea, t.titulo, t.estado, t.fecha_creacion, t.fecha_limite, t.fecha_cierre, t.prioridad, c.nombre AS nombre_categoria, asig.nombre_completo AS nombre_asignado FROM tareas t LEFT JOIN categorias c ON t.id_categoria = c.id_categoria LEFT JOIN usuarios asig ON t.id_asignado = asig.id_usuario";
 $params = []; $where_clauses = [];
 
-// --- LÓGICA DE FILTRADO DE TAREAS ---
-// (Esta lógica es correcta como está: Empleado ve solo lo suyo, los demás ven todo)
-if ($rol_usuario === 'empleado') { $where_clauses[] = "t.id_asignado = :id_usuario"; $params[':id_usuario'] = $id_usuario; }
-// (Los roles 'admin', 'encargado' y 'auxiliar' no tienen esta restricción, por lo tanto ven todo)
+// Filtro Rol (Empleado ve solo lo suyo)
+if ($rol_usuario === 'empleado') { $where_clauses[] = "t.id_asignado = :id_usuario_session"; $params[':id_usuario_session'] = $id_usuario; }
 
-if ($estado_filtro !== 'todas') { if ($estado_filtro === 'atrasadas') { $where_clauses[] = "t.fecha_limite IS NOT NULL AND t.fecha_limite < CURDATE() AND t.estado NOT IN ('verificada', 'cancelada')"; } else { $where_clauses[] = "t.estado = :estado"; $params[':estado'] = $estado_filtro; } }
-if ($categoria_filtro !== 'todas') { $where_clauses[] = "t.id_categoria = :id_categoria"; $params[':id_categoria'] = $categoria_filtro; }
-if ($prioridad_filtro !== 'todas') { $where_clauses[] = "t.prioridad = :prioridad_filtro"; $params[':prioridad_filtro'] = $prioridad_filtro; }
-if ($asignado_filtro !== 'todas') { $where_clauses[] = "t.id_asignado = :id_asignado"; $params[':id_asignado'] = $asignado_filtro; }
+// Filtros Fecha
+if ($filtro_anio) { $where_clauses[] = "YEAR(t.fecha_creacion) = :anio"; $params[':anio'] = $filtro_anio; }
+if ($filtro_mes) { $where_clauses[] = "MONTH(t.fecha_creacion) = :mes"; $params[':mes'] = $filtro_mes; }
+
+// Filtros Multi-Select
+if (!empty($estado_filtro) && !in_array('todas', $estado_filtro)) {
+    $placeholders = [];
+    $has_atrasadas = false;
+    foreach ($estado_filtro as $idx => $est) {
+        if ($est === 'atrasadas') { $has_atrasadas = true; } 
+        else {
+            $ph = ":estado_" . $idx;
+            $params[$ph] = $est;
+            $placeholders[$idx] = $ph; // Guardamos la referencia del placeholder
+        }
+    }
+    $sub_conds = [];
+    if (!empty($placeholders)) {
+        // Usamos los placeholders generados
+        $in_sql = implode(',', $placeholders); 
+        $sub_conds[] = "t.estado IN ($in_sql)";
+    }
+    if ($has_atrasadas) {
+        $sub_conds[] = "(t.fecha_limite IS NOT NULL AND t.fecha_limite < CURDATE() AND t.estado NOT IN ('verificada', 'cancelada'))";
+    }
+    if (!empty($sub_conds)) {
+        $where_clauses[] = "(" . implode(' OR ', $sub_conds) . ")";
+    }
+}
+
+if (!empty($categoria_filtro) && !in_array('todas', $categoria_filtro)) {
+    $in_params = []; foreach ($categoria_filtro as $k => $v) { $key = ":cat_$k"; $in_params[] = $key; $params[$key] = $v; }
+    $where_clauses[] = "t.id_categoria IN (" . implode(',', $in_params) . ")";
+}
+
+if (!empty($prioridad_filtro) && !in_array('todas', $prioridad_filtro)) {
+    $in_params = []; foreach ($prioridad_filtro as $k => $v) { $key = ":prio_$k"; $in_params[] = $key; $params[$key] = $v; }
+    $where_clauses[] = "t.prioridad IN (" . implode(',', $in_params) . ")";
+}
+
+if (!empty($asignado_filtro) && !in_array('todas', $asignado_filtro)) {
+    $in_params = []; foreach ($asignado_filtro as $k => $v) { $key = ":asig_$k"; $in_params[] = $key; $params[$key] = $v; }
+    $where_clauses[] = "t.id_asignado IN (" . implode(',', $in_params) . ")";
+}
+
 if (!empty($where_clauses)) { $sql .= " WHERE " . implode(' AND ', $where_clauses); }
 $sql .= " ORDER BY " . $sort_column_sql . " " . strtoupper($sort_order); if ($sort_column != 'fecha_creacion') { $sql .= ", t.fecha_creacion DESC"; }
+
 try { $stmt = $pdo->prepare($sql); $stmt->execute($params); $tareas = $stmt->fetchAll(PDO::FETCH_ASSOC); } catch (PDOException $e) { error_log("Error carga tareas: " . $e->getMessage()); $tareas = []; }
-function build_url($current_params, $new_params) { $params = array_merge($current_params, $new_params); return 'tareas_lista.php?' . http_build_query($params); }
-$current_url_params = ['estado' => $estado_filtro, 'categoria' => $categoria_filtro, 'prioridad' => $prioridad_filtro, 'asignado' => $asignado_filtro, 'sort' => $sort_column, 'order' => $sort_order];
+
+function build_url($current_params, $new_params) { 
+    $base = $_GET; 
+    return 'tareas_lista.php?' . http_build_query(array_merge($base, $new_params)); 
+}
 $highlight_task_id = $_GET['highlight_task'] ?? null;
 ?>
 <!DOCTYPE html>
@@ -57,24 +116,11 @@ $highlight_task_id = $_GET['highlight_task'] ?? null;
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        /* Estilos generales (sin cambios) */
-        body { background-color: #f8f9fa; } .table th.sortable a { text-decoration: none; color: inherit; display: block; } .table th.sortable a:hover { color: #FFF; } .table th .sort-icon { margin-left: 5px; color: #adb5bd; } .table th .sort-icon.active { color: #FFF; } .table-hover tbody tr:hover { background-color: rgba(0, 0, 0, 0.05); cursor: pointer; } .badge { font-size: 0.8em; padding: 0.4em 0.6em; } .offcanvas-header { border-bottom: 1px solid #dee2e6; } .filter-group label { font-weight: bold; margin-bottom: 0.5rem; display: block; } .filter-group .list-group-item { padding: 0.5rem 1rem; font-size: 0.9rem; border-radius: 0.25rem; margin-bottom: 0.25rem; text-align: center; } .filter-group .list-group-item.active { font-weight: bold; } .btn-filters-active { border: 2px solid #0d6efd !important; } .offcanvas-body { overflow-y: auto; }
-
-        /* Contenedor Scroll (sin cambios) */
-        .table-container-scrollable { display: block; width: 100%; max-height: 75vh; overflow-y: auto; overflow-x: auto; border: 1px solid #dee2e6; border-radius: .375rem; background-color: #fff; margin-bottom: 1rem; -webkit-overflow-scrolling: touch; }
-        /* Tabla Interna (sin cambios) */
-        .table-container-scrollable .table { min-width: 950px; margin-bottom: 0; }
-        /* Barra scroll (sin cambios) */
-        .table-container-scrollable::-webkit-scrollbar { height: 12px; width: 10px; background-color: #e9ecef; } .table-container-scrollable::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 6px; border: 1px solid #dee2e6; } .table-container-scrollable::-webkit-scrollbar-thumb { background: #6c757d; border-radius: 6px; border: 2px solid #f1f1f1; } .table-container-scrollable::-webkit-scrollbar-thumb:hover { background: #5a6268; } .table-container-scrollable { scrollbar-width: auto; scrollbar-color: #6c757d #f1f1f1; }
-
-        /* Highlight row (sin cambios) */
+        body { background-color: #f8f9fa; } .table th.sortable a { text-decoration: none; color: inherit; display: block; } .table th.sortable a:hover { color: #FFF; } .table th .sort-icon { margin-left: 5px; color: #adb5bd; } .table th .sort-icon.active { color: #FFF; } .table-hover tbody tr:hover { background-color: rgba(0, 0, 0, 0.05); cursor: pointer; } .badge { font-size: 0.8em; padding: 0.4em 0.6em; } .offcanvas-header { border-bottom: 1px solid #dee2e6; } .table-container-scrollable { display: block; width: 100%; max-height: 75vh; overflow-y: auto; overflow-x: auto; border: 1px solid #dee2e6; border-radius: .375rem; background-color: #fff; margin-bottom: 1rem; -webkit-overflow-scrolling: touch; } .table-container-scrollable .table { min-width: 950px; margin-bottom: 0; } .table-container-scrollable::-webkit-scrollbar { height: 12px; width: 10px; background-color: #e9ecef; } .table-container-scrollable::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 6px; border: 1px solid #dee2e6; } .table-container-scrollable::-webkit-scrollbar-thumb { background: #6c757d; border-radius: 6px; border: 2px solid #f1f1f1; } .table-container-scrollable::-webkit-scrollbar-thumb:hover { background: #5a6268; } .table-container-scrollable { scrollbar-width: auto; scrollbar-color: #6c757d #f1f1f1; }
         @keyframes intenseFlashRow { 0%, 100% { background-color: transparent; } 50% { background-color: rgba(255, 255, 0, 0.7); } } tr.highlight-row-flash { animation: intenseFlashRow 1.2s ease-in-out; animation-iteration-count: 2; }
-
-        /* Ajuste de columnas (sin cambios) */
         .table th.col-fit, .table td.col-fit { white-space: nowrap; width: auto; padding-left: 0.75rem !important; padding-right: 0.75rem !important; }
         .table .text-center { text-align: center !important; }
         .table .col-actions { min-width: 130px; }
-        .table .col-title { } .table .col-category { }
         .table-layout-auto { table-layout: auto !important; }
     </style>
 </head>
@@ -82,19 +128,49 @@ $highlight_task_id = $_GET['highlight_task'] ?? null;
 
     <?php include 'navbar.php'; ?>
 
-    <div class="container mt-4"> <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-3">
+    <div class="container mt-4"> 
+        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-3">
             <h1 class="mb-0 h2 me-auto">Lista de Tareas</h1>
-            <div class="d-flex align-items-center flex-wrap gap-2">
-                 <div class="input-group" style="max-width: 700px; min-width: 200px;">
-                    <span class="input-group-text"><i class="fas fa-search"></i></span>
-                    <input type="text" id="searchInputTasks" class="form-control" placeholder="Buscar tarea..."> &nbsp;&nbsp;&nbsp;&nbsp;
-                    <?php $filtros_activos = ($estado_filtro !== 'todas' || $categoria_filtro !== 'todas' || $prioridad_filtro !== 'todas' || $asignado_filtro !== 'todas'); ?>
-                 <button class="btn btn-primary <?php echo $filtros_activos ? 'btn-filters-active' : ''; ?>" type="button" data-bs-toggle="offcanvas" data-bs-target="#offcanvasFilters"> <i class="fas fa-filter me-1"></i> Filtros <?php echo $filtros_activos ? '<span class="badge bg-warning ms-1">Activos</span>' : ''; ?> </button>
-                 <?php if ($filtros_activos): ?> <a href="tareas_lista.php?sort=fecha_creacion&order=desc" class="btn btn-outline-danger" title="Limpiar"><i class="fas fa-times"></i> Limpiar</a> <?php endif; ?>
-                 </div>
+            
+            <div class="d-flex align-items-center flex-wrap gap-2 bg-white p-2 rounded shadow-sm border">
                  
+                 <div class="input-group input-group-sm" style="width: 200px;">
+                    <span class="input-group-text bg-light"><i class="fas fa-search text-muted"></i></span>
+                    <input type="text" id="searchInputTasks" class="form-control" placeholder="Buscar...">
+                 </div>
+
+                 <div class="vr mx-1"></div>
+
+                 <form action="tareas_lista.php" method="GET" class="d-flex align-items-center gap-1 m-0">
+                     <?php // Preservar filtros ocultos 
+                     foreach(['estado', 'categoria', 'prioridad', 'asignado'] as $fkey) {
+                         if (isset($_GET[$fkey]) && is_array($_GET[$fkey])) {
+                             foreach($_GET[$fkey] as $val) echo "<input type='hidden' name='{$fkey}[]' value='$val'>";
+                         }
+                     }
+                     ?>
+                     <select name="anio" class="form-select form-select-sm border-0 bg-light fw-bold" style="width: auto; cursor:pointer;" onchange="this.form.submit()">
+                         <option value="">Año</option>
+                         <?php foreach($lista_anios as $a): ?><option value="<?php echo $a; ?>" <?php echo $filtro_anio == $a ? 'selected' : ''; ?>><?php echo $a; ?></option><?php endforeach; ?>
+                     </select>
+                     <select name="mes" class="form-select form-select-sm border-0 bg-light fw-bold" style="width: auto; cursor:pointer;" onchange="this.form.submit()">
+                         <option value="">Mes</option>
+                         <?php foreach($meses_map as $m_num=>$m_nom): ?><option value="<?php echo $m_num; ?>" <?php echo $filtro_mes == $m_num ? 'selected' : ''; ?>><?php echo $m_nom; ?></option><?php endforeach; ?>
+                     </select>
+                 </form>
+
+                 <div class="vr mx-1"></div>
+
+                 <?php $filtros_activos = (!empty($estado_filtro) || !empty($categoria_filtro) || !empty($prioridad_filtro) || !empty($asignado_filtro)); ?>
+                 <button class="btn btn-sm <?php echo $filtros_activos ? 'btn-primary' : 'btn-outline-secondary'; ?>" type="button" data-bs-toggle="offcanvas" data-bs-target="#offcanvasFilters">
+                     <i class="fas fa-filter"></i> <?php echo $filtros_activos ? 'Filtros Activos' : 'Más Filtros'; ?>
+                 </button>
+                 
+                 <?php if ($filtros_activos || $filtro_anio || $filtro_mes): ?>
+                    <a href="tareas_lista.php" class="btn btn-sm btn-danger ms-1" title="Limpiar Todo"><i class="fas fa-times"></i></a>
+                 <?php endif; ?>
             </div>
-    </div>
+        </div>
 
         <div class="table-container-scrollable shadow-sm rounded">
             <table class="table table-hover table-bordered table-striped mb-0 table-layout-auto" id="tasksTable">
@@ -106,6 +182,7 @@ $highlight_task_id = $_GET['highlight_task'] ?? null;
                         <?php render_sortable_header('Categoría', 'categoria', $sort_column, $sort_order, $current_url_params, 'col-category'); ?>
                         <?php render_sortable_header('Prioridad', 'prioridad', $sort_column, $sort_order, $current_url_params, 'col-fit text-center'); ?>
                         <?php render_sortable_header('Estado', 'estado', $sort_column, $sort_order, $current_url_params, 'col-fit text-center'); ?>
+                        <?php render_sortable_header('Finalización', 'fecha_cierre', $sort_column, $sort_order, $current_url_params, 'col-fit'); ?>
                         <?php render_sortable_header('Límite', 'fecha_limite', $sort_column, $sort_order, $current_url_params, 'col-fit'); ?>
                         <?php render_sortable_header('Creación', 'fecha_creacion', $sort_column, $sort_order, $current_url_params, 'col-fit'); ?>
                         <?php render_sortable_header('Asignado', 'asignado', $sort_column, $sort_order, $current_url_params, 'col-fit'); ?>
@@ -113,34 +190,31 @@ $highlight_task_id = $_GET['highlight_task'] ?? null;
                     </tr>
                 </thead>
                 <tbody>
-                    <?php if (empty($tareas)): ?> <tr><td colspan="9" class="text-center text-muted py-4">No se encontraron tareas con los filtros actuales.</td></tr>
+                    <?php if (empty($tareas)): ?> <tr><td colspan="10" class="text-center text-muted py-4">No se encontraron tareas con los filtros actuales.</td></tr>
                     <?php else: ?>
                         <?php foreach ($tareas as $tarea): ?>
-                        <tr class="task-row" style="vertical-align: middle;" id="task-row-<?php echo $tarea['id_tarea']; ?>">
+                        <?php
+                            // Lógica Atrasada
+                            $is_atrasada = ($tarea['fecha_limite'] && $tarea['fecha_limite'] < date('Y-m-d') && !in_array($tarea['estado'], ['verificada', 'cancelada']));
+                            $row_class = $is_atrasada ? 'table-danger' : ''; 
+                        ?>
+                        <tr class="task-row <?php echo $row_class; ?>" style="vertical-align: middle;" id="task-row-<?php echo $tarea['id_tarea']; ?>">
                             <td class="col-fit task-id"><?php echo htmlspecialchars($tarea['id_tarea']); ?></td>
                             <td class="col-title task-title"><?php echo htmlspecialchars($tarea['titulo']); ?></td>
                             <td class="col-category task-category"><?php echo htmlspecialchars($tarea['nombre_categoria'] ?? 'N/A'); ?></td>
                             <td class="col-fit text-center"> <?php $p_badge = match($tarea['prioridad']) { 'urgente'=>'danger', 'alta'=>'warning', 'media'=>'info', 'baja'=>'success', default=>'secondary'}; $p_text = match($tarea['prioridad']) { 'alta' => 'text-dark', default => 'text-white'}; ?> <span class="badge bg-<?php echo $p_badge; ?> <?php echo $p_text; ?>"><?php echo htmlspecialchars(ucfirst($tarea['prioridad'])); ?></span> </td>
                             <td class="col-fit text-center"> 
                                 <?php 
-                                // --- INICIO MODIFICACIÓN GEMINI (v3) ---
-                                // Se añade 'en_reserva' => 'dark'
                                 $e_badge = match($tarea['estado']) { 
-                                    'asignada'=>'info', 
-                                    'en_proceso'=>'warning', 
-                                    'finalizada_tecnico'=>'primary', 
-                                    'verificada'=>'success', 
-                                    'modificacion_requerida'=>'danger', 
-                                    'cancelada'=>'secondary', 
-                                    'en_reserva'=>'dark', // <-- LÍNEA AÑADIDA
-                                    default=>'light'
+                                    'asignada'=>'info', 'en_proceso'=>'warning', 'finalizada_tecnico'=>'primary', 'verificada'=>'success', 'modificacion_requerida'=>'danger', 'cancelada'=>'secondary', 'en_reserva'=>'dark', default=>'light'
                                 }; 
-                                // --- FIN MODIFICACIÓN GEMINI (v3) ---
                                 $e_text = match($tarea['estado']) { 'en_proceso'=>'text-dark', 'en_reserva'=>'text-white', default=>'text-white'}; 
-                                $is_atrasada = ($tarea['fecha_limite'] && $tarea['fecha_limite'] < date('Y-m-d') && !in_array($tarea['estado'], ['verificada', 'cancelada'])); 
-                                if ($is_atrasada) { $e_badge = 'danger'; $e_text = 'text-white'; } 
                                 ?> 
-                                <span class="badge bg-<?php echo $e_badge; ?> <?php echo $e_text; ?>"><?php echo htmlspecialchars($is_atrasada ? 'Atrasada' : ($estados_map[$tarea['estado']] ?? ucfirst($tarea['estado']))); ?></span> 
+                                <span class="badge bg-<?php echo $e_badge; ?> <?php echo $e_text; ?>"><?php echo htmlspecialchars($estados_map[$tarea['estado']] ?? ucfirst($tarea['estado'])); ?></span>
+                                <?php if ($is_atrasada): ?><br><span class="badge bg-danger text-white mt-1">Atrasada</span><?php endif; ?>
+                            </td>
+                            <td class="col-fit text-center fw-bold text-success">
+                                <?php echo ($tarea['estado'] === 'verificada' && $tarea['fecha_cierre']) ? date('d/m/y H:i', strtotime($tarea['fecha_cierre'])) : '-'; ?>
                             </td>
                             <td class="col-fit"><?php echo $tarea['fecha_limite'] ? date('d/m/Y', strtotime($tarea['fecha_limite'])) : '-'; ?></td>
                             <td class="col-fit"><?php echo date('d/m/y H:i', strtotime($tarea['fecha_creacion'])); ?></td>
@@ -149,9 +223,8 @@ $highlight_task_id = $_GET['highlight_task'] ?? null;
                             <td class="col-fit col-actions">
                                 <?php
                                 $ver_url = "tarea_ver.php?id=" . $tarea['id_tarea'];
-                                $editar_url = "tarea_editar.php?id="."HAY UN ERROR ACA";
+                                $editar_url = "tarea_editar.php?id=" . $tarea['id_tarea']; // <-- CORREGIDO LINK DE EDITAR
                                 
-                                // Roles de Mando: Admin y Encargado (pueden gestionar todo)
                                 if (in_array($rol_usuario, ['admin', 'encargado'])) {
                                     if ($tarea['estado'] === 'finalizada_tecnico') {
                                         echo '<a href="'.$ver_url.'" class="btn btn-warning btn-sm" title="Revisar"><i class="fas fa-search"></i> Revisar</a>';
@@ -162,54 +235,116 @@ $highlight_task_id = $_GET['highlight_task'] ?? null;
                                         echo '<a href="'.$editar_url.'" class="btn btn-primary btn-sm" title="Editar Tarea"><i class="fas fa-edit"></i></a>';
                                     }
                                 } 
-                                // Rol Auxiliar: Solo puede ver
                                 elseif ($rol_usuario === 'auxiliar') {
                                     echo '<a href="'.$ver_url.'" class="btn btn-info btn-sm" title="Ver Tarea"><i class="fas fa-eye"></i> Ver</a>';
                                 }
-                                // Rol Empleado: Solo puede gestionar (botón principal)
-                                else { // ($rol_usuario === 'empleado')
+                                else { // Empleado
                                     echo '<a href="'.$ver_url.'" class="btn btn-success btn-sm" title="Gestionar Tarea"><i class="fas fa-arrow-right"></i> Gestionar</a>';
                                 }
                                 ?>
                             </td>
-                            </tr>
+                        </tr>
                         <?php endforeach; ?>
                     <?php endif; ?>
-                    <tr id="noResultsRow" style="display: none;"><td colspan="9" class="text-center text-warning fw-bold py-4">No se encontraron tareas que coincidan con la búsqueda.</td></tr>
+                    <tr id="noResultsRow" style="display: none;"><td colspan="10" class="text-center text-warning fw-bold py-4">No se encontraron tareas que coincidan con la búsqueda.</td></tr>
                 </tbody>
             </table>
         </div>
-
     </div>
 
-    <div class="offcanvas offcanvas-start" tabindex="-1" id="offcanvasFilters"> <div class="offcanvas-header"><h5 class="offcanvas-title"><i class="fas fa-filter me-2"></i> Filtros</h5><button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button></div> <div class="offcanvas-body"> <form action="tareas_lista.php" method="GET"> <input type="hidden" name="sort" value="<?php echo htmlspecialchars($sort_column); ?>"> <input type="hidden" name="order" value="<?php echo htmlspecialchars($sort_order); ?>"> <div class="mb-4 filter-group"><label>Estado:</label><div class="list-group"><?php foreach ($estados_map as $v => $l): ?><a href="<?php echo build_url($current_url_params, ['estado' => $v]); ?>" class="list-group-item list-group-item-action <?php echo $estado_filtro === $v ? 'active' : ''; ?>"><?php echo htmlspecialchars($l); ?></a><?php endforeach; ?></div></div> <div class="mb-4 filter-group"><label>Categoría:</label><div class="list-group"><a href="<?php echo build_url($current_url_params, ['categoria' => 'todas']); ?>" class="list-group-item list-group-item-action <?php echo $categoria_filtro === 'todas' ? 'active' : ''; ?>">Todas</a><?php foreach ($categorias_list as $cat): ?><a href="<?php echo build_url($current_url_params, ['categoria' => $cat['id_categoria']]); ?>" class="list-group-item list-group-item-action <?php echo $categoria_filtro == $cat['id_categoria'] ? 'active' : ''; ?>"><?php echo htmlspecialchars($cat['nombre']); ?></a><?php endforeach; ?></div></div> <div class="mb-4 filter-group"><label>Prioridad:</label><div class="list-group"><?php foreach ($prioridades_map as $v => $l): ?><a href="<?php echo build_url($current_url_params, ['prioridad' => $v]); ?>" class="list-group-item list-group-item-action <?php echo $prioridad_filtro === $v ? 'active' : ''; ?>"><?php echo htmlspecialchars($l); ?></a><?php endforeach; ?></div></div> 
-            
-            <?php if (in_array($rol_usuario, ['admin', 'encargado', 'auxiliar'])): ?>
-                <div class="mb-4 filter-group"><label>Asignado:</label><div class="list-group" style="max-height: 250px; overflow-y: auto;">
-                    <a href="<?php echo build_url($current_url_params, ['asignado' => 'todas']); ?>" class="list-group-item list-group-item-action <?php echo $asignado_filtro === 'todas' ? 'active' : ''; ?>">Todos</a>
-                    <?php foreach ($usuarios_asignables as $user): ?>
-                        <a href="<?php echo build_url($current_url_params, ['asignado' => $user['id_usuario']]); ?>" class="list-group-item list-group-item-action <?php echo $asignado_filtro == $user['id_usuario'] ? 'active' : ''; ?>">
-                            <?php echo htmlspecialchars($user['nombre_completo']); ?> (<?php echo htmlspecialchars(ucfirst($user['rol'])); ?>)
-                        </a>
-                    <?php endforeach; ?>
-                </div></div>
-            <?php endif; ?>
-            <div class="d-grid mt-4"><a href="tareas_lista.php?sort=fecha_creacion&order=desc" class="btn btn-danger"><i class="fas fa-times me-1"></i> Limpiar Filtros</a></div> </form> </div> </div>
+    <div class="offcanvas offcanvas-start" tabindex="-1" id="offcanvasFilters"> 
+        <div class="offcanvas-header bg-light">
+            <h5 class="offcanvas-title"><i class="fas fa-sliders-h me-2"></i> Filtros Avanzados</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
+        </div> 
+        <div class="offcanvas-body p-0"> 
+            <form action="tareas_lista.php" method="GET" id="advancedFiltersForm" class="d-flex flex-column h-100">
+                <input type="hidden" name="anio" value="<?php echo htmlspecialchars($filtro_anio); ?>">
+                <input type="hidden" name="mes" value="<?php echo htmlspecialchars($filtro_mes); ?>">
+                <input type="hidden" name="sort" value="<?php echo htmlspecialchars($sort_column); ?>">
+                <input type="hidden" name="order" value="<?php echo htmlspecialchars($sort_order); ?>">
+
+                <div class="p-3 flex-grow-1 overflow-auto">
+                    <div class="mb-4">
+                        <h6 class="fw-bold text-secondary text-uppercase small mb-2">Estado</h6>
+                        <div class="d-grid gap-2">
+                            <?php foreach ($estados_map as $k => $l): $checked = in_array($k, $estado_filtro) ? 'checked' : ''; ?>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="estado[]" value="<?php echo $k; ?>" id="est_<?php echo $k; ?>" <?php echo $checked; ?>>
+                                <label class="form-check-label" for="est_<?php echo $k; ?>"><?php echo htmlspecialchars($l); ?></label>
+                            </div>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="mb-4">
+                        <h6 class="fw-bold text-secondary text-uppercase small mb-2">Categoría</h6>
+                        <div class="d-grid gap-2" style="max-height: 200px; overflow-y: auto;">
+                            <?php foreach ($categorias_list as $cat): $checked = in_array($cat['id_categoria'], $categoria_filtro) ? 'checked' : ''; ?>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="categoria[]" value="<?php echo $cat['id_categoria']; ?>" id="cat_<?php echo $cat['id_categoria']; ?>" <?php echo $checked; ?>>
+                                <label class="form-check-label" for="cat_<?php echo $cat['id_categoria']; ?>"><?php echo htmlspecialchars($cat['nombre']); ?></label>
+                            </div>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="mb-4">
+                        <h6 class="fw-bold text-secondary text-uppercase small mb-2">Prioridad</h6>
+                        <div class="d-grid gap-2">
+                            <?php foreach ($prioridades_map as $k => $l): $checked = in_array($k, $prioridad_filtro) ? 'checked' : ''; ?>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="prioridad[]" value="<?php echo $k; ?>" id="prio_<?php echo $k; ?>" <?php echo $checked; ?>>
+                                <label class="form-check-label" for="prio_<?php echo $k; ?>"><?php echo htmlspecialchars($l); ?></label>
+                            </div>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+
+                    <?php if (in_array($rol_usuario, ['admin', 'encargado', 'auxiliar'])): ?>
+                    <hr>
+                    <div class="mb-4">
+                        <h6 class="fw-bold text-secondary text-uppercase small mb-2">Asignado a</h6>
+                        <div class="d-grid gap-2" style="max-height: 200px; overflow-y: auto;">
+                            <?php foreach ($usuarios_asignables as $user): $checked = in_array($user['id_usuario'], $asignado_filtro) ? 'checked' : ''; ?>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="asignado[]" value="<?php echo $user['id_usuario']; ?>" id="asig_<?php echo $user['id_usuario']; ?>" <?php echo $checked; ?>>
+                                <label class="form-check-label" for="asig_<?php echo $user['id_usuario']; ?>">
+                                    <?php echo htmlspecialchars($user['nombre_completo']); ?> (<?php echo ucfirst($user['rol']); ?>)
+                                </label>
+                            </div>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                    <?php endif; ?>
+                </div>
+
+                <div class="p-3 bg-light border-top d-grid gap-2">
+                    <button type="submit" class="btn btn-primary fw-bold"><i class="fas fa-check me-2"></i> Aplicar Filtros</button>
+                    <a href="tareas_lista.php" class="btn btn-outline-danger btn-sm">Limpiar Todo</a>
+                </div>
+            </form>
+        </div> 
+    </div>
 
     <div class="toast-container position-fixed bottom-0 end-0 p-3" id="notificationToastContainer" style="z-index: 1080;"></div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // --- Highlight Row (sin cambios) ---
-            const urlParams = new URLSearchParams(window.location.search); const highlightTaskId = <?php echo json_encode($highlight_task_id); ?>; if (highlightTaskId) { const row = document.getElementById(`task-row-${highlightTaskId}`); if(row) { row.classList.add('highlight-row-flash'); row.scrollIntoView({behavior:'smooth', block:'center'}); setTimeout(()=>{row.classList.remove('highlight-row-flash'); const curl=new URL(window.location); curl.searchParams.delete('highlight_task'); history.replaceState(null,null,curl.pathname+curl.search+curl.hash);}, 2500); } }
+            // Highlight Task
+            const urlParams = new URLSearchParams(window.location.search); const highlightTaskId = <?php echo json_encode($highlight_task_id); ?>; 
+            if (highlightTaskId) { const row = document.getElementById(`task-row-${highlightTaskId}`); if(row) { row.classList.add('highlight-row-flash'); row.scrollIntoView({behavior:'smooth', block:'center'}); setTimeout(()=>{row.classList.remove('highlight-row-flash'); const curl=new URL(window.location); curl.searchParams.delete('highlight_task'); history.replaceState(null,null,curl.pathname+curl.search+curl.hash);}, 2500); } }
 
-            // --- Row Click (sin cambios) ---
-            const tableRowsClickable = document.querySelectorAll('tbody tr.task-row'); tableRowsClickable.forEach(row => { row.addEventListener('click', function(event) { if (event.target.closest('a, button')) return; const taskId = this.id.replace('task-row-', ''); if (taskId) window.location.href = `tarea_ver.php?id=${taskId}`; }); });
+            // Row Click
+            const tableRowsClickable = document.querySelectorAll('tbody tr.task-row'); tableRowsClickable.forEach(row => { row.addEventListener('click', function(event) { if (event.target.closest('a, button, input')) return; const taskId = this.id.replace('task-row-', ''); if (taskId) window.location.href = `tarea_ver.php?id=${taskId}`; }); });
 
-            // --- SCRIPT BUSCADOR (sin cambios) ---
-            const searchInput = document.getElementById('searchInputTasks'); const tasksTable = document.getElementById('tasksTable'); const tableBody = tasksTable ? tasksTable.querySelector('tbody') : null; const taskRows = tableBody ? tableBody.querySelectorAll('tr.task-row') : []; const noResultsRow = document.getElementById('noResultsRow'); if (searchInput && tableBody && taskRows.length > 0 && noResultsRow) { searchInput.addEventListener('input', function() { const searchTerm = this.value.toLowerCase().trim(); let visibleRowCount = 0; taskRows.forEach(row => { const taskId = row.querySelector('.task-id')?.textContent.toLowerCase() || ''; const taskTitle = row.querySelector('.task-title')?.textContent.toLowerCase() || ''; const taskCategory = row.querySelector('.task-category')?.textContent.toLowerCase() || ''; const taskAssignee = row.querySelector('.task-assignee')?.textContent.toLowerCase() || ''; if (taskId.includes(searchTerm) || taskTitle.includes(searchTerm) || taskCategory.includes(searchTerm) || taskAssignee.includes(searchTerm)) { row.style.display = ''; visibleRowCount++; } else { row.style.display = 'none'; } }); if (visibleRowCount === 0) { noResultsRow.style.display = ''; } else { noResultsRow.style.display = 'none'; } }); } else { console.warn("Buscador o tabla no configurados correctamente."); }
-
+            // Buscador JS
+            const searchInput = document.getElementById('searchInputTasks'); const tasksTable = document.getElementById('tasksTable'); const tableBody = tasksTable ? tasksTable.querySelector('tbody') : null; const taskRows = tableBody ? tableBody.querySelectorAll('tr.task-row') : []; const noResultsRow = document.getElementById('noResultsRow'); 
+            if (searchInput && tableBody && taskRows.length > 0 && noResultsRow) { searchInput.addEventListener('input', function() { const searchTerm = this.value.toLowerCase().trim(); let visibleRowCount = 0; taskRows.forEach(row => { 
+                const textContent = row.innerText.toLowerCase();
+                if (textContent.includes(searchTerm)) { row.style.display = ''; visibleRowCount++; } else { row.style.display = 'none'; } }); if (visibleRowCount === 0) { noResultsRow.style.display = ''; } else { noResultsRow.style.display = 'none'; } }); 
+            }
         });
     </script>
 </body>

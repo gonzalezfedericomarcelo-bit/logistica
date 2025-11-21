@@ -142,14 +142,13 @@ try {
     $stmt_venc->execute([':uid' => $id_usuario]); $mis_vencimientos = $stmt_venc->fetchAll(PDO::FETCH_ASSOC);
 } catch (Exception $e) {}
 
-// --- MODIFICADO: RANKING ANUAL (YEAR) PARA QUE COINCIDA MEJOR ---
 $ranking_users = [];
 try {
     $sql_rank = "SELECT u.id_usuario, u.nombre_completo, u.foto_perfil, COUNT(t.id_tarea) as total 
                  FROM tareas t 
                  JOIN usuarios u ON t.id_asignado = u.id_usuario 
                  WHERE t.estado = 'verificada' 
-                 AND YEAR(t.fecha_cierre) = YEAR(CURRENT_DATE())  -- <--- FILTRO POR AÑO ACTUAL (Antes era MES)
+                 /* SIN FILTRO DE FECHA PARA QUE COINCIDA CON LA LISTA */
                  GROUP BY t.id_asignado, u.id_usuario, u.nombre_completo, u.foto_perfil 
                  ORDER BY total DESC LIMIT 10"; 
     $ranking_users = $pdo->query($sql_rank)->fetchAll(PDO::FETCH_ASSOC);
@@ -251,19 +250,59 @@ $_SESSION['dashboard_loaded_once'] = true;
 
         <div class="row mb-4">
             <div class="col-12">
+                <style>
+                    /* Clase base para el texto */
+                    .efemeride-texto-responsivo {
+                        display: -webkit-box;
+                        -webkit-box-orient: vertical;
+                        overflow: hidden;
+                        /* ESCRITORIO: Mantiene el diseño compacto de 2 líneas y alineado a la izquierda */
+                        -webkit-line-clamp: 2; 
+                        line-height: 1.3;
+                        text-align: left; 
+                    }
+                    
+                    /* MÓVIL: Rompemos el límite de líneas y JUSTIFICAMOS para que quede cuadradito */
+                    @media (max-width: 768px) {
+                        .efemeride-texto-responsivo {
+                            display: block !important; /* Desactiva el recorte de líneas para mostrar todo */
+                            text-align: justify !important; /* Justifica el texto (bordes rectos) */
+                            text-justify: inter-word; /* Mejora el espaciado */
+                            hyphens: auto; /* Agrega guiones si es necesario para evitar huecos feos */
+                            margin-right: 5px; /* Un pequeño aire a la derecha */
+                        }
+                    }
+                </style>
+
                 <div class="alert alert-militar shadow-lg d-flex align-items-center justify-content-between py-3" role="alert">
-                    <div class="d-flex align-items-center overflow-hidden">
-                        <div class="me-3 fs-2 flex-shrink-0"><i class="<?php echo $datos_efemeride['icono']; ?> text-gold"></i></div>
-                        <div class="overflow-hidden">
-                            <h5 class="alert-heading fw-bold mb-0 text-uppercase small text-truncate text-gold">Efemérides Argentina</h5>
-                            <p class="mb-0 fw-bold text-truncate" style="font-size: 1.1rem; max-width: 650px;"><?php echo $datos_efemeride['titulo']; ?></p>
+                    <div class="d-flex align-items-center overflow-hidden w-100"> <div class="me-2 me-md-3 fs-2 flex-shrink-0"><i class="<?php echo $datos_efemeride['icono']; ?> text-gold"></i></div>
+                        
+                        <div class="overflow-hidden w-100"> <h5 class="alert-heading fw-bold mb-0 text-uppercase text-gold" style="font-size: clamp(0.8rem, 1.5vw, 1rem); line-height: 1;">
+                                <span class="d-none d-sm-inline">Efemérides Argentina</span>
+                                <span class="d-inline d-sm-none">Efemérides</span>
+                            </h5>
+                            
+                            <p class="mb-0 text-white opacity-75 efemeride-texto-responsivo" 
+                               style="font-size: clamp(0.85rem, 1.2vw, 1.1rem);">
+                               <?php 
+                                   // Limpieza y corrección de formato
+                                   $texto_limpio = str_replace([' - - -', '---'], '', $datos_efemeride['titulo']);
+                                   echo ucfirst(trim($texto_limpio)); 
+                               ?>
+                            </p>
                         </div>
                     </div>
-                    <div class="d-flex gap-2 align-items-center flex-shrink-0">
-                        <button type="button" class="btn btn-sm btn-militar-light shadow-sm px-3" data-bs-toggle="modal" data-bs-target="#modalEfemeride"><i class="fas fa-eye me-1"></i> Saber más</button>
+                    
+                    <div class="d-flex gap-1 gap-md-2 align-items-center flex-shrink-0 ms-2">
+                        <button type="button" class="btn btn-sm btn-militar-light shadow-sm px-2 px-md-3" data-bs-toggle="modal" data-bs-target="#modalEfemeride" style="white-space: nowrap;">
+                            <i class="fas fa-eye me-1 d-none d-sm-inline"></i> 
+                            <span class="d-none d-sm-inline">Saber más</span>
+                            <span class="d-inline d-sm-none" style="font-size: 0.8rem;">Ver</span>
+                        </button>
+                        
                         <?php if($rol_usuario === 'admin'): ?>
-                        <button class="btn btn-sm btn-outline-warning border shadow-sm rounded-circle" style="width: 32px; height: 32px; padding: 0;" onclick="refrescarDato('efemeride')" title="Cambiar Efeméride"><i class="fas fa-sync-alt"></i></button>
-                        <button class="btn btn-sm btn-outline-light border shadow-sm rounded-circle" style="width: 32px; height: 32px; padding: 0;" onclick="toggleNavidad()" title="Navidad"><i class="fas fa-snowflake"></i></button>
+                        <button class="btn btn-sm btn-outline-warning border shadow-sm rounded-circle d-none d-md-inline-block" style="width: 32px; height: 32px; padding: 0;" onclick="refrescarDato('efemeride')" title="Cambiar Efeméride"><i class="fas fa-sync-alt"></i></button>
+                        <button class="btn btn-sm btn-outline-light border shadow-sm rounded-circle d-none d-md-inline-block" style="width: 32px; height: 32px; padding: 0;" onclick="toggleNavidad()" title="Navidad"><i class="fas fa-snowflake"></i></button>
                         <?php endif; ?>
                     </div>
                 </div>
@@ -374,17 +413,52 @@ $_SESSION['dashboard_loaded_once'] = true;
 
             <div class="col">
                 <div class="card shadow border-0 h-100">
-                    <div class="card-header bg-white border-bottom py-2 text-center"><h6 class="m-0 fw-bold text-danger small text-uppercase">Vencimientos</h6></div>
-                    <div class="list-group list-group-flush overflow-auto" style="max-height: 150px;">
-                        <?php if($mis_vencimientos): foreach($mis_vencimientos as $v): 
-                             $days = (strtotime($v['fecha_limite']) - time()) / 86400;
-                             $badge = $days < 0 ? 'badge bg-danger' : 'badge bg-warning text-dark';
-                        ?>
-                        <a href="tarea_ver.php?id=<?php echo $v['id_tarea']; ?>" class="list-group-item list-group-item-action px-2 py-2 small d-flex justify-content-between align-items-center">
-                            <span class="text-truncate" style="max-width: 70%;">#<?php echo $v['id_tarea']; ?> <?php echo htmlspecialchars($v['titulo']); ?></span>
-                            <span class="<?php echo $badge; ?> rounded-pill" style="font-size:0.6em"><?php echo ceil($days); ?>d</span>
-                        </a>
-                        <?php endforeach; else: ?><div class="p-3 text-center text-muted small">Todo al día <i class="fas fa-check text-success"></i></div><?php endif; ?>
+                    <div class="card-header bg-white border-bottom py-2 text-center">
+                        <h6 class="m-0 fw-bold text-danger small text-uppercase"><i class="far fa-clock me-1"></i> Vencimientos (7 días)</h6>
+                    </div>
+                    
+                    <div class="card-body p-0 d-flex flex-column" style="min-height: 180px; max-height: 220px; overflow-y: auto;">
+                        
+                        <?php if($mis_vencimientos): ?>
+                            <div class="list-group list-group-flush w-100">
+                                <?php foreach($mis_vencimientos as $v): 
+                                     $days = (strtotime($v['fecha_limite']) - time()) / 86400;
+                                     $days_rounded = ceil($days);
+                                     
+                                     // Colores y textos inteligentes según urgencia
+                                     if ($days < 0) { $badge_color = 'bg-danger text-white'; $texto_dias = 'Vencida'; }
+                                     elseif ($days_rounded == 0) { $badge_color = 'bg-danger text-white'; $texto_dias = '¡HOY!'; }
+                                     elseif ($days_rounded == 1) { $badge_color = 'bg-warning text-dark'; $texto_dias = 'Mañana'; }
+                                     else { $badge_color = 'bg-info text-dark'; $texto_dias = $days_rounded . ' días'; }
+                                ?>
+                                <a href="tarea_ver.php?id=<?php echo $v['id_tarea']; ?>" class="list-group-item list-group-item-action px-3 py-2 d-flex justify-content-between align-items-center border-0 border-bottom">
+                                    <div class="d-flex flex-column overflow-hidden me-2" style="max-width: 70%;">
+                                        <span class="fw-bold text-dark text-truncate" style="font-size: 0.85rem;">
+                                            <?php echo htmlspecialchars($v['titulo']); ?>
+                                        </span>
+                                        <small class="text-muted" style="font-size: 0.7rem;">
+                                            #<?php echo $v['id_tarea']; ?> &bull; <?php echo ucfirst($v['prioridad']); ?>
+                                        </small>
+                                    </div>
+                                    <span class="badge <?php echo $badge_color; ?> rounded-pill shadow-sm" style="font-size:0.7em; white-space: nowrap;">
+                                        <?php echo $texto_dias; ?>
+                                    </span>
+                                </a>
+                                <?php endforeach; ?>
+                            </div>
+                        
+                        <?php else: ?>
+                            <div class="h-100 d-flex flex-column align-items-center justify-content-center text-center p-3 bg-success bg-opacity-10">
+                                <div class="mb-2 text-success">
+                                    <i class="fas fa-check-circle fa-4x shadow-sm rounded-circle bg-white text-success"></i>
+                                </div>
+                                <h6 class="fw-bold text-success mb-1">¡Excelente trabajo!</h6>
+                                <p class="small text-success opacity-75 mb-0 fw-bold lh-sm">
+                                    Estás totalmente al día.<br>Sin vencimientos esta semana.
+                                </p>
+                            </div>
+                        <?php endif; ?>
+                        
                     </div>
                 </div>
             </div>
@@ -555,12 +629,34 @@ $_SESSION['dashboard_loaded_once'] = true;
                     <h5 class="modal-title fw-bold"><i class="fas fa-landmark text-gold me-2"></i> Historia Militar y Argentina</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
+                
                 <div class="modal-body p-4 text-center">
-                    <h4 class="fw-bold mb-3 text-dark"><?php echo $datos_efemeride['titulo']; ?></h4>
+                    <h4 class="fw-bold mb-3 text-dark">
+                        <?php 
+                            $titulo_modal = str_replace([' - - -', '---'], '', $datos_efemeride['titulo']);
+                            echo ucfirst(trim($titulo_modal)); 
+                        ?>
+                    </h4>
+                    
                     <div class="alert alert-light border text-start mb-4 shadow-sm">
-                        <p class="mb-0 text-muted" style="font-size: 1rem; line-height: 1.6;"><?php echo $datos_efemeride['descripcion']; ?></p>
+                        <p class="mb-0 text-muted" style="font-size: 1rem; line-height: 1.6;">
+                            <?php echo $datos_efemeride['descripcion']; ?>
+                        </p>
                     </div>
-                    <a href="<?php echo $datos_efemeride['link']; ?>" target="_blank" class="btn btn-dark rounded-pill px-4 fw-bold shadow-sm" style="background-color: #d4af37; color: #1a2f1a; border:none;"><i class="fab fa-wikipedia-w me-2"></i> Ver fuente oficial</a>
+                    
+                    <div class="d-grid gap-2 d-sm-flex justify-content-center">
+                        
+                        <a href="<?php echo $datos_efemeride['link_google'] ?? '#'; ?>" target="_blank" 
+                           class="btn btn-primary rounded-pill px-4 fw-bold shadow-sm d-flex align-items-center justify-content-center gap-2">
+                            <i class="fab fa-google"></i> Buscar en Google
+                        </a>
+
+                        <a href="<?php echo $datos_efemeride['link_wiki'] ?? '#'; ?>" target="_blank" 
+                           class="btn btn-light border rounded-pill px-4 fw-bold shadow-sm d-flex align-items-center justify-content-center gap-2 text-dark">
+                            <i class="fab fa-wikipedia-w text-muted"></i> Ver en Wikipedia
+                        </a>
+                        
+                    </div>
                 </div>
             </div>
         </div>

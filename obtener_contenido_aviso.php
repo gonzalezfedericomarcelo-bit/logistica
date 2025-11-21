@@ -48,7 +48,23 @@ if ($id_aviso > 0) {
 
         // --- RENDERIZADO ---
         
-        echo '<div class="article-content mb-5">' . $aviso['contenido'] . '</div><hr>';
+echo '<style>
+    .article-content img {
+        max-width: 100% !important;
+        height: auto !important;
+        object-fit: contain !important; /* Evita recortes y deformaciones */
+        display: block;
+        margin: 10px auto; /* Centra las imágenes */
+    }
+    /* Opcional: Si en escritorio quieres limitar la altura para que no sean gigantes */
+    @media (min-width: 768px) {
+        .article-content img {
+            max-height: 500px; /* Tope de altura en PC */
+        }
+    }
+</style>';
+
+echo '<div class="article-content mb-5">' . $aviso['contenido'] . '</div><hr>';
 
         // Reacciones
         $tipos = ['like' => ['👍', 'Me gusta'], 'love' => ['❤️', 'Me encanta'], 'haha' => ['😂', 'Me divierte'], 'wow' => ['😮', 'Me asombra'], 'angry' => ['😡', 'Me enoja']];

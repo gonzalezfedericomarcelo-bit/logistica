@@ -242,8 +242,11 @@ if ($id_usuario_nav > 0 && isset($pdo)) {
     </div>
 </nav>
 <div id="notificationToastContainer" class="toast-container position-fixed bottom-0 end-0 p-3"></div>
+
 <?php
-// --- CÓDIGO DE NAVIDAD GLOBAL (Pegar al final de navbar.php) ---
+// --- CÓDIGO DE NAVIDAD GLOBAL (SOLO GUIRNALDAS) ---
+// Pegar esto al final de navbar.php, antes del <script> final.
+
 $mostrar_navidad_global = false;
 if (isset($pdo)) {
     try {
@@ -258,82 +261,48 @@ if (isset($pdo)) {
 if ($mostrar_navidad_global): 
 ?>
 <style>
-    .navidad-esquina {
-        position: fixed;
-        bottom: 0; /* Pegado abajo */
-        width: 150px; /* Tamaño del adorno (ajústalo si es muy grande) */
-        height: 150px;
-        z-index: 9999; /* Por encima de todo */
-        pointer-events: none; /* IMPORTANTE: Permite hacer clic a través de la imagen */
-        background-image: url('navidad1.png'); /* Tu nueva imagen */
-        background-size: contain;
-        background-repeat: no-repeat;
-    }
-
-    /* Configuración Izquierda */
-    .esquina-izq {
-        left: 0;
-        background-position: bottom left;
-    }
-
-    /* Configuración Derecha (Modo espejo para que mire al otro lado) */
-    .esquina-der {
-        right: 0;
-        background-position: bottom right;
-        transform: scaleX(-1); /* Invierte la imagen horizontalmente */
-    }
-
-    /* Ocultar en móviles si tapa mucho */
-    @media (max-width: 768px) {
-        .navidad-esquina { width: 150px; height: 150px; }
-    }
-</style>
-
-<!--div class="navidad-esquina esquina-izq"></div-->
-
-<!--div class="navidad-esquina esquina-der"></div-->
-
-
-<?php
-// --- CÓDIGO DE NAVIDAD (Pegar al final de navbar.php) ---
-$mostrar_navidad = false;
-if (isset($pdo)) {
-    try {
-        $stmt_nav = $pdo->query("SELECT valor FROM configuracion_sistema WHERE clave = 'modo_navidad'");
-        $res_nav = $stmt_nav->fetch();
-        if ($res_nav && $res_nav['valor'] == '1') {
-            $mostrar_navidad = true;
-        }
-    } catch (Exception $e) {}
-}
-
-if ($mostrar_navidad): 
-?>
-<style>
-    /* GUIRNALDA ESQUINA SUPERIOR IZQUIERDA (Donde hicimos el hueco) */
-    .navidad-esquina-top-izq {
+    /* GUIRNALDA IZQUIERDA SUPERIOR */
+    .navidad-esquina-izq {
         position: fixed;
         top: 0;
         left: 0;
-        width: 150px; /* Tamaño de la guirnalda */
-        height: 150px;
+        width: 180px; /* Tamaño ajustable */
+        height: 180px;
         z-index: 10000; /* Por encima del menú */
-        pointer-events: none; /* Para que no moleste el clic */
-        
-        /* PON AQUÍ TU IMAGEN DE ESQUINA (ej: image_74d25e.png si es esa) */
-        background-image: url('navidad3.png'); 
+        pointer-events: none; /* Permite clic a través */
+        background-image: url('assets/img/guirnalda1.png'); 
         background-size: contain;
         background-repeat: no-repeat;
         background-position: top left;
     }
+
+    /* GUIRNALDA DERECHA SUPERIOR */
+    .navidad-esquina-der {
+        position: fixed;
+        top: 0;
+        right: 0;
+        width: 180px;
+        height: 180px;
+        z-index: 10000;
+        pointer-events: none;
+        background-image: url('assets/img/guirnalda2.png'); 
+        background-size: contain;
+        background-repeat: no-repeat;
+        background-position: top right;
+    }
+
+    /* Ajuste para móviles (más chicas para no tapar) */
+    @media (max-width: 768px) {
+        .navidad-esquina-izq, .navidad-esquina-der { width: 100px; height: 100px; }
+    }
 </style>
 
-<div class="navidad-esquina-top-izq"></div>
+<div class="navidad-esquina-izq"></div>
+<!--div class="navidad-esquina-der"></div-->
 
 <?php endif; ?>
 
 
-<?php endif; ?>
 <script>
     let lastNotificationId = 0; 
     const currentUserId = <?php echo json_encode($id_usuario_nav); ?>;

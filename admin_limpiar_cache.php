@@ -2,21 +2,24 @@
 // Archivo: admin_limpiar_cache.php
 session_start();
 
-// Solo admin
 if (!isset($_SESSION['usuario_id']) || $_SESSION['usuario_rol'] !== 'admin') {
     echo json_encode(['success' => false]); exit;
 }
 
 $tipo = $_POST['tipo'] ?? '';
+$mi_id = $_SESSION['usuario_id'];
 
 try {
     if ($tipo === 'frase') {
-        // Borrar solo caché de frase
-        $f = __DIR__ . "/frase_cache.json";
+        // Opción A: Borrar SOLO la caché del administrador (para que tú veas el cambio)
+        $f = __DIR__ . "/frase_cache_{$mi_id}.json";
         if (file_exists($f)) unlink($f);
+        
+        // Opción B (Opcional): Si quieres que se les cambie a TODOS los empleados ahora mismo, descomenta esto:
+        // array_map('unlink', glob(__DIR__ . "/frase_cache_*.json"));
     } 
     elseif ($tipo === 'efemeride') {
-        // Borrar solo caché de efemérides
+        // Borrar caché de efemérides (Global)
         $files = glob(__DIR__ . "/efemeride_cache_*.json");
         foreach ($files as $f) { if (file_exists($f)) unlink($f); }
     }
