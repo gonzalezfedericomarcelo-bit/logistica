@@ -1,32 +1,12 @@
 <?php
-// Archivo: asistencia_listado_general.php
+// Archivo: asistencia_listado_general.php (CON ELIMINACIÓN SEGURA)
 session_start();
 include 'conexion.php';
 include_once 'funciones_permisos.php';
 
-// --- SEGURIDAD NUEVA ---
 if (!isset($_SESSION['usuario_id']) || !tiene_permiso('ver_historial_asistencia', $pdo)) {
     header("Location: dashboard.php");
     exit();
-}
-// -----------------------------------------
-
-// --- PROCESAR APROBACIÓN (POST) ---
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion']) && $_POST['accion'] === 'aprobar') {
-    $id_parte_aprobar = $_POST['id_parte'];
-    
-    // Solo Cañete o Admin pueden aprobar
-    if ($u_rol === 'admin' || stripos($u_nombre, 'Cañete') !== false) {
-        try {
-            $stmt = $pdo->prepare("UPDATE asistencia_partes SET estado = 'aprobado' WHERE id_parte = :id");
-            $stmt->execute([':id' => $id_parte_aprobar]);
-            // Redirigir a la misma página para evitar reenvío de form
-            header("Location: asistencia_listado_general.php?msg=aprobado");
-            exit();
-        } catch (Exception $e) {
-            $error = "Error al aprobar: " . $e->getMessage();
-        }
-    }
 }
 
 // Filtros
@@ -79,20 +59,12 @@ $meses_disponibles = $pdo->query("SELECT DISTINCT DATE_FORMAT(fecha, '%Y-%m') as
 <body>
     <div class="container mt-4 mb-5">
         
-        <?php if (isset($_GET['msg']) && $_GET['msg'] == 'aprobado'): ?>
-            <div class="alert alert-success alert-dismissible fade show">
-                <i class="fas fa-check-circle me-2"></i> Parte aprobado correctamente.
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            </div>
-        <?php endif; ?>
-
         <div class="card shadow">
             <div class="card-header bg-dark text-white">
                 <h5 class="mb-0"><i class="fas fa-history me-2"></i> HISTORIAL DE PARTES</h5>
             </div>
             <div class="card-body">
                 
-                <!-- FILTROS -->
                 <form method="GET" class="row g-3 align-items-end mb-4 bg-light p-3 rounded border">
                     <div class="col-12 col-md-3">
                         <label class="small">Mes</label>
@@ -107,53 +79,39 @@ $meses_disponibles = $pdo->query("SELECT DISTINCT DATE_FORMAT(fecha, '%Y-%m') as
                 </form>
 
                 <div class="table-responsive">
-                    <table class="table table-striped table-hover align-middle">
-                        <thead class="table-secondary">
+                    <table class="table table-hover align-middle shadow-sm" style="background:white; border-radius:10px; overflow:hidden;">
+                        <thead class="bg-primary text-white">
                             <tr>
                                 <th>Fecha</th>
-                                <th>Creado Por</th>
+                                <th>Creador</th>
                                 <th>Estado</th>
-                                <th>Acciones</th>
+                                <th class="text-end">Acciones</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <?php foreach ($partes as $parte): 
-                                $es_pendiente = ($parte['estado'] === 'pendiente');
-                                $soy_aprobador = ($u_rol === 'admin' || stripos($u_nombre, 'Cañete') !== false);
-                                $creador_soy_yo = ($parte['id_creador'] == $u_id);
+                            <?php foreach ($partes as $p): 
+                                $fecha_fmt = date('d/m/Y', strtotime($p['fecha']));
+                                $estado_color = ($p['estado']=='aprobado') ? 'success' : 'warning text-dark';
+                                $estado_icono = ($p['estado']=='aprobado') ? 'check-circle' : 'clock';
                             ?>
                             <tr>
-                                <td class="fw-bold"><?php echo date('d/m/Y', strtotime($parte['fecha'])); ?></td>
-                                <td>
-                                    <!-- AQUI SE MUESTRA EL GRADO + NOMBRE -->
-                                    <span class="badge bg-light text-dark border"><?php echo htmlspecialchars($parte['grado_creador']); ?></span>
-                                    <?php echo htmlspecialchars($parte['creador']); ?>
-                                </td>
-                                <td>
-                                    <?php if ($parte['estado'] == 'aprobado'): ?>
-                                        <span class="badge bg-success"><i class="fas fa-check"></i> Aprobado</span>
-                                    <?php else: ?>
-                                        <span class="badge bg-warning text-dark"><i class="fas fa-clock"></i> Pendiente</span>
-                                    <?php endif; ?>
-                                </td>
-                                <td>
-                                    <div class="d-flex gap-2">
-                                        <!-- BOTÓN VER (Siempre visible, abre en nueva pestaña) -->
-                                        <a href="asistencia_pdf.php?id=<?php echo $parte['id_parte']; ?>" target="_blank" class="btn btn-sm btn-outline-primary">
-                                            <i class="fas fa-eye"></i> Ver
-                                        </a>
+                                <td class="fw-bold"><?php echo $fecha_fmt; ?></td>
+                                <td><?php echo htmlspecialchars($p['creador']); ?></td>
+                                <td><span class="badge bg-<?php echo $estado_color; ?>"><i class="fas fa-<?php echo $estado_icono; ?> me-1"></i> <?php echo strtoupper($p['estado']); ?></span></td>
+                                <td class="text-end">
+                                    <a href="asistencia_actualizar.php?id=<?php echo $p['id_parte']; ?>" class="btn btn-sm btn-warning text-dark fw-bold" title="Agregar Novedades/Editar">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
 
-                                        <!-- BOTÓN APROBAR (Solo visible si pendiente y soy Cañete/Admin) -->
-                                        <?php if ($es_pendiente && $soy_aprobador && !$creador_soy_yo): ?>
-                                            <form method="POST" onsubmit="return confirm('¿Aprobar y firmar este parte?');">
-                                                <input type="hidden" name="accion" value="aprobar">
-                                                <input type="hidden" name="id_parte" value="<?php echo $parte['id_parte']; ?>">
-                                                <button type="submit" class="btn btn-sm btn-success">
-                                                    <i class="fas fa-check-double"></i> Aprobar
-                                                </button>
-                                            </form>
-                                        <?php endif; ?>
-                                    </div>
+                                    <a href="asistencia_pdf.php?id=<?php echo $p['id_parte']; ?>" target="_blank" class="btn btn-sm btn-secondary fw-bold" title="Ver PDF">
+                                        <i class="fas fa-file-pdf"></i>
+                                    </a>
+                                    
+                                    <?php if (tiene_permiso('admin_usuarios', $pdo)): // Usamos un permiso alto ?>
+                                        <button class="btn btn-sm btn-danger fw-bold ms-1" onclick="iniciarEliminacion(<?php echo $p['id_parte']; ?>, '<?php echo $fecha_fmt; ?>')">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    <?php endif; ?>
                                 </td>
                             </tr>
                             <?php endforeach; ?>
@@ -163,6 +121,97 @@ $meses_disponibles = $pdo->query("SELECT DISTINCT DATE_FORMAT(fecha, '%Y-%m') as
             </div>
         </div>
     </div>
+
+    <div class="modal fade" id="modalConfirm1" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white"><h5 class="modal-title">Eliminar Parte</h5></div>
+                <div class="modal-body">¿Estás seguro que quieres eliminar el parte del día <strong id="fechaParteDel"></strong>?</div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-danger" onclick="paso2()">Sí, estoy seguro</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalConfirm2" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white"><h5 class="modal-title">⚠️ ADVERTENCIA</h5></div>
+                <div class="modal-body fw-bold text-center">¿Realmente estás seguro?<br>Esta acción NO se puede deshacer.</div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-danger" onclick="paso3()">Sí, segurísimo</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalPass" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-dark text-white"><h5 class="modal-title">Seguridad</h5></div>
+                <div class="modal-body">
+                    <label>Ingresa tu contraseña para confirmar:</label>
+                    <input type="password" id="delPassword" class="form-control mt-2" placeholder="Contraseña...">
+                    <input type="hidden" id="idParteDel">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-dark" onclick="ejecutarEliminacion()">CONFIRMAR ELIMINACIÓN</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let modal1, modal2, modal3;
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            modal1 = new bootstrap.Modal(document.getElementById('modalConfirm1'));
+            modal2 = new bootstrap.Modal(document.getElementById('modalConfirm2'));
+            modal3 = new bootstrap.Modal(document.getElementById('modalPass'));
+        });
+
+        function iniciarEliminacion(id, fecha) {
+            document.getElementById('idParteDel').value = id;
+            document.getElementById('fechaParteDel').innerText = fecha;
+            modal1.show();
+        }
+
+        function paso2() {
+            modal1.hide();
+            modal2.show();
+        }
+
+        function paso3() {
+            modal2.hide();
+            modal3.show();
+        }
+
+        function ejecutarEliminacion() {
+            const id = document.getElementById('idParteDel').value;
+            const pass = document.getElementById('delPassword').value;
+            
+            if(!pass) { alert("Debes ingresar la contraseña."); return; }
+
+            fetch('asistencia_eliminar.php', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({id_parte: id, password: pass})
+            })
+            .then(r => r.json())
+            .then(data => {
+                if(data.success) {
+                    alert("Parte eliminado.");
+                    window.location.reload();
+                } else {
+                    alert("Error: " + data.msg);
+                }
+            });
+        }
+    </script>
 </body>
 </html>

@@ -96,7 +96,7 @@ if ($id_usuario_nav > 0 && isset($pdo)) {
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
     <div class="container-fluid">
         <a class="navbar-brand" href="dashboard.php">
-            <img src="assets/log.png" alt="Logo" class="logo-invertido"> Logística | ACTIS
+            <img src="assets/img/sglap.png" alt="Logo" class="logo-invertido">
         </a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNavDropdown">
             <span class="navbar-toggler-icon"></span>
