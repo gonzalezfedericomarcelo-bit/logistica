@@ -277,5 +277,6 @@ function obtener_extracto_limpio($html) {
             });
         });
     </script>
+    <?php include 'footer.php'; ?>
 </body>
 </html>

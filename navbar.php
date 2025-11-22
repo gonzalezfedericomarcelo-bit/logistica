@@ -1,4 +1,5 @@
 <?php
+
 // Archivo: navbar.php (RESTAURADO: ÍCONOS, SUBMENÚS Y CENTRADO DE CAMPANA CORREGIDO)
 if (session_status() == PHP_SESSION_NONE) { session_start(); }
 
@@ -95,7 +96,7 @@ if ($id_usuario_nav > 0 && isset($pdo)) {
 
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
     <div class="container-fluid">
-        <a class="navbar-brand" href="dashboard.php" style="margin-left: 100px;">
+        <a class="navbar-brand" href="dashboard.php" style="margin-left: 140px;">
             <img src="assets/img/sgalp.png" alt="Logo" class="logo-invertido">
         </a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNavDropdown">
@@ -270,7 +271,7 @@ if ($mostrar_navidad_global):
         height: 180px;
         z-index: 10000; /* Por encima del menú */
         pointer-events: none; /* Permite clic a través */
-        background-image: url('assets/img/guirnalda1.png'); 
+        background-image: url('assets/img/guir.png'); 
         background-size: contain;
         background-repeat: no-repeat;
         background-position: top left;
@@ -285,7 +286,7 @@ if ($mostrar_navidad_global):
         height: 180px;
         z-index: 10000;
         pointer-events: none;
-        background-image: url('assets/img/guirnalda2.png'); 
+        background-image: url('assets/img/guir.png'); 
         background-size: contain;
         background-repeat: no-repeat;
         background-position: top right;
@@ -299,7 +300,94 @@ if ($mostrar_navidad_global):
 
 <div class="navidad-esquina-izq"></div>
 <!--div class="navidad-esquina-der"></div-->
+    <style>
+        .luces-lateral-container {
+            position: fixed;
+            top: 0;
+            bottom: 0;
+            width: 40px; /* Ancho del área de luces */
+            z-index: 9998; /* Debajo de la guirnalda y modales */
+            pointer-events: none; /* Para que no moleste al clickear */
+            display: flex;
+            flex-direction: column;
+            justify-content: space-around; /* Distribución vertical */
+            align-items: center;
+            padding: 50px 0; /* Margen arriba/abajo */
+        }
+        .luces-izq { left: 10px; }
+        .luces-der { right: 10px; }
 
+        /* El "cable" sutil */
+        .cable-luz {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 50%;
+            width: 1px;
+            background: rgba(0,0,0,0.15); /* Muy tenue */
+            z-index: -1;
+        }
+
+        /* La bombilla */
+        .foco-navidad {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            position: relative;
+            animation: parpadeo-suave 3s infinite alternate ease-in-out;
+            opacity: 0.4; /* Opacidad base baja para no molestar */
+        }
+
+        /* El casquillo del foco (detalle visual) */
+        .foco-navidad::before {
+            content: '';
+            position: absolute;
+            top: -3px;
+            left: 3px;
+            width: 6px;
+            height: 4px;
+            background: #444;
+            border-radius: 2px;
+        }
+
+        /* Colores de luces */
+        .luz-roja { background-color: #ff4d4d; box-shadow: 0 0 10px #ff4d4d; color: #ff4d4d; }
+        .luz-verde { background-color: #2ecc71; box-shadow: 0 0 10px #2ecc71; color: #2ecc71; }
+        .luz-dorada { background-color: #f1c40f; box-shadow: 0 0 10px #f1c40f; color: #f1c40f; }
+        .luz-azul { background-color: #3498db; box-shadow: 0 0 10px #3498db; color: #3498db; }
+
+        /* Animación suave (Glow) */
+        @keyframes parpadeo-suave {
+            0% { opacity: 0.3; transform: scale(0.9); box-shadow: 0 0 2px currentColor; }
+            100% { opacity: 1; transform: scale(1.1); box-shadow: 0 0 15px currentColor; }
+        }
+
+        /* Ocultar en móviles para no tapar contenido */
+        @media (max-width: 1200px) {
+            .luces-lateral-container { display: none; }
+        }
+    </style>
+
+    <?php
+    // Generador simple de luces para no escribir HTML repetitivo
+    function renderizarLuces($lado) {
+        $colores = ['luz-roja', 'luz-verde', 'luz-dorada', 'luz-azul'];
+        // Ajuste "desproporcionado": márgenes aleatorios para que no parezca una línea recta perfecta
+        echo "<div class='luces-lateral-container $lado'><div class='cable-luz'></div>";
+        for ($i = 0; $i < 12; $i++) { // 12 luces por lado
+            $color = $colores[array_rand($colores)];
+            $delay = rand(0, 40) / 10; // Delay aleatorio entre 0s y 4s para que no parpadeen juntas
+            $duration = rand(25, 45) / 10; // Duración variable para sensación orgánica
+            // Pequeño desplazamiento lateral aleatorio (-5px a 5px) para efecto "cable flexible"
+            $margin = rand(-5, 5); 
+            echo "<div class='foco-navidad $color' style='animation-delay: {$delay}s; animation-duration: {$duration}s; margin-left: {$margin}px;'></div>";
+        }
+        echo "</div>";
+    }
+
+    renderizarLuces('luces-izq');
+    renderizarLuces('luces-der');
+    ?>
 <?php endif; ?>
 
 

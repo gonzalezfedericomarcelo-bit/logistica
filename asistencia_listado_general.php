@@ -213,5 +213,6 @@ $meses_disponibles = $pdo->query("SELECT DISTINCT DATE_FORMAT(fecha, '%Y-%m') as
             });
         }
     </script>
+    <?php include 'footer.php'; ?>
 </body>
 </html>

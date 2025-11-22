@@ -347,5 +347,6 @@ $highlight_task_id = $_GET['highlight_task'] ?? null;
             }
         });
     </script>
+    <?php include 'footer.php'; ?>
 </body>
 </html>

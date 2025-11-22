@@ -226,5 +226,6 @@ include 'navbar.php'; // Incluir navbar después de la lógica
         document.getElementById('descripcion_area_edit').value = button.getAttribute('data-descripcion');
     }
 </script>
+<?php include 'footer.php'; ?>
 </body>
 </html>

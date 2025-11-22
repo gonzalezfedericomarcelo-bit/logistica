@@ -210,6 +210,44 @@ $_SESSION['dashboard_loaded_once'] = true;
         .alert-militar .text-gold { color: #d4af37 !important; }
         .btn-militar-light { background-color: #d4af37; color: #1a2f1a; border: none; font-weight: bold; }
         .btn-militar-light:hover { background-color: #c5a028; color: #000; }
+
+        /* --- ESTILOS CAROUSEL HISTÓRICO (WIKIPEDIA) --- */
+#historyCarousel {
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    background: #1a1a1a; /* Fondo mientras carga */
+    margin-bottom: 1.5rem; /* Separación con Efemérides */
+}
+.history-slide-img {
+    height: 350px; /* Altura fija del banner */
+    object-fit: cover;
+    width: 100%;
+    filter: brightness(0.6); /* Oscurecer para leer texto */
+}
+.carousel-caption {
+    background: linear-gradient(to top, rgba(0,0,0,0.9), transparent);
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 20px;
+    text-align: left;
+}
+.btn-leer-historia {
+    background-color: #d4af37; /* Dorado militar */
+    color: #1a1a1a;
+    border: none;
+    font-weight: bold;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    padding: 8px 20px;
+    border-radius: 20px;
+}
+.btn-leer-historia:hover {
+    background-color: #fff;
+    color: #000;
+}
+
     </style>
 </head>
 <body <?php echo $show_loader ? 'style="overflow: hidden;"' : ''; ?>>
@@ -247,6 +285,9 @@ $_SESSION['dashboard_loaded_once'] = true;
                 </div>
             </div>
         </div>
+
+
+        
 
         <div class="row mb-4">
             <div class="col-12">
@@ -936,5 +977,7 @@ $_SESSION['dashboard_loaded_once'] = true;
         }
     });
     </script>
+    <?php include 'footer.php'; ?>
 </body>
+
 </html>

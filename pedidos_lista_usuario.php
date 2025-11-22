@@ -112,5 +112,6 @@ function traducir_estado_pedido($estado) {
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <div class="toast-container position-fixed bottom-0 end-0 p-3" id="notificationToastContainer" style="z-index: 1080;"></div>
+<?php include 'footer.php'; ?>
 </body>
 </html>

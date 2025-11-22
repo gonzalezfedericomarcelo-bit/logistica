@@ -5,6 +5,7 @@ include 'conexion.php';
 if (!isset($_SESSION['usuario_id'])) header("Location: login.php");
 include 'navbar.php'; 
 
+
 $mi_id = $_SESSION['usuario_id'];
 
 $sql_users = "

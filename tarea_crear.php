@@ -485,5 +485,6 @@ include 'navbar.php';
     
     <div class="toast-container position-fixed bottom-0 end-0 p-3" id="notificationToastContainer" style="z-index: 1080;">
     </div>
+    <?php include 'footer.php'; ?>
 </body>
 </html>

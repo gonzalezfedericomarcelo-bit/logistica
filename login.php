@@ -1,7 +1,21 @@
 <?php
-// Archivo: login.php (VERSIÓN FINAL: LUCES ARRIBA/ABAJO + GUIRNALDAS 1 y 2)
+// Archivo: login.php (VERSIÓN FINAL: SIN TEXTO NEGRO NI LÍNEAS ROJAS)
 session_start();
 include 'conexion.php';
+
+// --- LÓGICA DE NAVIDAD SINCRONIZADA ---
+$mostrar_navidad = false;
+if (isset($pdo)) {
+    try {
+        $stmt_nav = $pdo->query("SELECT valor FROM configuracion_sistema WHERE clave = 'modo_navidad'");
+        $res_nav = $stmt_nav->fetch();
+        if ($res_nav && $res_nav['valor'] == '1') {
+            $mostrar_navidad = true;
+        }
+    } catch (Exception $e) {
+        $mostrar_navidad = false;
+    }
+}
 
 if (isset($_SESSION['usuario_id'])) {
     header("Location: dashboard.php");
@@ -141,6 +155,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             position: relative; z-index: 2; height: 100%;
             display: flex; align-items: center; justify-content: center;
             flex-direction: column; overflow-y: auto; padding: 20px;
+            padding-bottom: 80px; 
         }
 
         .card-login {
@@ -157,48 +172,95 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             overflow: visible; 
         }
 
+        /* --- FOOTER COPYRIGHT FIJO --- */
+        .footer-copyright {
+            position: fixed;
+            bottom: 40px; 
+            left: 0;
+            width: 100%;
+            text-align: center;
+            color: rgba(255, 255, 255, 0.4);
+            font-size: 0.75rem;
+            z-index: 150; 
+            pointer-events: none; 
+            text-shadow: 0 1px 3px rgba(0,0,0,0.9);
+        }
+        .footer-copyright strong { color: rgba(255, 255, 255, 0.6); }
+
         /* --- GUIRNALDAS PNG --- */
         .garland-img {
             position: absolute;
-            width: 130px; /* Tamaño ajustable */
+            width: 130px; 
             height: auto;
             z-index: 20;
             pointer-events: none;
             filter: drop-shadow(0 5px 5px rgba(0,0,0,0.5));
         }
-        /* Guirnalda 1: Arriba Izquierda */
-        .garland-left {
-            top: -30px;
-            left: -30px;
-        }
-        /* Guirnalda 2: Arriba Derecha (Espejada si es la misma, o normal si es otra) */
-        .garland-right {
-            top: -30px;
-            right: -30px;
-            /* Si necesitas espejarla descomenta esto: transform: scaleX(-1); */
-        }
+        .garland-left { top: -30px; left: -30px; }
+        .garland-right { top: -30px; right: -30px; }
 
         .login-logo-container { text-align: center; margin-bottom: 1.5rem; margin-top: 1rem; }
         .login-logo {
             max-width: 160px; height: auto;
-            filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.8));
+            filter: drop-shadow(0 0 0.5px #ffffff) drop-shadow(0 0 1px #ffffff) drop-shadow(0 4px 5px rgba(0,0,0,0.6));
         }
 
         .system-header { text-align: center; margin-bottom: 2rem; color: #fff; }
         .system-header h4 { font-size: 1.1rem; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; margin: 0; line-height: 1.4; }
 
-        .form-floating > .form-control { background-color: rgba(0, 0, 0, 0.3) !important; border: 1px solid #444; color: #fff !important; }
-        input:-webkit-autofill, input:-webkit-autofill:hover, input:-webkit-autofill:focus, input:-webkit-autofill:active { -webkit-box-shadow: 0 0 0 30px rgba(0, 0, 0, 0.3) inset !important; -webkit-text-fill-color: white !important; transition: background-color 5000s ease-in-out 0s; }
-        .form-floating > .form-control:focus { background-color: rgba(0, 0, 0, 0.5) !important; border-color: var(--gold-accent); box-shadow: 0 0 0 0.25rem rgba(212, 175, 55, 0.25); color: #fff !important; }
-        .form-floating > label { color: var(--text-grey); }
-        .form-floating > .form-control:focus ~ label, .form-floating > .form-control:not(:placeholder-shown) ~ label { color: var(--gold-accent); }
+        /* --- FIX DEFINITIVO: INPUTS OSCUROS Y TEXTO BLANCO SIEMPRE --- */
+        /* 1. Input base */
+        .form-control, .form-floating > .form-control { 
+            background-color: rgba(0, 0, 0, 0.5) !important; 
+            border: 1px solid #444; 
+            color: #ffffff !important; /* BLANCO FORZADO */
+            caret-color: white;
+            -webkit-text-fill-color: #ffffff !important; /* PARA CHROME/SAFARI */
+        }
+
+        /* 2. Centrado vertical al escribir */
+        .form-floating > .form-control:focus,
+        .form-floating > .form-control:not(:placeholder-shown) {
+            padding-top: 1.2rem !important;
+            padding-bottom: 1.2rem !important;
+            background-color: rgba(0, 0, 0, 0.8) !important; 
+            border-color: var(--gold-accent); 
+            box-shadow: 0 0 0 0.25rem rgba(212, 175, 55, 0.25); 
+            color: #ffffff !important;
+            -webkit-text-fill-color: #ffffff !important;
+        }
+
+        /* 3. Matar fondo blanco y color negro en Autocomplete */
+        input:-webkit-autofill,
+        input:-webkit-autofill:hover, 
+        input:-webkit-autofill:focus, 
+        input:-webkit-autofill:active {
+            -webkit-box-shadow: 0 0 0 1000px #1e1e1e inset !important;
+            -webkit-text-fill-color: white !important;
+            color: white !important;
+            transition: background-color 9999s ease-in-out 0s;
+        }
+
+        /* 4. DESAPARECER ETIQUETAS */
+        .form-floating > .form-control:focus ~ label,
+        .form-floating > .form-control:not(:placeholder-shown) ~ label {
+            opacity: 0 !important;
+            visibility: hidden !important;
+            transform: scale(1);
+        }
+        
+        .form-floating > .form-control:focus ~ label::after,
+        .form-floating > .form-control:not(:placeholder-shown) ~ label::after {
+            display: none !important;
+        }
+
+        .form-floating > label { 
+            color: var(--text-grey); 
+            background-color: transparent !important; 
+        }
 
         .btn-login { background: var(--gold-accent); color: #1a1a1a; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; border: none; padding: 12px; transition: all 0.3s ease; }
         .btn-login:hover { background: #c5a028; color: #000; transform: translateY(-2px); box-shadow: 0 4px 15px rgba(212, 175, 55, 0.4); }
-
-        .login-footer-container { text-align: center; color: rgba(255, 255, 255, 0.5); font-size: 0.75rem; line-height: 1.6; max-width: 500px; }
-        .footer-divider { width: 50px; height: 1px; background: rgba(255, 255, 255, 0.2); margin: 10px auto; }
-        .dev-credits strong { color: rgba(255, 255, 255, 0.8); }
     </style>
 </head>
 <body>
@@ -213,19 +275,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <i class="fas fa-shield-alt deco-icon deco-militar"></i>
     </div>
 
+    <?php if ($mostrar_navidad): ?>
     <div class="top-lights-container">
         <div class="bulb-hang b-red"></div><div class="bulb-hang b-green"></div><div class="bulb-hang b-gold"></div>
         <div class="bulb-hang b-red"></div><div class="bulb-hang b-green"></div><div class="bulb-hang b-gold"></div>
         <div class="bulb-hang b-red"></div><div class="bulb-hang b-green"></div><div class="bulb-hang b-gold"></div>
         <div class="bulb-hang b-red"></div><div class="bulb-hang b-green"></div><div class="bulb-hang b-gold"></div>
     </div>
+    <?php endif; ?>
 
     <div class="login-container">
         <div class="card-login animate__animated animate__fadeInDown">
             
+            <?php if ($mostrar_navidad): ?>
             <img src="assets/img/guirnalda1.png" alt="Navidad" class="garland-img garland-left">
-            
             <img src="assets/img/guirnalda2.png" alt="Navidad" class="garland-img garland-right">
+            <?php endif; ?>
 
             <div class="login-logo-container">
                 <img src="assets/img/sgalp.png" alt="SGALP" class="login-logo" onerror="this.style.display='none'; document.getElementById('logo-text').style.display='block';">
@@ -233,7 +298,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
 
             <div class="system-header">
-                <h4>SISTEMA DE GESTIÓN AVANZADO<br>DE LOGÍSTICA Y PERSONAL</h4>
+                <h6>SISTEMA DE GESTIÓN AVANZADO<br>DE LOGÍSTICA Y PERSONAL</h6>
             </div>
 
             <?php if($error): ?>
@@ -244,12 +309,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             <form method="POST" action="login.php">
                 <div class="form-floating mb-3">
-                    <input type="text" class="form-control" id="usuario" name="usuario" placeholder="Usuario" required autocomplete="off">
+                    <input type="text" class="form-control" id="usuario" name="usuario" placeholder="" required autocomplete="off" spellcheck="false">
                     <label for="usuario"><i class="fas fa-user me-2"></i>Usuario</label>
                 </div>
 
                 <div class="form-floating mb-4">
-                    <input type="password" class="form-control" id="password" name="password" placeholder="Contraseña" required>
+                    <input type="password" class="form-control" id="password" name="password" placeholder="" required>
                     <label for="password"><i class="fas fa-lock me-2"></i>Contraseña</label>
                 </div>
 
@@ -260,27 +325,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </div>
             </form>
         </div>
+    </div>
 
-        <div class="login-footer-container animate__animated animate__fadeInUp animate__delay-1s">
-            <div>
-                &copy; <?php echo date('Y'); ?> Departamento de Logística<br>
-                <i class="fas fa-shield-alt me-1"></i> Uso exclusivo personal autorizado
-            </div>
-            <div class="footer-divider"></div>
-            <div class="dev-credits">
-                Sistema desarrollado por el <strong>SG Mec Info Federico González</strong><br>
-                Encargado de Informática<br>
-                <span class="text-uppercase" style="letter-spacing: 0.5px;">Subgerencia Efectores Sanitarios Propios IOSFA</span>
-            </div>
+    <div class="footer-copyright animate__animated animate__fadeInUp animate__delay-1s">
+        <div class="container">
+            <span>&copy; <?php echo date('Y'); ?> Dpto Logística &bull; Uso Oficial</span>
+            <br class="d-md-none"> <span class="mx-2">|</span>
+                    Desarrollo <i class="fas fa-bolt text-warning"></i> SG Mec Info Federico González - Enc Info - Policlínica Grl Actis - IOSFA</span>
         </div>
     </div>
 
+   
+
+    <?php if ($mostrar_navidad): ?>
     <div class="bottom-lights-container">
         <div class="bulb-floor b-red"></div><div class="bulb-floor b-green"></div><div class="bulb-floor b-gold"></div>
         <div class="bulb-floor b-red"></div><div class="bulb-floor b-green"></div><div class="bulb-floor b-gold"></div>
         <div class="bulb-floor b-red"></div><div class="bulb-floor b-green"></div><div class="bulb-floor b-gold"></div>
         <div class="bulb-floor b-red"></div><div class="bulb-floor b-green"></div><div class="bulb-floor b-gold"></div>
     </div>
+    <?php endif; ?>
 
 </body>
+<?php include 'footer.php'; ?>
 </html>

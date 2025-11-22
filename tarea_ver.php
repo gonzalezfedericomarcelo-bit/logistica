@@ -959,5 +959,6 @@ function traducir_prioridad($prioridad) { $prioridades = ['baja' => '<span class
 
         });
     </script>
+    <?php include 'footer.php'; ?>
 </body>
 </html>

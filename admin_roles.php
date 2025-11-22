@@ -353,5 +353,6 @@ if ($rol_seleccionado) {
             }
         }
     </script>
+    <?php include 'footer.php'; ?>
 </body>
 </html>

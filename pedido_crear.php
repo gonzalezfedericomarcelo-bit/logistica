@@ -636,6 +636,6 @@ include 'navbar.php';
         // --- FIN SCRIPT MODAL ---
     });
 </script>
-
+<?php include 'footer.php'; ?>
 </body>
 </html>
