@@ -24,6 +24,10 @@ if (!function_exists('tiene_algun_permiso')) {
 
 $permisos_del_menu_admin = ['acceso_pedidos_lista_encargado', 'admin_usuarios', 'admin_roles', 'admin_categorias', 'admin_areas', 'admin_destinos', 'admin_remitos'];
 $mostrar_menu_admin = tiene_algun_permiso($permisos_del_menu_admin, $pdo);
+// --- NUEVO: PERMISO PARA VER EL MENÚ DE ASCENSORES ---
+$permisos_asc = ['acceso_ascensores', 'crear_incidencia_ascensor', 'admin_ascensores'];
+$mostrar_ascensores = tiene_algun_permiso($permisos_asc, $pdo);
+// -----------------------------------------------------
 
 $rol_usuario_nav = $_SESSION['usuario_rol'] ?? 'empleado'; 
 $nombre_usuario_nav = $_SESSION['usuario_nombre'] ?? 'Invitado'; 
@@ -82,6 +86,11 @@ if ($id_usuario_nav > 0 && isset($pdo)) {
             left: 40% !important; 
             transform: translateX(10px);
         }
+
+        /* --- NUEVO: Margen del logo SOLO en escritorio --- */
+        .brand-custom {
+            margin-left: 140px !important;
+        }
     }
 
     @media (max-width: 991px) {
@@ -91,12 +100,34 @@ if ($id_usuario_nav > 0 && isset($pdo)) {
         .dropdown-item { color: #e0e0e0; }
         .dropdown-item:hover { background-color: #4a5056; color: #fff; }
         .dropdown-divider { border-top: 1px solid #555; }
+
+        /* 1. Contenedor relativo */
+        .container-fluid {
+            position: relative !important;
+        }
+
+        /* 2. LOGO CLAVADO ARRIBA Y AL CENTRO */
+        .brand-custom {
+            position: absolute !important;
+            left: 50% !important;
+            /* Ajustamos solo horizontalmente */
+            transform: translateX(-50%) !important; 
+            /* Lo fijamos arriba en píxeles para que NO BAJE al abrir el menú */
+            top: -2px !important; 
+            margin: 0 !important;
+        }
+
+        /* 3. Botón a la derecha */
+        .navbar-toggler {
+            margin-left: auto !important;
+            z-index: 1050;
+        }
     }
 </style>
 
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
     <div class="container-fluid">
-        <a class="navbar-brand" href="dashboard.php" style="margin-left: 140px;">
+        <a class="navbar-brand brand-custom" href="dashboard.php">
             <img src="assets/img/sgalp.png" alt="Logo" class="logo-invertido">
         </a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNavDropdown">
@@ -180,13 +211,32 @@ if ($id_usuario_nav > 0 && isset($pdo)) {
                         </a>
                     </li>
                 <?php endif; ?>
-
+                
                 <li class="nav-item">
                     <a class="nav-link <?php echo basename($_SERVER['PHP_SELF']) == 'chat.php' ? 'active' : ''; ?>" href="chat.php">
                         <i class="fas fa-comments"></i> Chat
                     </a>
                 </li>
+                <?php if ($mostrar_ascensores): ?>
                 
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle active" href="#" data-bs-toggle="dropdown" style="color: #ffc107;">
+                        <i class="fas fa-elevator"></i> Ascensores
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="mantenimiento_ascensores.php">Tablero Principal</a></li>
+                        <li><a class="dropdown-item" href="ascensor_crear_incidencia.php"><i class="fas fa-plus-circle me-2 text-success"></i> Nuevo Reclamo</a></li>
+                        <li><a class="dropdown-item" href="ascensor_estadisticas.php">Estadísticas</a></li>
+                        <?php if(tiene_permiso('admin_ascensores', $pdo)): ?>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="admin_ascensores.php">Administrar Equipos</a></li>
+                        <?php endif; ?>
+                    </ul>
+                </li>
+    
+    
+
+                <?php endif; ?>
                 <?php if ($mostrar_menu_admin): ?>
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle <?php echo (strpos(basename($_SERVER['PHP_SELF']), 'admin_') !== false || strpos(basename($_SERVER['PHP_SELF']), 'encargado_') !== false) ? 'active' : ''; ?>"
@@ -244,6 +294,7 @@ if ($id_usuario_nav > 0 && isset($pdo)) {
 </nav>
 <div id="notificationToastContainer" class="toast-container position-fixed bottom-0 end-0 p-3"></div>
 
+
 <?php
 // --- CÓDIGO DE NAVIDAD GLOBAL (SOLO GUIRNALDAS) ---
 // Pegar esto al final de navbar.php, antes del <script> final.
@@ -299,8 +350,7 @@ if ($mostrar_navidad_global):
 </style>
 
 <div class="navidad-esquina-izq"></div>
-<!--div class="navidad-esquina-der"></div-->
-    <style>
+<style>
         .luces-lateral-container {
             position: fixed;
             top: 0;

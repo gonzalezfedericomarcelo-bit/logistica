@@ -1,113 +1,76 @@
 <?php
-// Archivo: notificaciones_fetch.php (ACTUALIZADO para manejar Avisos Globales)
-session_start();
+// Archivo: notificaciones_fetch.php (LÓGICA REAL-TIME POR ID)
+if (session_status() == PHP_SESSION_NONE) {
+    session_start();
+}
+include 'conexion.php';
+
 header('Content-Type: application/json');
 
-include 'conexion.php'; 
+if (!isset($_SESSION['usuario_id'])) {
+    echo json_encode(['unread_count' => 0, 'notifications' => [], 'new_notifications' => [], 'max_id' => 0]);
+    exit();
+}
 
-$currentUserId = $_SESSION['usuario_id'] ?? 0;
-$lastNotificationId = (int)($_GET['last_id'] ?? 0);
+$id_usuario = $_SESSION['usuario_id'];
+// Recibimos el ÚLTIMO ID de notificación que tiene el navegador
+$last_id_seen = isset($_GET['last_id']) ? intval($_GET['last_id']) : 0;
 
 $response = [
     'unread_count' => 0,
+    'notifications' => [], 
     'new_notifications' => [],
-    'notifications' => [], // Solo se usa en loadFullList
-    'max_id' => $lastNotificationId
+    'max_id' => 0 // Devolvemos el ID más alto actual
 ];
 
-if ($currentUserId <= 0 || !isset($pdo)) {
-    echo json_encode($response);
-    exit;
-}
-
 try {
-    // --- 1. Contar no leídas (Solo personales) ---
-    // Excluímos el tipo 'aviso_global' del contador de la campana, ya que es global
-    $sql_count = "SELECT COUNT(*) FROM notificaciones WHERE id_usuario_destino = :id_user AND leida = 0 AND tipo <> 'aviso_global'";
+    // 1. Obtener el ID máximo actual (para sincronizar la primera vez)
+    $stmt_max = $pdo->prepare("SELECT MAX(id_notificacion) FROM notificaciones WHERE id_usuario_destino = :id_user");
+    $stmt_max->execute([':id_user' => $id_usuario]);
+    $current_max_id = $stmt_max->fetchColumn() ?: 0;
+    $response['max_id'] = $current_max_id;
+
+    // 2. Conteo de NO LEÍDAS (Badge Rojo)
+    $sql_count = "SELECT COUNT(*) FROM notificaciones WHERE id_usuario_destino = :id_user AND leida = 0";
     $stmt_count = $pdo->prepare($sql_count);
-    $stmt_count->execute([':id_user' => $currentUserId]);
+    $stmt_count->execute([':id_user' => $id_usuario]); 
     $response['unread_count'] = $stmt_count->fetchColumn();
 
-    // --- 2. Obtener NUEVAS notificaciones (Polling) ---
-    
-    // a) Consultar notificaciones personales más nuevas que last_id
-    $sql_personal = "
-        SELECT id_notificacion, mensaje, tipo, url, leida, fecha_creacion
-        FROM notificaciones 
-        WHERE id_usuario_destino = :id_user 
-        AND id_notificacion > :last_id 
-        ORDER BY id_notificacion DESC
-        LIMIT 10
-    ";
-    $stmt_personal = $pdo->prepare($sql_personal);
-    $stmt_personal->execute([
-        ':id_user' => $currentUserId,
-        ':last_id' => $lastNotificationId
-    ]);
-    $new_personal_notifications = $stmt_personal->fetchAll(PDO::FETCH_ASSOC);
-
-    // b) Consultar la ÚLTIMA notificación global (id_usuario_destino = 0)
-    // Usamos id_usuario_destino = 0 como marcador para global
-    $sql_global = "
-        SELECT id_notificacion, mensaje, tipo, url, leida, fecha_creacion
-        FROM notificaciones 
-        WHERE tipo = 'aviso_global' 
-        AND id_notificacion > :last_id
-        ORDER BY id_notificacion DESC
-        LIMIT 1
-    ";
-    $stmt_global = $pdo->prepare($sql_global);
-    $stmt_global->execute([':last_id' => $lastNotificationId]);
-    $new_global_notification = $stmt_global->fetch(PDO::FETCH_ASSOC);
-    
-    // c) Combinar resultados
-    $new_notifications = $new_personal_notifications;
-    if ($new_global_notification) {
-        // Agregamos el aviso global al inicio para que se vea primero
-        array_unshift($new_notifications, $new_global_notification);
-    }
-
-    $response['new_notifications'] = $new_notifications;
-
-    // Actualizar max_id
-    if (!empty($new_notifications)) {
-        $max_id_local = 0;
-        foreach ($new_notifications as $notif) {
-            if ($notif['id_notificacion'] > $max_id_local) {
-                $max_id_local = $notif['id_notificacion'];
-            }
-        }
-        if ($max_id_local > $response['max_id']) {
-            $response['max_id'] = $max_id_local;
-        }
-    }
-    
-
-    // --- 3. Obtener LISTA COMPLETA (Solo si last_id es 0, usado por loadFullList) ---
-    if ($lastNotificationId === 0) {
-        // Consultar notificaciones personales MÁS notificaciones globales (tipo=aviso_global)
-        $sql_full = "
-            SELECT id_notificacion, mensaje, tipo, url, leida, fecha_creacion
-            FROM notificaciones 
+    // 3. Notificaciones NUEVAS (Polling Real-Time)
+    // Solo si el cliente nos envía un last_id válido y es menor al actual
+    if ($last_id_seen > 0 && $last_id_seen < $current_max_id) {
+        $sql_new = "
+            SELECT * FROM notificaciones 
             WHERE id_usuario_destino = :id_user 
-            OR tipo = 'aviso_global'
-            ORDER BY id_notificacion DESC
-            LIMIT 50
-        ";
-        $stmt_full = $pdo->prepare($sql_full);
-        $stmt_full->execute([':id_user' => $currentUserId]);
-        $response['notifications'] = $stmt_full->fetchAll(PDO::FETCH_ASSOC);
-
-        // Si hay resultados, asegurar que el max_id refleje el más alto de la lista completa
-        if (!empty($response['notifications'])) {
-             $response['max_id'] = max(array_column($response['notifications'], 'id_notificacion'));
-        }
+            AND id_notificacion > :last_id
+            ORDER BY id_notificacion ASC";
+        
+        $stmt_new = $pdo->prepare($sql_new);
+        $stmt_new->execute([':id_user' => $id_usuario, ':last_id' => $last_id_seen]);
+        $response['new_notifications'] = $stmt_new->fetchAll(PDO::FETCH_ASSOC);
     }
+
+    // 4. Listado para el Dropdown (Solo si se pide carga inicial o reset)
+    if ($last_id_seen === 0) {
+         $sql_list = "SELECT * FROM notificaciones 
+                      WHERE id_usuario_destino = :id_user 
+                      ORDER BY fecha_creacion DESC LIMIT 10"; 
+         $stmt_list = $pdo->prepare($sql_list);
+         $stmt_list->execute([':id_user' => $id_usuario]); 
+         $response['notifications'] = $stmt_list->fetchAll(PDO::FETCH_ASSOC);
+         
+         // Formato fecha
+         foreach ($response['notifications'] as &$notif) {
+             if (!empty($notif['fecha_creacion'])) {
+                 $notif['fecha_creacion'] = date('d/m/Y H:i', strtotime($notif['fecha_creacion']));
+             }
+         }
+    }
+    
+    echo json_encode($response);
 
 } catch (PDOException $e) {
-    // Manejo de error silencioso o logueo
-    // error_log("Error en notificaciones_fetch: " . $e->getMessage());
+    error_log("Error fetch notif: " . $e->getMessage());
+    echo json_encode($response);
 }
-
-echo json_encode($response);
 ?>
