@@ -214,7 +214,10 @@ $highlight_task_id = $_GET['highlight_task'] ?? null;
                                 <?php if ($is_atrasada): ?><br><span class="badge bg-danger text-white mt-1">Atrasada</span><?php endif; ?>
                             </td>
                             <td class="col-fit text-center fw-bold text-success">
-                                <?php echo ($tarea['estado'] === 'verificada' && $tarea['fecha_cierre']) ? date('d/m/y H:i', strtotime($tarea['fecha_cierre'])) : '-'; ?>
+                               <?php
+                                $mostrar_cierre = in_array($tarea['estado'], ['finalizada_tecnico', 'verificada']) && $tarea['fecha_cierre'];
+                                echo $mostrar_cierre ? date('d/m/y H:i', strtotime($tarea['fecha_cierre'])) : '-';
+                                ?>
                             </td>
                             <td class="col-fit"><?php echo $tarea['fecha_limite'] ? date('d/m/Y', strtotime($tarea['fecha_limite'])) : '-'; ?></td>
                             <td class="col-fit"><?php echo date('d/m/y H:i', strtotime($tarea['fecha_creacion'])); ?></td>

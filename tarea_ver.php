@@ -254,7 +254,7 @@ function traducir_prioridad($prioridad) { $prioridades = ['baja' => '<span class
                                         <a href="#archivos" class="btn btn-sm btn-outline-success mt-2" onclick="activateTabByIdAndHighlight('#archivos', '#final-docs-section')"><i class="fas fa-paperclip"></i> Ver Adjuntos Finales</a>
                                     <?php endif; ?>
                                     <?php if ($tarea['fecha_cierre']): ?>
-                                        <small class="text-muted d-block mt-2">Finalizada: <?php echo date('d/m/Y H:i', strtotime($tarea['fecha_cierre'])); ?></small>
+                                        <small class="text-muted d-block mt-2">Finalizada: <?php echo date('d/m H:i', strtotime($tarea['fecha_cierre']) - 10800); ?></small>
                                     <?php endif; ?>
                                 </div>
                             </div>
@@ -265,7 +265,7 @@ function traducir_prioridad($prioridad) { $prioridades = ['baja' => '<span class
                             <div class="card-header bg-info text-white fs-5"><i class="fas fa-calendar-alt me-2"></i> Control</div>
                             <ul class="list-group list-group-flush small">
                                 <li class="list-group-item"><strong>ID:</strong> #<?php echo $id_tarea; ?></li>
-                                <li class="list-group-item"><strong>Creación:</strong> <?php echo date('d/m/Y H:i', strtotime($tarea['fecha_creacion'])); ?></li>
+                                <li class="list-group-item"><strong>Creación:</strong> <?php echo date('d/m/Y H:i', strtotime($tarea['fecha_creacion']) - 10800); ?></li>
                                 <li class="list-group-item"><strong>Límite:</strong> <span class="<?php echo ($tarea['fecha_limite'] && $tarea['fecha_limite'] < date('Y-m-d') && !in_array($tarea['estado'], ['verificada', 'cancelada'])) ? 'text-danger fw-bold' : ''; ?>"><?php echo $tarea['fecha_limite'] ? date('d/m/Y', strtotime($tarea['fecha_limite'])) : 'N/A'; ?></span></li>
                                 <li class="list-group-item"><strong>Adj. Final:</strong> <?php echo $tarea['adjunto_obligatorio'] ? '<span class="badge bg-danger">OBLIGATORIO</span>' : '<span class="badge bg-success">OPCIONAL</span>'; ?></li>
                             </ul>
