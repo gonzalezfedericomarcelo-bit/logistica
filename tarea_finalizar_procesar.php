@@ -71,15 +71,8 @@ try {
     }
 
     // 5. Actualizar estado y nota en la tabla tareas
-    $sql_update = "UPDATE tareas SET estado = :nuevo_estado, nota_final = :nota_final, fecha_cierre = :fecha_cierre WHERE id_tarea = :id_tarea AND id_asignado = :id_asignado";
-    $stmt_update = $pdo->prepare($sql_update);
-    $stmt_update->execute([
-        ':nuevo_estado' => $nuevo_estado,
-        ':nota_final' => $nota_final,
-        ':id_tarea' => $id_tarea,
-        ':id_asignado' => $id_usuario_actual,
-        ':fecha_cierre' => date('Y-m-d H:i:s') // Fecha y hora actual de Argentina
-    ]);
+    $sql_update = "UPDATE tareas SET estado = :nuevo_estado, nota_final = :nota_final, fecha_cierre = NOW()
+                   WHERE id_tarea = :id_tarea AND id_asignado = :id_asignado";
     $stmt_update = $pdo->prepare($sql_update);
     $stmt_update->execute([':nuevo_estado' => $nuevo_estado, ':nota_final' => $nota_final, ':id_tarea' => $id_tarea, ':id_asignado' => $id_usuario_actual]);
 
