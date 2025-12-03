@@ -1,23 +1,23 @@
 <?php
-// Archivo: asistencia_estadisticas.php
+// Archivo: asistencia_estadisticas.php (RESTAURADO CON LÓGICA DE AGRUPACIÓN)
 session_start();
 include 'conexion.php';
 include_once 'funciones_permisos.php';
 
-// --- SEGURIDAD NUEVA ---
+// --- SEGURIDAD ---
 if (!isset($_SESSION['usuario_id']) || !tiene_permiso('ver_estadisticas_asistencia', $pdo)) {
     header("Location: dashboard.php");
     exit();
 }
-// --
+
 // Filtros
 $fecha_inicio = $_POST['fecha_inicio'] ?? date('Y-m-d', strtotime('-15 days'));
 $fecha_fin    = $_POST['fecha_fin'] ?? date('Y-m-d');
 $filtro_usuario_id = $_POST['filtro_usuario_id'] ?? ''; 
 
-// Variables
+// Variables para la vista
 $resumen_ausencias = [];
-$motivos_totales = [];
+$motivos_totales_agrupados = []; // Nueva variable para el gráfico limpio
 $detalle_asistencia = []; 
 $dias_en_rango = [];      
 $empleados_activos = [];  
@@ -30,10 +30,11 @@ $stats_campeones = [
 $error = '';
 
 try {
+    // Lista de usuarios para el filtro
     $stmt_users = $pdo->query("SELECT id_usuario, nombre_completo FROM usuarios WHERE activo = 1 ORDER BY nombre_completo ASC");
     $todos_usuarios = $stmt_users->fetchAll(PDO::FETCH_ASSOC);
 
-    // SQL: Ahora incluimos p.id_parte para poder hacer el link
+    // Consulta Principal (Mantenemos tu consulta original que trae todo lo necesario)
     $sql_detalles = "
         SELECT 
             p.fecha,
@@ -57,61 +58,110 @@ try {
     $stmt->execute($params);
     $resultados = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // Procesamiento
+    // --- PROCESAMIENTO INTELIGENTE ---
     $temp_stats = [];
 
     foreach ($resultados as $row) {
         $fecha = $row['fecha'];
         $id_user = $row['id_usuario'];
         $nombre_mostrar = $row['grado'] . " " . $row['nombre_completo'];
-        $motivo = trim($row['observacion_individual']);
+        $motivo_real = trim($row['observacion_individual']); // El texto exacto que escribiste
         $presente = (int)$row['presente'];
-        $id_parte = $row['id_parte']; // ID para el link
+        $id_parte = $row['id_parte']; 
 
+        // Armado del Calendario (Visual)
         if (!in_array($fecha, $dias_en_rango)) $dias_en_rango[] = $fecha;
         if (!isset($empleados_activos[$id_user])) $empleados_activos[$id_user] = $nombre_mostrar;
 
-        // Guardamos id_parte junto con el estado
         $detalle_asistencia[$id_user][$fecha] = [
             'presente' => $presente, 
-            'obs' => $motivo,
+            'obs' => $motivo_real,
             'id_parte' => $id_parte 
         ];
 
-        // Stats
+        // Inicializar estadísticas del usuario
         if (!isset($temp_stats[$id_user])) {
             $temp_stats[$id_user] = [
                 'nombre' => $nombre_mostrar,
                 'dias_totales' => 0, 'asistencias' => 0, 'faltas' => 0,
-                'enfermo' => 0, 'autorizado' => 0, 'motivos_detalle' => []
+                'enfermo' => 0, 'autorizado' => 0, 
+                'motivos_detalle' => [] 
             ];
         }
+
         $temp_stats[$id_user]['dias_totales']++;
+
         if ($presente == 1) {
             $temp_stats[$id_user]['asistencias']++;
         } else {
+            // ES UNA FALTA
             $temp_stats[$id_user]['faltas']++;
-            if ($motivo) {
-                if (!isset($motivos_totales[$motivo])) $motivos_totales[$motivo] = 0;
-                $motivos_totales[$motivo]++;
-                if (!isset($temp_stats[$id_user]['motivos_detalle'][$motivo])) $temp_stats[$id_user]['motivos_detalle'][$motivo] = 0;
-                $temp_stats[$id_user]['motivos_detalle'][$motivo]++;
-                if (stripos($motivo, 'enferm') !== false || stripos($motivo, 'medico') !== false) $temp_stats[$id_user]['enfermo']++;
-                if (stripos($motivo, 'autoriz') !== false) $temp_stats[$id_user]['autorizado']++;
+
+            // --- LÓGICA DE AGRUPACIÓN (Aquí solucionamos el problema de "6 vs 5") ---
+            // Definimos un "Grupo" para el motivo, independientemente de lo que se haya escrito
+            $grupo_motivo = 'Otros / Sin Especificar';
+
+            if (empty($motivo_real)) {
+                $grupo_motivo = 'Sin Especificar';
+            } elseif (stripos($motivo_real, 'autoriz') !== false || stripos($motivo_real, 'personal') !== false) {
+                $grupo_motivo = 'Autorizado';
+            } elseif (stripos($motivo_real, 'enferm') !== false || stripos($motivo_real, 'medico') !== false || stripos($motivo_real, 'médico') !== false) {
+                $grupo_motivo = 'Enfermedad';
+            } elseif (stripos($motivo_real, 'vacacion') !== false || stripos($motivo_real, 'licencia') !== false) {
+                $grupo_motivo = 'Vacaciones';
+            } elseif (stripos($motivo_real, 'falta') !== false && stripos($motivo_real, 'aviso') !== false) {
+                $grupo_motivo = 'Falta sin Aviso';
+            } else {
+                // Si no coincide con nada común, usamos el texto original pero acortado
+                $grupo_motivo = ucfirst(strtolower($motivo_real)); 
             }
+
+            // 1. Sumar al gráfico GENERAL (Torta) usando el GRUPO
+            if (!isset($motivos_totales_agrupados[$grupo_motivo])) $motivos_totales_agrupados[$grupo_motivo] = 0;
+            $motivos_totales_agrupados[$grupo_motivo]++;
+
+            // 2. Sumar al detalle del usuario (Ranking)
+            // Aquí guardamos el GRUPO para que coincida con el gráfico, o podrías usar $motivo_real si quieres el detalle exacto.
+            // Para que "coincida el detalle con la falta" como pediste, usaremos el Grupo.
+            if (!isset($temp_stats[$id_user]['motivos_detalle'][$grupo_motivo])) $temp_stats[$id_user]['motivos_detalle'][$grupo_motivo] = 0;
+            $temp_stats[$id_user]['motivos_detalle'][$grupo_motivo]++;
+
+            // 3. Contadores para los "Campeones" (Tarjetas de arriba)
+            if ($grupo_motivo == 'Enfermedad') $temp_stats[$id_user]['enfermo']++;
+            if ($grupo_motivo == 'Autorizado') $temp_stats[$id_user]['autorizado']++;
         }
     }
     
     sort($dias_en_rango);
 
-    // Calcular Campeones
+    // Calcular Campeones y Resumen Final
     $mejor_porcentaje = -1; $mas_faltas = -1; $mas_enfermo = -1; $mas_autorizado = -1;
+    
     foreach ($temp_stats as $uid => $s) {
         $porcentaje = ($s['dias_totales'] > 0) ? ($s['asistencias'] / $s['dias_totales']) * 100 : 0;
-        if ($porcentaje > $mejor_porcentaje) { $mejor_porcentaje = $porcentaje; $stats_campeones['mejor_asistencia'] = ['nombre' => $s['nombre'], 'valor' => number_format($porcentaje, 0) . '%']; }
-        if ($s['faltas'] > $mas_faltas) { $mas_faltas = $s['faltas']; $stats_campeones['mas_faltas'] = ['nombre' => $s['nombre'], 'valor' => $s['faltas']]; }
-        if ($s['enfermo'] > $mas_enfermo) { $mas_enfermo = $s['enfermo']; $stats_campeones['mas_enfermo'] = ['nombre' => $s['nombre'], 'valor' => $s['enfermo']]; }
-        if ($s['autorizado'] > $mas_autorizado) { $mas_autorizado = $s['autorizado']; $stats_campeones['mas_autorizado'] = ['nombre' => $s['nombre'], 'valor' => $s['autorizado']]; }
+        
+        // Ranking Mejor Asistencia
+        if ($porcentaje > $mejor_porcentaje) { 
+            $mejor_porcentaje = $porcentaje; 
+            $stats_campeones['mejor_asistencia'] = ['nombre' => $s['nombre'], 'valor' => number_format($porcentaje, 0) . '%']; 
+        }
+        // Ranking Faltas
+        if ($s['faltas'] > $mas_faltas) { 
+            $mas_faltas = $s['faltas']; 
+            $stats_campeones['mas_faltas'] = ['nombre' => $s['nombre'], 'valor' => $s['faltas']]; 
+        }
+        // Ranking Enfermo
+        if ($s['enfermo'] > $mas_enfermo) { 
+            $mas_enfermo = $s['enfermo']; 
+            $stats_campeones['mas_enfermo'] = ['nombre' => $s['nombre'], 'valor' => $s['enfermo']]; 
+        }
+        // Ranking Autorizado
+        if ($s['autorizado'] > $mas_autorizado) { 
+            $mas_autorizado = $s['autorizado']; 
+            $stats_campeones['mas_autorizado'] = ['nombre' => $s['nombre'], 'valor' => $s['autorizado']]; 
+        }
+        
+        // Solo agregamos al ranking de la tabla si tuvo faltas
         if ($s['faltas'] > 0) $resumen_ausencias[$uid] = $s;
     }
 
@@ -125,7 +175,7 @@ include 'navbar.php';
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Tablero de Control</title>
+    <title>Tablero de Control de Asistencia</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
@@ -138,12 +188,12 @@ include 'navbar.php';
         .border-l-warning { border-left-color: #ffc107; }
         .border-l-info { border-left-color: #0dcaf0; }
         
+        /* Estilos de la tabla calendario original */
         .table-attendance th, .table-attendance td { text-align: center; vertical-align: middle; font-size: 0.8rem; padding: 0.3rem; min-width: 45px; }
         .table-attendance th:first-child, .table-attendance td:first-child { text-align: left; min-width: 200px; position: sticky; left: 0; background-color: #f8f9fa; z-index: 10; border-right: 2px solid #dee2e6; }
         .scrollable-table { overflow-x: auto; width: 100%; box-shadow: inset -5px 0 5px -5px rgba(0,0,0,0.2); }
         
         .presente { color: #198754; background-color: #f0fff4; font-size: 1.2rem; } 
-        /* Celda Ausente: Cursor mano para indicar click */
         .ausente-celda { background-color: #fff5f5; border: 1px solid #feb2b2; cursor: pointer; transition: background-color 0.2s; }
         .ausente-celda:hover { background-color: #ffe3e3; }
         .x-roja { color: #e53e3e; font-weight: 900; font-size: 1.2rem; line-height: 1; }
@@ -177,12 +227,12 @@ include 'navbar.php';
                 </div>
 
                 <?php if (empty($empleados_activos)): ?>
-                    <div class="alert alert-info text-center">No hay datos para mostrar.</div>
+                    <div class="alert alert-info text-center">No hay datos para mostrar en este rango.</div>
                 <?php else: ?>
                     
                     <div class="row">
                         <div class="col-lg-7 mb-4">
-                            <h6 class="fw-bold text-secondary border-bottom pb-2"><i class="fas fa-list-ol me-2"></i> RANKING (Con Motivos)</h6>
+                            <h6 class="fw-bold text-secondary border-bottom pb-2"><i class="fas fa-list-ol me-2"></i> RANKING (Motivos Unificados)</h6>
                             <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
                                 <table class="table table-sm table-hover align-middle">
                                     <thead class="table-light sticky-top"><tr><th>Grado y Nombre</th><th class="text-center">Faltas</th><th>Detalle</th></tr></thead>
@@ -207,7 +257,7 @@ include 'navbar.php';
                         <div class="col-lg-5 mb-4">
                             <div class="card shadow-sm border-0 bg-light">
                                 <div class="card-body text-center">
-                                    <h6 class="fw-bold text-secondary mb-3">Distribución de Motivos</h6>
+                                    <h6 class="fw-bold text-secondary mb-3">Distribución de Motivos (Agrupados)</h6>
                                     <div style="position: relative; height:200px; width:100%">
                                         <canvas id="motivosChart"></canvas>
                                     </div>
@@ -236,13 +286,14 @@ include 'navbar.php';
                                         <?php elseif ($d['presente'] == 1): ?>
                                             <td class="presente"><i class="fas fa-check"></i></td>
                                         <?php else: 
-                                            $motivo = htmlspecialchars($d['obs']);
+                                            // Aquí mostramos el motivo REAL en el tooltip, pero la lógica de conteo ya se arregló arriba
+                                            $motivo_tooltip = htmlspecialchars($d['obs']);
                                             $id_parte_link = $d['id_parte'];
                                         ?>
                                             <td class="ausente-celda" 
                                                 data-bs-toggle="tooltip" 
                                                 data-bs-placement="top" 
-                                                title="<?php echo $motivo ?: 'Sin motivo'; ?>"
+                                                title="<?php echo $motivo_tooltip ?: 'Sin motivo'; ?>"
                                                 onclick="window.open('asistencia_pdf.php?id=<?php echo $id_parte_link; ?>', '_blank')"
                                             >
                                                 <div class="x-roja">✕</div>
@@ -270,8 +321,9 @@ include 'navbar.php';
                 return new bootstrap.Tooltip(tooltipTriggerEl);
             });
 
-            // Gráfico
-            const motivosData = <?php echo json_encode(array_filter($motivos_totales, function($v) { return $v > 0; })); ?>;
+            // Gráfico de Motivos Agrupados
+            // Aquí usamos los datos procesados para que coincidan los números
+            const motivosData = <?php echo json_encode(array_filter($motivos_totales_agrupados, function($v) { return $v > 0; })); ?>;
             const labels = Object.keys(motivosData);
             const dataValues = Object.values(motivosData);
             const bgColors = ['#dc3545', '#fd7e14', '#ffc107', '#198754', '#0dcaf0', '#6f42c1', '#adb5bd', '#20c997'];

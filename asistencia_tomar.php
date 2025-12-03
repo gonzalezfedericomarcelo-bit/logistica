@@ -1,9 +1,10 @@
 <?php
-// Archivo: asistencia_tomar.php (VERSIÓN AVANZADA: TARDE / COMISIÓN)
+// Archivo: asistencia_tomar.php (VERSIÓN LIMPIA SIN DUPLICADOS)
 session_start();
 include 'conexion.php';
 include_once 'funciones_permisos.php';
 
+// Verificar permisos
 if (!isset($_SESSION['usuario_id']) || !tiene_permiso('tomar_asistencia', $pdo)) {
     header("Location: dashboard.php");
     exit();
@@ -15,6 +16,7 @@ $personal_ordenado = [];
 $mensaje_error = '';
 
 try {
+    // 1. Obtener usuarios activos
     $sql = "SELECT id_usuario, nombre_completo, grado, rol FROM usuarios WHERE activo = 1 
             AND nombre_completo NOT LIKE '%Alejandro Batista%'
             AND nombre_completo NOT LIKE '%Juan Pablo Hernandez%'
@@ -22,9 +24,36 @@ try {
             ORDER BY nombre_completo ASC";
     $todos_usuarios = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC);
 
-    $sql_nov = "SELECT descripcion FROM configuracion_novedades ORDER BY descripcion ASC";
-    $novedades_db = $pdo->query($sql_nov)->fetchAll(PDO::FETCH_COLUMN);
+    // --- LÓGICA DE LA LISTA INTELIGENTE (CORREGIDA) ---
+    
+    // A. Definimos los que TÚ quieres que estén siempre (Los "Elegidos")
+    // (Saqué 'Comisión' como pediste)
+    $motivos_fijos = ['Autorizado', 'Enfermedad', 'Vacaciones'];
 
+    // B. Traemos los que están en la Configuración (Admin)
+    $sql_config = "SELECT descripcion FROM configuracion_novedades";
+    $motivos_config = $pdo->query($sql_config)->fetchAll(PDO::FETCH_COLUMN);
+
+    // C. Traemos el historial (Lo que escribiste antes)
+    $sql_historial = "SELECT DISTINCT observacion_individual 
+                      FROM asistencia_detalles 
+                      WHERE observacion_individual IS NOT NULL 
+                      AND observacion_individual != '' 
+                      AND observacion_individual != 'Sin novedad...'";
+    $motivos_historial = $pdo->query($sql_historial)->fetchAll(PDO::FETCH_COLUMN);
+
+    // D. FUSIÓN Y LIMPIEZA:
+    // Unimos todo en una sola bolsa
+    $lista_final = array_merge($motivos_fijos, $motivos_config, $motivos_historial);
+    // Quitamos espacios en blanco accidentales
+    $lista_final = array_map('trim', $lista_final);
+    // ¡MAGIA! array_unique elimina cualquier duplicado (Ej: si 'Autorizado' estaba en Fijos y en Historial, queda uno solo)
+    $lista_final = array_unique($lista_final);
+    // Ordenamos alfabéticamente
+    sort($lista_final);
+
+
+    // 3. Ordenar personal según plantilla fija
     $plantilla = [
         1=>'CANETE', 2=>'LOPEZ', 3=>'GONZALEZ', 4=>'PAZ', 5=>'BALLADARES', 6=>'RODRIGUEZ',
         7=>'BENSO', 8=>'VILLA', 9=>'CACERES', 10=>'GARCIA', 11=>'LAZZARI', 12=>'BONFIGLIOLI', 13=>'PIHUALA'
@@ -79,18 +108,18 @@ include 'navbar.php';
                 <span class="badge bg-secondary"><?php echo date('d/m/Y'); ?></span>
             </div>
             <div class="card-body">
-                <?php if (!$es_jefe_supremo): ?>
-                    <div class="alert alert-info small p-2"><i class="fas fa-info-circle"></i> Modo Redacción (Requiere aprobación).</div>
-                <?php endif; ?>
-
                 <form action="asistencia_guardar.php" method="POST">
                     <div class="row mb-3 g-2">
                         <div class="col-md-3"><input type="date" name="fecha" value="<?php echo date('Y-m-d'); ?>" class="form-control fw-bold" required></div>
                         <div class="col-md-9"><input type="text" name="titulo_parte" class="form-control" value="PARTES DE NOVEDADES POLICLÍNICA 'GRAL DON OMAR ACTIS'"></div>
                     </div>
 
-                    <datalist id="lista_novedades_comunes">
-                        <?php foreach($novedades_db as $nov): ?><option value="<?php echo htmlspecialchars($nov); ?>"><?php endforeach; ?>
+                    <datalist id="lista_motivos_limpia">
+                        <?php foreach($lista_final as $motivo): ?>
+                            <?php if(!empty($motivo)): ?>
+                                <option value="<?php echo htmlspecialchars($motivo); ?>">
+                            <?php endif; ?>
+                        <?php endforeach; ?>
                     </datalist>
 
                     <div class="table-responsive">
@@ -100,7 +129,7 @@ include 'navbar.php';
                                     <th style="width:40px">#</th>
                                     <th>Grado/Nombre</th>
                                     <th style="width:160px">Estado</th>
-                                    <th>Observación / Destino / Horario</th>
+                                    <th>Observación / Motivo / Horario</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -127,8 +156,9 @@ include 'navbar.php';
                                         <input type="text" 
                                                name="datos[<?php echo $p['id_usuario']; ?>][obs]" 
                                                class="form-control form-control-sm input-motivo" 
-                                               list="lista_novedades_comunes" 
-                                               placeholder="Sin novedad..." disabled>
+                                               list="lista_motivos_limpia" 
+                                               placeholder="Sin novedad..." disabled
+                                               autocomplete="off">
                                     </td>
                                 </tr>
                                 <?php endfor; ?>
@@ -157,20 +187,20 @@ include 'navbar.php';
             tr.className = 'fila-persona';
             select.className = 'form-select form-select-sm selector-estado';
             
-            // Aplicar nuevas clases
+            // Aplicar colores
             tr.classList.add('fila-' + val);
             select.classList.add(val);
 
-            // Lógica del input
+            // Input
             if (val === 'presente') {
                 input.disabled = true;
                 input.value = '';
                 input.placeholder = 'Sin novedad...';
             } else {
                 input.disabled = false;
-                if (val === 'ausente') input.placeholder = 'Motivo (Ej: Licencia, Enfermo)...';
-                if (val === 'tarde') input.placeholder = 'Horario ingreso (Ej: 13:00hs)...';
-                if (val === 'comision') input.placeholder = 'Lugar y Hora (Ej: A Martelli 08:00hs)...';
+                if (val === 'ausente') input.placeholder = 'Motivo...';
+                if (val === 'tarde') input.placeholder = 'Horario...';
+                if (val === 'comision') input.placeholder = 'Lugar...';
                 input.focus();
             }
         }

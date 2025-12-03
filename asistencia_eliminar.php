@@ -1,12 +1,19 @@
 <?php
-// Archivo: asistencia_eliminar.php (BORRADO SEGURO CON PASSWORD)
+// Archivo: asistencia_eliminar.php (PROTEGIDO CON PERMISOS Y PASSWORD)
 session_start();
 include 'conexion.php';
+include_once 'funciones_permisos.php'; // <--- Importante incluir esto
 
 header('Content-Type: application/json');
 
 if (!isset($_SESSION['usuario_id'])) {
     echo json_encode(['success' => false, 'msg' => 'Sesión expirada']);
+    exit;
+}
+
+// 1. NUEVA SEGURIDAD: Verificar el permiso específico en el Backend
+if (!tiene_permiso('asistencia_eliminar', $pdo)) {
+    echo json_encode(['success' => false, 'msg' => 'ACCESO DENEGADO: No tienes permiso para eliminar partes.']);
     exit;
 }
 
@@ -21,7 +28,7 @@ if ($id_parte <= 0 || empty($password)) {
 }
 
 try {
-    // 1. Verificar la contraseña del usuario actual
+    // 2. Verificar la contraseña del usuario actual (Doble factor de seguridad)
     $stmt = $pdo->prepare("SELECT password FROM usuarios WHERE id_usuario = :id");
     $stmt->execute([':id' => $id_usuario]);
     $hash_real = $stmt->fetchColumn();
@@ -31,10 +38,12 @@ try {
         exit;
     }
 
-    // 2. Eliminar el parte (Las FK en la DB deberían borrar los detalles en cascada, pero lo forzamos por seguridad)
+    // 3. Eliminar el parte
     $pdo->beginTransaction();
     
+    // Eliminar detalles primero
     $pdo->prepare("DELETE FROM asistencia_detalles WHERE id_parte = :id")->execute([':id' => $id_parte]);
+    // Eliminar cabecera
     $pdo->prepare("DELETE FROM asistencia_partes WHERE id_parte = :id")->execute([':id' => $id_parte]);
 
     $pdo->commit();
