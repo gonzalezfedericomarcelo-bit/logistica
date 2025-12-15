@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1:3306
--- Tiempo de generación: 15-12-2025 a las 18:00:30
+-- Tiempo de generación: 15-12-2025 a las 22:07:57
 -- Versión del servidor: 11.8.3-MariaDB-log
 -- Versión de PHP: 7.2.34
 
@@ -1184,6 +1184,34 @@ INSERT INTO `empresas_mantenimiento` (`id_empresa`, `nombre`, `telefono`, `email
 -- --------------------------------------------------------
 
 --
+-- Estructura de tabla para la tabla `inventario_cargos`
+--
+
+CREATE TABLE `inventario_cargos` (
+  `id_cargo` int(11) NOT NULL,
+  `id_usuario_relevador` int(11) NOT NULL,
+  `fecha_creacion` datetime DEFAULT current_timestamp(),
+  `elemento` varchar(255) NOT NULL,
+  `codigo_inventario` varchar(100) DEFAULT NULL,
+  `servicio_ubicacion` varchar(150) NOT NULL,
+  `observaciones` text DEFAULT NULL,
+  `nombre_responsable` varchar(150) NOT NULL,
+  `nombre_jefe_servicio` varchar(150) NOT NULL,
+  `firma_responsable` varchar(255) DEFAULT NULL,
+  `firma_relevador` varchar(255) DEFAULT NULL,
+  `firma_jefe` varchar(255) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+
+--
+-- Volcado de datos para la tabla `inventario_cargos`
+--
+
+INSERT INTO `inventario_cargos` (`id_cargo`, `id_usuario_relevador`, `fecha_creacion`, `elemento`, `codigo_inventario`, `servicio_ubicacion`, `observaciones`, `nombre_responsable`, `nombre_jefe_servicio`, `firma_responsable`, `firma_relevador`, `firma_jefe`) VALUES
+(1, 15, '2025-12-15 19:00:21', 'PC', '43242', 'lOGISTICA', 'BIEN', 'RESP 1', 'JEFE 1', 'uploads/firmas/resp_1765836021_694084f527c56.png', 'uploads/firmas/rel_1765836021_694084f527e01.png', 'uploads/firmas/jefe_1765836021_694084f527e6a.png');
+
+-- --------------------------------------------------------
+
+--
 -- Estructura de tabla para la tabla `mensajes`
 --
 
@@ -1312,19 +1340,19 @@ INSERT INTO `notificaciones` (`id_notificacion`, `id_usuario_destino`, `id_tarea
 (83, 15, NULL, 'chat', '🎤 Audio de Administrador', 'chat.php?chat_id=2&msg_id=11', 1, '2025-11-21 15:54:08', NULL, NULL),
 (84, 2, NULL, 'chat', '🎤 Audio de Federico González', 'chat.php?chat_id=15&msg_id=12', 1, '2025-11-21 15:54:57', NULL, NULL),
 (85, 2, NULL, 'chat', '💬 De Federico González: #T56 ', 'chat.php?chat_id=15&msg_id=13', 1, '2025-11-21 15:55:05', NULL, NULL),
-(90, 2, NULL, 'chat', '💬 De Federico González: #P193 ', 'chat.php?chat_id=15&msg_id=14', 0, '2025-11-23 22:42:14', NULL, NULL),
-(91, 2, NULL, 'chat', '💬 De Federico González: #T196 ', 'chat.php?chat_id=15&msg_id=15', 0, '2025-11-23 22:42:23', NULL, NULL),
-(93, 2, NULL, 'tarea_iniciada', 'El técnico prueba ha **INICIADO** la tarea #201: fede.', 'https://federicogonzalez.net/logistica/tarea_ver.php?id=201', 0, '2025-11-23 23:19:30', NULL, NULL),
+(90, 2, NULL, 'chat', '💬 De Federico González: #P193 ', 'chat.php?chat_id=15&msg_id=14', 1, '2025-11-23 22:42:14', NULL, NULL),
+(91, 2, NULL, 'chat', '💬 De Federico González: #T196 ', 'chat.php?chat_id=15&msg_id=15', 1, '2025-11-23 22:42:23', NULL, NULL),
+(93, 2, NULL, 'tarea_iniciada', 'El técnico prueba ha **INICIADO** la tarea #201: fede.', 'https://federicogonzalez.net/logistica/tarea_ver.php?id=201', 1, '2025-11-23 23:19:30', NULL, NULL),
 (94, 2, NULL, 'tarea_terminada', 'El técnico prueba ha finalizado la tarea #201: fede. Requiere su verificación.', 'https://federicogonzalez.net/logistica/tarea_ver.php?id=201#acciones', 1, '2025-11-23 23:19:45', NULL, NULL),
 (96, 2, NULL, 'tarea_iniciada', 'El técnico prueba ha **INICIADO** la tarea #202: fede2.', 'https://federicogonzalez.net/logistica/tarea_ver.php?id=202', 1, '2025-11-23 23:23:30', NULL, NULL),
 (97, 2, NULL, 'tarea_terminada', 'El técnico prueba ha finalizado la tarea #202: fede2. Requiere su verificación.', 'https://federicogonzalez.net/logistica/tarea_ver.php?id=202#acciones', 1, '2025-11-23 23:23:54', NULL, NULL),
-(101, 2, NULL, 'tarea_iniciada', 'El técnico prueba ha **INICIADO** la tarea #203: gdfgdfg.', 'https://federicogonzalez.net/logistica/tarea_ver.php?id=203', 0, '2025-11-23 23:28:26', NULL, NULL),
+(101, 2, NULL, 'tarea_iniciada', 'El técnico prueba ha **INICIADO** la tarea #203: gdfgdfg.', 'https://federicogonzalez.net/logistica/tarea_ver.php?id=203', 1, '2025-11-23 23:28:26', NULL, NULL),
 (102, 2, NULL, 'tarea_terminada', 'El técnico prueba ha finalizado la tarea #203: gdfgdfg. Requiere su verificación.', 'https://federicogonzalez.net/logistica/tarea_ver.php?id=203#acciones', 1, '2025-11-23 23:28:32', NULL, NULL),
-(105, 2, NULL, 'tarea_iniciada', 'El técnico prueba ha **INICIADO** la tarea #204: fghfg.', 'https://federicogonzalez.net/logistica/tarea_ver.php?id=204', 0, '2025-11-23 23:41:12', NULL, NULL),
-(106, 2, NULL, 'tarea_terminada', 'El técnico prueba ha finalizado la tarea #204: fghfg. Requiere su verificación.', 'https://federicogonzalez.net/logistica/tarea_ver.php?id=204#acciones', 0, '2025-11-23 23:41:29', NULL, NULL),
+(105, 2, NULL, 'tarea_iniciada', 'El técnico prueba ha **INICIADO** la tarea #204: fghfg.', 'https://federicogonzalez.net/logistica/tarea_ver.php?id=204', 1, '2025-11-23 23:41:12', NULL, NULL),
+(106, 2, NULL, 'tarea_terminada', 'El técnico prueba ha finalizado la tarea #204: fghfg. Requiere su verificación.', 'https://federicogonzalez.net/logistica/tarea_ver.php?id=204#acciones', 1, '2025-11-23 23:41:29', NULL, NULL),
 (108, 2, NULL, 'tarea_iniciada', 'El técnico prueba ha **INICIADO** la tarea #205: hfghgfh.', 'https://federicogonzalez.net/logistica/tarea_ver.php?id=205', 1, '2025-11-23 23:48:32', NULL, NULL),
-(109, 2, NULL, 'tarea_terminada', 'El técnico prueba ha finalizado la tarea #205: hfghgfh. Requiere su verificación.', 'https://federicogonzalez.net/logistica/tarea_ver.php?id=205#acciones', 0, '2025-11-23 23:48:39', NULL, NULL),
-(112, 2, NULL, 'tarea_iniciada', 'El técnico prueba ha **INICIADO** la tarea #206: fdsf.', 'https://federicogonzalez.net/logistica/tarea_ver.php?id=206', 0, '2025-11-23 23:50:32', NULL, NULL),
+(109, 2, NULL, 'tarea_terminada', 'El técnico prueba ha finalizado la tarea #205: hfghgfh. Requiere su verificación.', 'https://federicogonzalez.net/logistica/tarea_ver.php?id=205#acciones', 1, '2025-11-23 23:48:39', NULL, NULL),
+(112, 2, NULL, 'tarea_iniciada', 'El técnico prueba ha **INICIADO** la tarea #206: fdsf.', 'https://federicogonzalez.net/logistica/tarea_ver.php?id=206', 1, '2025-11-23 23:50:32', NULL, NULL),
 (113, 2, NULL, 'tarea_terminada', 'El técnico prueba ha finalizado la tarea #206: fdsf. Requiere su verificación.', 'https://federicogonzalez.net/logistica/tarea_ver.php?id=206#acciones', 1, '2025-11-23 23:51:35', NULL, NULL),
 (116, 2, NULL, 'tarea_iniciada', 'El técnico prueba ha **INICIADO** la tarea #208: dsfds.', 'https://federicogonzalez.net/logistica/tarea_ver.php?id=208', 1, '2025-11-23 23:54:39', NULL, NULL),
 (117, 2, NULL, 'tarea_terminada', 'El técnico prueba ha finalizado la tarea #208: dsfds. Requiere su verificación.', 'https://federicogonzalez.net/logistica/tarea_ver.php?id=208#acciones', 1, '2025-11-23 23:54:43', NULL, NULL),
@@ -1400,10 +1428,10 @@ INSERT INTO `notificaciones` (`id_notificacion`, `id_usuario_destino`, `id_tarea
 (188, 6, NULL, 'tarea_verificada', '⚠️ Parte pendiente de revisión (2025-12-04) enviado por Federico González.', 'asistencia_listado_general.php?resaltar=67', 1, '2025-12-03 12:39:45', NULL, NULL),
 (189, 8, NULL, 'tarea_verificada', '⚠️ Parte pendiente de revisión (2025-12-04) enviado por Federico González.', 'asistencia_listado_general.php?resaltar=67', 0, '2025-12-03 12:39:45', NULL, NULL),
 (190, 15, NULL, 'tarea_verificada', '⚠️ Parte pendiente de revisión (2025-12-04) enviado por Federico González.', 'asistencia_listado_general.php?resaltar=67', 1, '2025-12-03 12:39:45', NULL, NULL),
-(191, 2, NULL, 'tarea_verificada', '⚠️ Parte pendiente de revisión (2025-12-03) enviado por Federico González.', 'asistencia_listado_general.php?resaltar=68', 0, '2025-12-03 13:27:50', NULL, NULL),
+(191, 2, NULL, 'tarea_verificada', '⚠️ Parte pendiente de revisión (2025-12-03) enviado por Federico González.', 'asistencia_listado_general.php?resaltar=68', 1, '2025-12-03 13:27:50', NULL, NULL),
 (192, 6, NULL, 'tarea_verificada', '⚠️ Parte pendiente de revisión (2025-12-03) enviado por Federico González.', 'asistencia_listado_general.php?resaltar=68', 1, '2025-12-03 13:27:50', NULL, NULL),
 (193, 8, NULL, 'tarea_verificada', '⚠️ Parte pendiente de revisión (2025-12-03) enviado por Federico González.', 'asistencia_listado_general.php?resaltar=68', 0, '2025-12-03 13:27:50', NULL, NULL),
-(194, 2, NULL, 'tarea_verificada', '⚠️ Parte pendiente de revisión (2025-12-04) enviado por Federico González.', 'asistencia_listado_general.php?resaltar=69', 0, '2025-12-03 14:53:18', NULL, NULL),
+(194, 2, NULL, 'tarea_verificada', '⚠️ Parte pendiente de revisión (2025-12-04) enviado por Federico González.', 'asistencia_listado_general.php?resaltar=69', 1, '2025-12-03 14:53:18', NULL, NULL),
 (195, 6, NULL, 'tarea_verificada', '⚠️ Parte pendiente de revisión (2025-12-04) enviado por Federico González.', 'asistencia_listado_general.php?resaltar=69', 1, '2025-12-03 14:53:18', NULL, NULL),
 (196, 8, NULL, 'tarea_verificada', '⚠️ Parte pendiente de revisión (2025-12-04) enviado por Federico González.', 'asistencia_listado_general.php?resaltar=69', 0, '2025-12-03 14:53:18', NULL, NULL),
 (197, 2, NULL, 'tarea_verificada', '⚠️ Parte pendiente de revisión (2025-12-03) enviado por Federico González.', 'asistencia_listado_general.php?resaltar=70', 1, '2025-12-03 14:59:33', NULL, NULL),
@@ -1411,7 +1439,7 @@ INSERT INTO `notificaciones` (`id_notificacion`, `id_usuario_destino`, `id_tarea
 (199, 7, NULL, 'tarea_verificada', '⚠️ Parte pendiente de revisión (2025-12-03) enviado por Federico González.', 'asistencia_listado_general.php?resaltar=70', 1, '2025-12-03 14:59:33', NULL, NULL),
 (200, 17, NULL, 'tarea_reasignada_nueva', 'Se te ha reasignado la tarea #218: Colocar cerradura.', 'https://federicogonzalez.net/logistica/tarea_ver.php?id=218&reasignada_a=17&task_title=Colocar+cerradura&task_desc=SOLICITUD+ORIGINAL+%28Pedido+%2366%2F25%29%3A%0D%0A--------------------------------------------------%0D%0AColocaci%C3%B3n+de+cerradura+en+cocina+en+compras&task_state=Asignada&task_prio=Media&task_cat=Cerrajeria', 0, '2025-12-03 14:59:42', NULL, NULL),
 (201, 8, NULL, 'tarea_reasignada_anterior', 'La tarea #218: \'Colocar cerradura\' ha sido REASIGNADA a Ariel Benso.', 'https://federicogonzalez.net/logistica/tarea_ver.php?id=218&new_assignee_name=Ariel+Benso&task_title=Colocar+cerradura&task_desc=SOLICITUD+ORIGINAL+%28Pedido+%2366%2F25%29%3A%0D%0A--------------------------------------------------%0D%0AColocaci%C3%B3n+de+cerradura+en+cocina+en+compras&task_state=Asignada&task_prio=Media&task_cat=Cerrajeria', 0, '2025-12-03 14:59:42', NULL, NULL),
-(202, 2, NULL, 'tarea_verificada', '⚠️ Parte pendiente de revisión (2025-12-03) enviado por Federico González.', 'asistencia_listado_general.php?resaltar=71', 0, '2025-12-03 15:11:16', NULL, NULL),
+(202, 2, NULL, 'tarea_verificada', '⚠️ Parte pendiente de revisión (2025-12-03) enviado por Federico González.', 'asistencia_listado_general.php?resaltar=71', 1, '2025-12-03 15:11:16', NULL, NULL),
 (203, 6, NULL, 'tarea_verificada', '⚠️ Parte pendiente de revisión (2025-12-03) enviado por Federico González.', 'asistencia_listado_general.php?resaltar=71', 1, '2025-12-03 15:11:16', NULL, NULL),
 (204, 7, NULL, 'tarea_verificada', '⚠️ Parte pendiente de revisión (2025-12-03) enviado por Federico González.', 'asistencia_listado_general.php?resaltar=71', 1, '2025-12-03 15:11:16', NULL, NULL),
 (205, 6, NULL, 'tarea_iniciada', 'El técnico Ariel Benso ha **INICIADO** la tarea #218: Colocar cerradura.', 'https://federicogonzalez.net/logistica/tarea_ver.php?id=218', 1, '2025-12-03 15:22:05', NULL, NULL),
@@ -1442,19 +1470,19 @@ INSERT INTO `notificaciones` (`id_notificacion`, `id_usuario_destino`, `id_tarea
 (230, 6, NULL, 'tarea_iniciada', 'El técnico Federico González ha **INICIADO** la tarea #211: Ticketeadora y mail.', 'https://federicogonzalez.net/logistica/tarea_ver.php?id=211', 1, '2025-12-09 11:12:57', NULL, NULL),
 (231, 6, NULL, 'tarea_terminada', 'El técnico Federico González ha finalizado la tarea #211: Ticketeadora y mail. Requiere su verificación.', 'https://federicogonzalez.net/logistica/tarea_ver.php?id=211#acciones', 1, '2025-12-09 11:19:21', NULL, NULL),
 (232, 6, NULL, 'tarea_terminada', 'El técnico Federico González ha finalizado la tarea #212: Impresora. Requiere su verificación.', 'https://federicogonzalez.net/logistica/tarea_ver.php?id=212#acciones', 1, '2025-12-09 11:21:46', NULL, NULL),
-(233, 15, NULL, 'tarea_verificada', 'El Gestor **Marcelo Cañete** ha **APROBADO** la tarea #212: Impresora.', 'https://federicogonzalez.net/logistica/tarea_ver.php?id=212&show_modal=aprobada', 0, '2025-12-09 12:40:40', NULL, NULL),
-(234, 15, NULL, 'tarea_verificada', 'El Gestor **Marcelo Cañete** ha **APROBADO** la tarea #211: Ticketeadora y mail.', 'https://federicogonzalez.net/logistica/tarea_ver.php?id=211&show_modal=aprobada', 0, '2025-12-09 12:41:11', NULL, NULL),
+(233, 15, NULL, 'tarea_verificada', 'El Gestor **Marcelo Cañete** ha **APROBADO** la tarea #212: Impresora.', 'https://federicogonzalez.net/logistica/tarea_ver.php?id=212&show_modal=aprobada', 1, '2025-12-09 12:40:40', NULL, NULL),
+(234, 15, NULL, 'tarea_verificada', 'El Gestor **Marcelo Cañete** ha **APROBADO** la tarea #211: Ticketeadora y mail.', 'https://federicogonzalez.net/logistica/tarea_ver.php?id=211&show_modal=aprobada', 1, '2025-12-09 12:41:11', NULL, NULL),
 (235, 6, NULL, 'pedido_nuevo', 'Nuevo pedido (69/25: Relavmeinto de Camaras) del área INFORMATICA Ap Log requiere aprobación.', 'encargado_pedidos_lista.php?highlight_pedido=224', 1, '2025-12-09 15:03:20', NULL, NULL),
 (236, 7, NULL, 'pedido_nuevo', 'Nuevo pedido (69/25: Relavmeinto de Camaras) del área INFORMATICA Ap Log requiere aprobación.', 'encargado_pedidos_lista.php?highlight_pedido=224', 1, '2025-12-09 15:03:20', NULL, NULL),
 (237, 15, NULL, 'tarea_asignada', 'Alejandro Batista te ha asignado una nueva tarea: Relavmeinto de Camaras', 'tarea_ver.php?id=221', 1, '2025-12-09 15:11:56', NULL, NULL),
 (238, 13, NULL, 'tarea_reasignada_nueva', 'Se te ha reasignado la tarea #221: Relavamiento de Camaras.', 'https://federicogonzalez.net/logistica/tarea_ver.php?id=221&reasignada_a=13&task_title=Relavamiento+de+Camaras&task_desc=SOLICITUD+ORIGINAL+%28Pedido+%2369%2F25%29%3A%0D%0A--------------------------------------------------%0D%0ARealizar+relevamineto+de+Camaras+de+Seguridad+de+la+Policlini...&task_state=Asignada&task_prio=Media&task_cat=Inform%C3%A1tica', 0, '2025-12-09 15:16:05', NULL, NULL),
-(239, 15, NULL, 'tarea_reasignada_anterior', 'La tarea #221: \'Relavamiento de Camaras\' ha sido REASIGNADA a Sebastian Lazzari.', 'https://federicogonzalez.net/logistica/tarea_ver.php?id=221&new_assignee_name=Sebastian+Lazzari&task_title=Relavamiento+de+Camaras&task_desc=SOLICITUD+ORIGINAL+%28Pedido+%2369%2F25%29%3A%0D%0A--------------------------------------------------%0D%0ARealizar+relevamineto+de+Camaras+de+Seguridad+de+la+Policlini...&task_state=Asignada&task_prio=Media&task_cat=Inform%C3%A1tica', 0, '2025-12-09 15:16:05', NULL, NULL),
+(239, 15, NULL, 'tarea_reasignada_anterior', 'La tarea #221: \'Relavamiento de Camaras\' ha sido REASIGNADA a Sebastian Lazzari.', 'https://federicogonzalez.net/logistica/tarea_ver.php?id=221&new_assignee_name=Sebastian+Lazzari&task_title=Relavamiento+de+Camaras&task_desc=SOLICITUD+ORIGINAL+%28Pedido+%2369%2F25%29%3A%0D%0A--------------------------------------------------%0D%0ARealizar+relevamineto+de+Camaras+de+Seguridad+de+la+Policlini...&task_state=Asignada&task_prio=Media&task_cat=Inform%C3%A1tica', 1, '2025-12-09 15:16:05', NULL, NULL),
 (240, 15, NULL, 'chat', '📎 Archivo de Luana Villa', 'chat.php?chat_id=10&msg_id=27', 1, '2025-12-10 12:03:57', NULL, NULL),
 (241, 15, NULL, 'chat', '📎 Archivo de Luana Villa', 'chat.php?chat_id=10&msg_id=28', 1, '2025-12-10 12:04:48', NULL, NULL),
 (242, 10, NULL, 'chat', '🎤 Audio de Federico González', 'chat.php?chat_id=15&msg_id=29', 1, '2025-12-10 12:06:44', NULL, NULL),
 (243, 15, NULL, 'chat', '📎 Archivo de Constanza Pihuala', 'chat.php?chat_id=11&msg_id=30', 1, '2025-12-10 13:00:21', NULL, NULL),
 (244, 11, NULL, 'chat', '💬 De Federico González: gracias', 'chat.php?chat_id=15&msg_id=31', 0, '2025-12-10 13:00:29', NULL, NULL),
-(245, 2, NULL, 'tarea_verificada', '⚠️ Parte pendiente de revisión (2025-12-10) enviado por Federico González.', 'asistencia_listado_general.php?resaltar=77', 0, '2025-12-10 15:56:18', NULL, NULL),
+(245, 2, NULL, 'tarea_verificada', '⚠️ Parte pendiente de revisión (2025-12-10) enviado por Federico González.', 'asistencia_listado_general.php?resaltar=77', 1, '2025-12-10 15:56:18', NULL, NULL),
 (246, 6, NULL, 'tarea_verificada', '⚠️ Parte pendiente de revisión (2025-12-10) enviado por Federico González.', 'asistencia_listado_general.php?resaltar=77', 1, '2025-12-10 15:56:18', NULL, NULL),
 (247, 7, NULL, 'tarea_verificada', '⚠️ Parte pendiente de revisión (2025-12-10) enviado por Federico González.', 'asistencia_listado_general.php?resaltar=77', 0, '2025-12-10 15:56:18', NULL, NULL),
 (248, 7, NULL, 'tarea_iniciada', 'El técnico Sebastian Lazzari ha **INICIADO** la tarea #221: Relavamiento de Camaras.', 'https://federicogonzalez.net/logistica/tarea_ver.php?id=221', 0, '2025-12-10 16:54:13', NULL, NULL),
@@ -1475,13 +1503,13 @@ INSERT INTO `notificaciones` (`id_notificacion`, `id_usuario_destino`, `id_tarea
 (262, 6, NULL, 'tarea_iniciada', 'El técnico Rocco Bonfiglioli ha **INICIADO** la tarea #223: Destapar desague.', 'https://federicogonzalez.net/logistica/tarea_ver.php?id=223', 1, '2025-12-11 14:28:13', NULL, NULL),
 (263, 6, NULL, 'tarea_terminada', 'El técnico Ariel Benso ha finalizado la tarea #224: Destapacion de rejilla. Requiere su verificación.', 'https://federicogonzalez.net/logistica/tarea_ver.php?id=224#acciones', 1, '2025-12-11 14:29:33', NULL, NULL),
 (264, 6, NULL, 'tarea_terminada', 'El técnico Rocco Bonfiglioli ha finalizado la tarea #223: Destapar desague. Requiere su verificación.', 'https://federicogonzalez.net/logistica/tarea_ver.php?id=223#acciones', 1, '2025-12-11 14:29:36', NULL, NULL),
-(265, 2, NULL, 'tarea_verificada', '⚠️ Parte pendiente de revisión (2025-12-11) enviado por Federico González.', 'asistencia_listado_general.php?resaltar=78', 0, '2025-12-11 17:30:24', NULL, NULL),
+(265, 2, NULL, 'tarea_verificada', '⚠️ Parte pendiente de revisión (2025-12-11) enviado por Federico González.', 'asistencia_listado_general.php?resaltar=78', 1, '2025-12-11 17:30:24', NULL, NULL),
 (266, 6, NULL, 'tarea_verificada', '⚠️ Parte pendiente de revisión (2025-12-11) enviado por Federico González.', 'asistencia_listado_general.php?resaltar=78', 1, '2025-12-11 17:30:24', NULL, NULL),
 (267, 7, NULL, 'tarea_verificada', '⚠️ Parte pendiente de revisión (2025-12-11) enviado por Federico González.', 'asistencia_listado_general.php?resaltar=78', 0, '2025-12-11 17:30:24', NULL, NULL),
 (268, 6, NULL, 'pedido_nuevo', 'Nuevo pedido (73/25: Destapar bacha) del área ODONTOLOGIA requiere aprobación.', 'encargado_pedidos_lista.php?highlight_pedido=228', 1, '2025-12-12 14:03:07', NULL, NULL),
 (269, 7, NULL, 'pedido_nuevo', 'Nuevo pedido (73/25: Destapar bacha) del área ODONTOLOGIA requiere aprobación.', 'encargado_pedidos_lista.php?highlight_pedido=228', 0, '2025-12-12 14:03:07', NULL, NULL),
-(270, 15, NULL, 'tarea_verificada', 'Tu parte de novedades ha sido APROBADO.', 'asistencia_pdf.php?id=77', 0, '2025-12-12 18:08:58', NULL, NULL),
-(271, 15, NULL, 'tarea_verificada', 'Tu parte de novedades ha sido APROBADO.', 'asistencia_pdf.php?id=78', 0, '2025-12-12 18:09:26', NULL, NULL),
+(270, 15, NULL, 'tarea_verificada', 'Tu parte de novedades ha sido APROBADO.', 'asistencia_pdf.php?id=77', 1, '2025-12-12 18:08:58', NULL, NULL),
+(271, 15, NULL, 'tarea_verificada', 'Tu parte de novedades ha sido APROBADO.', 'asistencia_pdf.php?id=78', 1, '2025-12-12 18:09:26', NULL, NULL),
 (272, 17, NULL, 'tarea_verificada', 'El Gestor **Alejandro Batista** ha **APROBADO** la tarea #224: Destapacion de rejilla.', 'https://federicogonzalez.net/logistica/tarea_ver.php?id=224&show_modal=aprobada', 0, '2025-12-15 12:02:47', NULL, NULL),
 (273, 18, NULL, 'tarea_verificada', 'El Gestor **Alejandro Batista** ha **APROBADO** la tarea #223: Destapar desague.', 'https://federicogonzalez.net/logistica/tarea_ver.php?id=223&show_modal=aprobada', 0, '2025-12-15 12:03:30', NULL, NULL),
 (274, 18, NULL, 'tarea_verificada', 'El Gestor **Alejandro Batista** ha **APROBADO** la tarea #222: Boton trabado.', 'https://federicogonzalez.net/logistica/tarea_ver.php?id=222&show_modal=aprobada', 0, '2025-12-15 12:03:51', NULL, NULL),
@@ -1491,7 +1519,32 @@ INSERT INTO `notificaciones` (`id_notificacion`, `id_usuario_destino`, `id_tarea
 (278, 6, NULL, 'pedido_nuevo', 'Nuevo pedido (75/25: Oficinas Delegación) del área Delegacion Actis requiere aprobación.', 'encargado_pedidos_lista.php?highlight_pedido=230', 1, '2025-12-15 13:36:10', NULL, NULL),
 (279, 7, NULL, 'pedido_nuevo', 'Nuevo pedido (75/25: Oficinas Delegación) del área Delegacion Actis requiere aprobación.', 'encargado_pedidos_lista.php?highlight_pedido=230', 0, '2025-12-15 13:36:10', NULL, NULL),
 (280, 8, NULL, 'tarea_asignada', 'Marcelo Cañete te ha asignado una nueva tarea: Oficinas Delegación', 'tarea_ver.php?id=226', 0, '2025-12-15 14:19:43', NULL, NULL),
-(281, 13, NULL, 'tarea_asignada', 'Marcelo Cañete te ha asignado una nueva tarea: Escaner', 'tarea_ver.php?id=227', 0, '2025-12-15 14:20:35', NULL, NULL);
+(281, 13, NULL, 'tarea_asignada', 'Marcelo Cañete te ha asignado una nueva tarea: Escaner', 'tarea_ver.php?id=227', 0, '2025-12-15 14:20:35', NULL, NULL),
+(282, 13, NULL, 'tarea_reasignada_nueva', 'Se te ha asignado la tarea #226: Oficinas Delegación.', 'https://federicogonzalez.net/logistica/tarea_ver.php?id=226&reasignada_a=13&task_title=Oficinas+Delegaci%C3%B3n&task_desc=SOLICITUD+ORIGINAL+%28Pedido+%2375%2F25%29%3A%0D%0A--------------------------------------------------%0D%0AConfiguraci%C3%B3n+de+cero+de+escaner+para+las+oficinas+de+delgac...&task_state=Asignada&task_prio=Alta&task_cat=Mantenimiento+General', 0, '2025-12-15 18:23:33', NULL, NULL),
+(283, 2, NULL, 'info_sistema', '🌹 El cumpleañero Federico González ACEPTÓ la rosa de regalo.', '#', 1, '2025-12-15 20:10:21', NULL, NULL),
+(284, 2, NULL, 'info_sistema', '🌹 El cumpleañero Administrador ACEPTÓ la rosa de regalo.', '#', 1, '2025-12-15 20:13:43', NULL, NULL),
+(285, 2, NULL, 'info_sistema', '🎉 El usuario Administrador agradeció el saludo de cumpleaños.', '#', 1, '2025-12-15 20:13:46', NULL, NULL),
+(286, 2, NULL, 'info_sistema', '🥀 El cumpleañero Federico González NO aceptó la rosa de regalo.', '#', 1, '2025-12-15 20:18:26', NULL, NULL),
+(287, 2, NULL, 'info_sistema', '🌹 El cumpleañero Federico González ACEPTÓ la rosa de regalo.', '#', 1, '2025-12-15 20:39:06', NULL, NULL),
+(288, 2, NULL, 'info_sistema', '🎉 El usuario Federico González agradeció el saludo de cumpleaños.', '#', 1, '2025-12-15 20:39:08', NULL, NULL),
+(289, 2, NULL, 'info_sistema', '🎉 El usuario Federico González agradeció el saludo de cumpleaños.', '#', 1, '2025-12-15 20:50:28', NULL, NULL),
+(290, 2, NULL, 'info_sistema', '🎉 El usuario Federico González agradeció el saludo de cumpleaños.', '#', 1, '2025-12-15 20:51:19', NULL, NULL),
+(291, 2, NULL, 'info_sistema', '🎉 El usuario Federico González agradeció el saludo de cumpleaños.', '#', 1, '2025-12-15 20:52:41', NULL, NULL),
+(292, 2, NULL, 'info_sistema', '🎉 El usuario Federico González agradeció el saludo de cumpleaños.', '#', 1, '2025-12-15 20:58:40', NULL, NULL),
+(293, 2, NULL, 'info_sistema', '🥀 El cumpleañero Federico González NO aceptó la rosa de regalo.', '#', 1, '2025-12-15 21:04:42', NULL, NULL),
+(294, 2, NULL, 'info_sistema', '🎉 El usuario Federico González agradeció el saludo de cumpleaños.', '#', 1, '2025-12-15 21:04:46', NULL, NULL),
+(295, 2, NULL, 'info_sistema', '🎉 El usuario Federico González agradeció el saludo de cumpleaños.', '#', 1, '2025-12-15 21:04:46', NULL, NULL),
+(296, 2, NULL, 'info_sistema', '🎉 El usuario Federico González agradeció el saludo de cumpleaños.', '#', 1, '2025-12-15 21:05:44', NULL, NULL),
+(297, 2, NULL, 'info_sistema', '🎉 El usuario Federico González agradeció el saludo de cumpleaños.', '#', 1, '2025-12-15 21:11:15', NULL, NULL),
+(298, 2, NULL, 'info_sistema', '🎉 El usuario Federico González agradeció el saludo de cumpleaños.', '#', 1, '2025-12-15 18:14:18', NULL, NULL),
+(299, 2, NULL, 'info_sistema', '🎉 El usuario Federico González agradeció el saludo de cumpleaños.', '#', 1, '2025-12-15 18:20:12', NULL, NULL),
+(300, 2, NULL, 'info_sistema', '🎉 El usuario Federico González agradeció el saludo de cumpleaños.', '#', 1, '2025-12-15 18:23:40', NULL, NULL),
+(301, 2, NULL, 'info_sistema', '🎉 El usuario Federico González agradeció el saludo de cumpleaños.', '#', 1, '2025-12-15 18:26:26', NULL, NULL),
+(302, 2, NULL, 'info_sistema', '🎉 El usuario Federico González agradeció el saludo de cumpleaños.', '#', 1, '2025-12-15 18:31:53', NULL, NULL),
+(303, 2, NULL, 'info_sistema', '🎉 Federico González agradeció el saludo de cumpleaños.', 'admin_usuarios.php?id_buscar=15', 1, '2025-12-15 18:34:55', NULL, NULL),
+(304, 2, NULL, 'info_sistema', '🥀 Federico González NO aceptó la rosa de regalo.', 'admin_usuarios.php?id_buscar=15', 0, '2025-12-15 18:41:02', NULL, NULL),
+(305, 2, NULL, 'info_sistema', '🥀 Federico González NO aceptó la rosa de regalo.', 'admin_usuarios.php?id_buscar=15', 1, '2025-12-15 18:41:03', NULL, NULL),
+(306, 2, NULL, 'info_sistema', '🎉 Federico González agradeció el saludo de cumpleaños.', 'admin_usuarios.php?id_buscar=15', 1, '2025-12-15 18:41:06', NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -1645,6 +1698,7 @@ INSERT INTO `permisos` (`clave_permiso`, `nombre_mostrar`, `descripcion`) VALUES
 ('acceso_avisos_gestionar', 'Gestionar Avisos (Admin)', 'Gestionar Avisos (Admin)'),
 ('acceso_chat', 'Menú: Acceso al Chat Global', NULL),
 ('acceso_dashboard', 'Acceso Dashboard', 'Acceso Dashboard'),
+('acceso_inventario', 'Acceso a Inventario / Cargos', 'Permite crear cargos patrimoniales y firmar actas.'),
 ('acceso_pedidos_crear', 'Crear Pedidos', 'Crear Pedidos'),
 ('acceso_pedidos_lista', 'Ver Lista Pedidos (Admin)', 'Ver Lista Pedidos (Admin)'),
 ('acceso_pedidos_lista_encargado', 'Bandeja de Pedidos (Encargado)', 'Bandeja de Pedidos (Encargado)'),
@@ -1774,6 +1828,7 @@ INSERT INTO `rol_permiso` (`nombre_rol`, `clave_permiso`) VALUES
 ('encargado_suplente_2', 'acceso_dashboard'),
 ('encargado_suplente_3', 'acceso_dashboard'),
 ('enc_suplente', 'acceso_dashboard'),
+('enc_suplente', 'acceso_inventario'),
 ('auxiliar', 'acceso_pedidos_crear'),
 ('encargado', 'acceso_pedidos_crear'),
 ('encargado_suplente_3', 'acceso_pedidos_crear'),
@@ -2026,6 +2081,90 @@ INSERT INTO `tareas` (`id_tarea`, `id_pedido_origen`, `titulo`, `descripcion`, `
 -- --------------------------------------------------------
 
 --
+-- Estructura de tabla para la tabla `tareas_asignaciones`
+--
+
+CREATE TABLE `tareas_asignaciones` (
+  `id_asignacion` int(11) NOT NULL,
+  `id_tarea` int(11) NOT NULL,
+  `id_usuario` int(11) NOT NULL,
+  `fecha_asignacion` datetime DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+
+--
+-- Volcado de datos para la tabla `tareas_asignaciones`
+--
+
+INSERT INTO `tareas_asignaciones` (`id_asignacion`, `id_tarea`, `id_usuario`, `fecha_asignacion`) VALUES
+(1, 44, 7, '2025-12-15 18:06:33'),
+(2, 45, 7, '2025-12-15 18:06:33'),
+(3, 46, 7, '2025-12-15 18:06:33'),
+(4, 187, 8, '2025-12-15 18:06:33'),
+(5, 197, 8, '2025-12-15 18:06:33'),
+(6, 220, 8, '2025-12-15 18:06:33'),
+(8, 51, 9, '2025-12-15 18:06:33'),
+(9, 61, 9, '2025-12-15 18:06:33'),
+(10, 30, 10, '2025-12-15 18:06:33'),
+(11, 31, 10, '2025-12-15 18:06:33'),
+(12, 32, 10, '2025-12-15 18:06:33'),
+(13, 33, 10, '2025-12-15 18:06:33'),
+(14, 34, 10, '2025-12-15 18:06:33'),
+(15, 35, 10, '2025-12-15 18:06:33'),
+(16, 36, 10, '2025-12-15 18:06:33'),
+(17, 40, 10, '2025-12-15 18:06:33'),
+(18, 48, 10, '2025-12-15 18:06:33'),
+(19, 52, 10, '2025-12-15 18:06:33'),
+(20, 59, 10, '2025-12-15 18:06:33'),
+(21, 60, 10, '2025-12-15 18:06:33'),
+(22, 37, 11, '2025-12-15 18:06:33'),
+(23, 38, 11, '2025-12-15 18:06:33'),
+(24, 39, 11, '2025-12-15 18:06:33'),
+(25, 41, 11, '2025-12-15 18:06:33'),
+(26, 42, 11, '2025-12-15 18:06:33'),
+(27, 43, 11, '2025-12-15 18:06:33'),
+(28, 53, 11, '2025-12-15 18:06:33'),
+(29, 219, 11, '2025-12-15 18:06:33'),
+(30, 54, 13, '2025-12-15 18:06:33'),
+(31, 55, 13, '2025-12-15 18:06:33'),
+(32, 56, 13, '2025-12-15 18:06:33'),
+(33, 57, 13, '2025-12-15 18:06:33'),
+(34, 58, 13, '2025-12-15 18:06:33'),
+(35, 62, 13, '2025-12-15 18:06:33'),
+(36, 63, 13, '2025-12-15 18:06:33'),
+(37, 64, 13, '2025-12-15 18:06:33'),
+(38, 65, 13, '2025-12-15 18:06:33'),
+(39, 186, 13, '2025-12-15 18:06:33'),
+(40, 215, 13, '2025-12-15 18:06:33'),
+(41, 216, 13, '2025-12-15 18:06:33'),
+(42, 221, 13, '2025-12-15 18:06:33'),
+(43, 227, 13, '2025-12-15 18:06:33'),
+(44, 210, 15, '2025-12-15 18:06:33'),
+(45, 211, 15, '2025-12-15 18:06:33'),
+(46, 212, 15, '2025-12-15 18:06:33'),
+(47, 189, 17, '2025-12-15 18:06:33'),
+(48, 190, 17, '2025-12-15 18:06:33'),
+(49, 191, 17, '2025-12-15 18:06:33'),
+(50, 198, 17, '2025-12-15 18:06:33'),
+(51, 209, 17, '2025-12-15 18:06:33'),
+(52, 214, 17, '2025-12-15 18:06:33'),
+(53, 217, 17, '2025-12-15 18:06:33'),
+(54, 218, 17, '2025-12-15 18:06:33'),
+(55, 224, 17, '2025-12-15 18:06:33'),
+(56, 213, 18, '2025-12-15 18:06:33'),
+(57, 222, 18, '2025-12-15 18:06:33'),
+(58, 223, 18, '2025-12-15 18:06:33'),
+(59, 188, 19, '2025-12-15 18:06:33'),
+(60, 192, 19, '2025-12-15 18:06:33'),
+(61, 196, 19, '2025-12-15 18:06:33'),
+(62, 200, 19, '2025-12-15 18:06:33'),
+(63, 225, 19, '2025-12-15 18:06:33'),
+(64, 199, 25, '2025-12-15 18:06:33'),
+(128, 226, 8, '2025-12-15 18:23:33'),
+(129, 226, 13, '2025-12-15 18:23:33');
+
+-- --------------------------------------------------------
+
+--
 -- Estructura de tabla para la tabla `tarea_adjuntos`
 --
 
@@ -2061,32 +2200,34 @@ CREATE TABLE `usuarios` (
   `fecha_creacion` timestamp NOT NULL DEFAULT current_timestamp(),
   `activo` tinyint(1) NOT NULL DEFAULT 1,
   `reset_pendiente` tinyint(1) NOT NULL DEFAULT 0,
-  `chat_notificacion_leida` tinyint(1) DEFAULT 0
+  `chat_notificacion_leida` tinyint(1) DEFAULT 0,
+  `fecha_nacimiento` date DEFAULT NULL,
+  `ultimo_saludo_cumple` int(4) DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `usuarios`
 --
 
-INSERT INTO `usuarios` (`id_usuario`, `nombre_completo`, `grado`, `usuario`, `password`, `email`, `telefono`, `genero`, `rol`, `foto_perfil`, `firma_imagen_path`, `fecha_creacion`, `activo`, `reset_pendiente`, `chat_notificacion_leida`) VALUES
-(2, 'Administrador', NULL, 'admin', '$2y$10$QkTMXnNEyoei0ySlLVd8NO8Yp1hER5Ke59oRlqURb1Dm7OJ21CWT6', 'gonzalezmarcelo159@gmail.com', '1166116861', 'masculino', 'admin', 'avatar_2_1764062292.png', 'firma_2_1762268322.png', '2025-11-02 22:39:21', 1, 0, 0),
-(6, 'Marcelo Cañete', 'SM', 'mcanete', '$2y$10$f5.pqoxvAFN/d5F8plvTteV8VmX8LwZMdDIskQNKcL4ou0JFdmMrq', 'marcelo.caniete@iosfa.gob.ar', '', 'masculino', 'encargado', 'user_6_1761797833.png', 'firma_6_1762175616.png', '2025-11-02 22:39:21', 1, 0, 0),
-(7, 'Alejandro Batista', 'AC', 'abatista', '$2y$10$Jfqe/VxnFXtePIbJsTFR6.R5h/S6AbpSM4i662zjVtSq1bValyA36', 'alejandro.batista@iosfa.gob.ar', '', 'masculino', 'encargado', 'user_7_1761797963.png', 'firma_7_1762175675.png', '2025-11-02 22:39:21', 1, 0, 0),
-(8, 'Ezequiel Paz', 'SG', 'epaz', '$2y$10$pZHakqGgyFJPaZSNlDcfbuMyW0jHoVuvmOi14pDf9L8X.J8XfRlSO', 'epaz@gmail.com', '11 6848-4970', 'masculino', 'empleado', 'default.png', 'firma_8_1762353970.png', '2025-11-02 22:39:21', 1, 0, 0),
-(9, 'Renzo Balladares', 'CI', 'rballadares', '$2y$10$geznNX0wiWro/xRXhqKba.fyXJQYTsdfOmjK5RudfgP14p4okG.wW', 'renzo.balladares@iosfa.gob.ar', '11 6664-2706', 'masculino', 'empleado', 'default.png', NULL, '2025-11-02 22:39:21', 1, 0, 0),
-(10, 'Luana Villa', 'VS', 'lvilla', '$2y$10$yMbR3zlsAchEfYwUxgdNH.aZ1GAgVr26Rb.w9kn1SKctNbcGkwCUq', 'luana.villa@iosfa.gob.ar', '11 3932-4067', 'femenino', 'auxiliar', 'avatar_10_1763638904.png', 'firma_10_1762175583.png', '2025-11-02 22:39:21', 1, 0, 0),
-(11, 'Constanza Pihuala', 'VS', 'cpihuala', '$2y$10$9vCBZlqr/7gM4i7H4XKNF.Qv.DVSkuc0stum.Ib7FKy2Ghm8TeUlW', 'constanza.pihuela@iosfa.gob.ar', '11 2670-1182', 'femenino', 'auxiliar', 'avatar_11_1763639136.png', 'firma_11_1762345413.png', '2025-11-02 22:39:21', 1, 0, 0),
-(13, 'Sebastian Lazzari', 'VS', 'slazzari', '$2y$10$aOLzGIurui9PcT.LDWNmUuGcGSDBRPSMx8KtV973jxz8FEUzltkQi', 'sebastian.lazzari@iosfa.gob.ar', '11 3197-6540', 'masculino', 'empleado', 'avatar_13_1764589808.png', NULL, '2025-11-02 22:39:21', 1, 0, 0),
-(15, 'Federico González', 'SG', 'fgonzalez', '$2y$10$kmhmW5Z8xY7dPzYYN9uLHe7worrWpYmZENdfiDD3ejmCgrYuDkgVy', 'gonzalezfedericomarcelo@gmail.com', '', 'masculino', 'enc_suplente', 'avatar_15_1764868292.png', 'firma_15_1762519277.png', '2025-11-02 22:39:21', 1, 0, 0),
-(17, 'Ariel Benso', 'VS', 'abenso', '$2y$10$fY4QxyNxhQDc.8iXtcsX5uvI0Iq9PYXkH/CJz4kNdMmM13VdZbJdu', 'airel.benzo@iosfa.gob.ar', '11 2496-3156', 'masculino', 'empleado', 'avatar_17_1764775672.png', 'firma_17_1764775616.png', '2025-11-02 22:39:21', 1, 0, 0),
-(18, 'Rocco Bonfiglioli', 'VS', 'rbonfiglioli', '$2y$10$h2g5KIbYnnwocuEH32wsdO.yKW0nqLL3APARV1Uf0l/Tnh6/LCB9i', 'rocco.bonfiglioli@iosfa.gob.ar', '11 3930-6011', 'masculino', 'empleado', 'perfil_18_1762442251.png', 'firma_18_1762442071.png', '2025-11-02 22:39:21', 1, 0, 0),
-(19, 'Juan Pablo Hernandez', 'AC', 'jphernandez', '$2y$10$0QRuOwFpRVdyYMwzOJgTJeLcc.iJFAMkVEZ6L4VnVVrV7HPKx1F3e', 'juan.hernandez@iosfa.gob.ar', '1125999143', 'masculino', 'empleado', 'default.png', NULL, '2025-11-02 22:39:21', 1, 0, 0),
-(21, 'Guadalupe Cáceres', 'VS', 'gcaceres', '$2y$10$K.Q7.Q7.Q7.Q7.Q7.Q7.Q7.Q7.Q7.Q7.Q7.Q7.Q7.Q7.Q7.Q7.Q7.', 'gcaceres@gmail.com', '', 'otro', 'empleado', 'default.png', NULL, '2025-11-18 00:05:50', 1, 0, 0),
-(22, 'Paula López', 'SS', 'plopez', '$2y$10$K.Q7.Q7.Q7.Q7.Q7.Q7.Q7.Q7.Q7.Q7.Q7.Q7.Q7.Q7.Q7.Q7.Q7.', 'plopez@gmail.com', '', 'otro', 'empleado', 'default.png', NULL, '2025-11-18 00:05:50', 1, 0, 0),
-(23, 'Florencia Rodríguez', 'VP', 'frodriguez', '$2y$10$K.Q7.Q7.Q7.Q7.Q7.Q7.Q7.Q7.Q7.Q7.Q7.Q7.Q7.Q7.Q7.Q7.Q7.', 'frodriguez@gmail.com', '', 'otro', 'empleado', 'default.png', NULL, '2025-11-18 00:05:50', 1, 0, 0),
-(24, 'Camila García', 'VS', 'cgarcia', '$2y$10$1AweeqUtvwHn4VQT19BiXe1jyNEWIjUpKHVbekH.NalSBBuSaFUlG', 'cgarcia@gmail.com', '', 'otro', 'empleado', 'default.png', NULL, '2025-11-18 00:05:50', 1, 0, 0),
-(25, 'Diego Robles', 'AC', 'drobles', '$2y$10$O0NC9jNvQiJRGpy7MRe2Keu4AJSTVjenoNTWxb0fPUsEe/2MIC73q', 'diego.roblesmedina@iosfa.gob.ar', '1161829596', 'masculino', 'empleado', 'default.png', NULL, '2025-11-18 12:57:58', 1, 0, 0),
-(26, 'Mario Nuñez', 'AC', 'mnuñez', '$2y$10$GF/UajCWOKPpKVytguM55.NaQVl8MsPx2xJRzlZaBIE9hWC7JZ1ZC', 'mario.nuniez@iosfa.gob.ar', '1167226864', 'masculino', 'empleado', 'default.png', NULL, '2025-11-18 12:59:37', 1, 0, 0);
+INSERT INTO `usuarios` (`id_usuario`, `nombre_completo`, `grado`, `usuario`, `password`, `email`, `telefono`, `genero`, `rol`, `foto_perfil`, `firma_imagen_path`, `fecha_creacion`, `activo`, `reset_pendiente`, `chat_notificacion_leida`, `fecha_nacimiento`, `ultimo_saludo_cumple`) VALUES
+(2, 'Administrador', NULL, 'admin', '$2y$10$QkTMXnNEyoei0ySlLVd8NO8Yp1hER5Ke59oRlqURb1Dm7OJ21CWT6', 'gonzalezmarcelo159@gmail.com', '1166116861', 'masculino', 'admin', 'avatar_2_1764062292.png', 'firma_2_1762268322.png', '2025-11-02 22:39:21', 1, 0, 0, '1991-07-09', 0),
+(6, 'Marcelo Cañete', 'SM', 'mcanete', '$2y$10$f5.pqoxvAFN/d5F8plvTteV8VmX8LwZMdDIskQNKcL4ou0JFdmMrq', 'marcelo.caniete@iosfa.gob.ar', '', 'masculino', 'encargado', 'user_6_1761797833.png', 'firma_6_1762175616.png', '2025-11-02 22:39:21', 1, 0, 0, NULL, 0),
+(7, 'Alejandro Batista', 'AC', 'abatista', '$2y$10$Jfqe/VxnFXtePIbJsTFR6.R5h/S6AbpSM4i662zjVtSq1bValyA36', 'alejandro.batista@iosfa.gob.ar', '', 'masculino', 'encargado', 'user_7_1761797963.png', 'firma_7_1762175675.png', '2025-11-02 22:39:21', 1, 0, 0, NULL, 0),
+(8, 'Ezequiel Paz', 'SG', 'epaz', '$2y$10$pZHakqGgyFJPaZSNlDcfbuMyW0jHoVuvmOi14pDf9L8X.J8XfRlSO', 'epaz@gmail.com', '11 6848-4970', 'masculino', 'empleado', 'default.png', 'firma_8_1762353970.png', '2025-11-02 22:39:21', 1, 0, 0, NULL, 0),
+(9, 'Renzo Balladares', 'CI', 'rballadares', '$2y$10$geznNX0wiWro/xRXhqKba.fyXJQYTsdfOmjK5RudfgP14p4okG.wW', 'renzo.balladares@iosfa.gob.ar', '11 6664-2706', 'masculino', 'empleado', 'default.png', NULL, '2025-11-02 22:39:21', 1, 0, 0, NULL, 0),
+(10, 'Luana Villa', 'VS', 'lvilla', '$2y$10$yMbR3zlsAchEfYwUxgdNH.aZ1GAgVr26Rb.w9kn1SKctNbcGkwCUq', 'luana.villa@iosfa.gob.ar', '11 3932-4067', 'femenino', 'auxiliar', 'avatar_10_1763638904.png', 'firma_10_1762175583.png', '2025-11-02 22:39:21', 1, 0, 0, '2021-06-14', 0),
+(11, 'Constanza Pihuala', 'VS', 'cpihuala', '$2y$10$9vCBZlqr/7gM4i7H4XKNF.Qv.DVSkuc0stum.Ib7FKy2Ghm8TeUlW', 'constanza.pihuela@iosfa.gob.ar', '11 2670-1182', 'femenino', 'auxiliar', 'avatar_11_1763639136.png', 'firma_11_1762345413.png', '2025-11-02 22:39:21', 1, 0, 0, '2002-12-15', 0),
+(13, 'Sebastian Lazzari', 'VS', 'slazzari', '$2y$10$aOLzGIurui9PcT.LDWNmUuGcGSDBRPSMx8KtV973jxz8FEUzltkQi', 'sebastian.lazzari@iosfa.gob.ar', '11 3197-6540', 'masculino', 'empleado', 'avatar_13_1764589808.png', NULL, '2025-11-02 22:39:21', 1, 0, 0, '2004-10-18', 0),
+(15, 'Federico González', 'SG', 'fgonzalez', '$2y$10$kmhmW5Z8xY7dPzYYN9uLHe7worrWpYmZENdfiDD3ejmCgrYuDkgVy', 'gonzalezfedericomarcelo@gmail.com', '', 'masculino', 'enc_suplente', 'avatar_15_1764868292.png', 'firma_15_1762519277.png', '2025-11-02 22:39:21', 1, 0, 0, '2025-12-15', 0),
+(17, 'Ariel Benso', 'VS', 'abenso', '$2y$10$fY4QxyNxhQDc.8iXtcsX5uvI0Iq9PYXkH/CJz4kNdMmM13VdZbJdu', 'airel.benzo@iosfa.gob.ar', '11 2496-3156', 'masculino', 'empleado', 'avatar_17_1764775672.png', 'firma_17_1764775616.png', '2025-11-02 22:39:21', 1, 0, 0, '2002-05-08', 0),
+(18, 'Rocco Bonfiglioli', 'VS', 'rbonfiglioli', '$2y$10$h2g5KIbYnnwocuEH32wsdO.yKW0nqLL3APARV1Uf0l/Tnh6/LCB9i', 'rocco.bonfiglioli@iosfa.gob.ar', '11 3930-6011', 'masculino', 'empleado', 'perfil_18_1762442251.png', 'firma_18_1762442071.png', '2025-11-02 22:39:21', 1, 0, 0, '2005-12-25', 0),
+(19, 'Juan Pablo Hernandez', 'AC', 'jphernandez', '$2y$10$0QRuOwFpRVdyYMwzOJgTJeLcc.iJFAMkVEZ6L4VnVVrV7HPKx1F3e', 'juan.hernandez@iosfa.gob.ar', '1125999143', 'masculino', 'empleado', 'default.png', NULL, '2025-11-02 22:39:21', 1, 0, 0, NULL, 0),
+(21, 'Guadalupe Cáceres', 'VS', 'gcaceres', '$2y$10$K.Q7.Q7.Q7.Q7.Q7.Q7.Q7.Q7.Q7.Q7.Q7.Q7.Q7.Q7.Q7.Q7.Q7.', 'gcaceres@gmail.com', '', 'otro', 'empleado', 'default.png', NULL, '2025-11-18 00:05:50', 1, 0, 0, NULL, 0),
+(22, 'Paula López', 'SS', 'plopez', '$2y$10$K.Q7.Q7.Q7.Q7.Q7.Q7.Q7.Q7.Q7.Q7.Q7.Q7.Q7.Q7.Q7.Q7.Q7.', 'plopez@gmail.com', '', 'otro', 'empleado', 'default.png', NULL, '2025-11-18 00:05:50', 1, 0, 0, NULL, 0),
+(23, 'Florencia Rodríguez', 'VP', 'frodriguez', '$2y$10$K.Q7.Q7.Q7.Q7.Q7.Q7.Q7.Q7.Q7.Q7.Q7.Q7.Q7.Q7.Q7.Q7.Q7.', 'frodriguez@gmail.com', '', 'otro', 'empleado', 'default.png', NULL, '2025-11-18 00:05:50', 1, 0, 0, '1998-01-05', 0),
+(24, 'Camila García', 'VS', 'cgarcia', '$2y$10$1AweeqUtvwHn4VQT19BiXe1jyNEWIjUpKHVbekH.NalSBBuSaFUlG', 'cgarcia@gmail.com', '', 'otro', 'empleado', 'default.png', NULL, '2025-11-18 00:05:50', 1, 0, 0, '2000-05-21', 0),
+(25, 'Diego Robles', 'AC', 'drobles', '$2y$10$O0NC9jNvQiJRGpy7MRe2Keu4AJSTVjenoNTWxb0fPUsEe/2MIC73q', 'diego.roblesmedina@iosfa.gob.ar', '1161829596', 'masculino', 'empleado', 'default.png', NULL, '2025-11-18 12:57:58', 1, 0, 0, NULL, 0),
+(26, 'Mario Nuñez', 'AC', 'mnuñez', '$2y$10$GF/UajCWOKPpKVytguM55.NaQVl8MsPx2xJRzlZaBIE9hWC7JZ1ZC', 'mario.nuniez@iosfa.gob.ar', '1167226864', 'masculino', 'empleado', 'default.png', NULL, '2025-11-18 12:59:37', 1, 0, 0, NULL, 0);
 
 --
 -- Índices para tablas volcadas
@@ -2251,6 +2392,12 @@ ALTER TABLE `empresas_mantenimiento`
   ADD PRIMARY KEY (`id_empresa`);
 
 --
+-- Indices de la tabla `inventario_cargos`
+--
+ALTER TABLE `inventario_cargos`
+  ADD PRIMARY KEY (`id_cargo`);
+
+--
 -- Indices de la tabla `mensajes`
 --
 ALTER TABLE `mensajes`
@@ -2316,6 +2463,14 @@ ALTER TABLE `tareas`
   ADD KEY `id_categoria` (`id_categoria`),
   ADD KEY `id_creador` (`id_creador`),
   ADD KEY `id_asignado` (`id_asignado`);
+
+--
+-- Indices de la tabla `tareas_asignaciones`
+--
+ALTER TABLE `tareas_asignaciones`
+  ADD PRIMARY KEY (`id_asignacion`),
+  ADD KEY `id_tarea` (`id_tarea`),
+  ADD KEY `id_usuario` (`id_usuario`);
 
 --
 -- Indices de la tabla `tarea_adjuntos`
@@ -2464,6 +2619,12 @@ ALTER TABLE `empresas_mantenimiento`
   MODIFY `id_empresa` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
+-- AUTO_INCREMENT de la tabla `inventario_cargos`
+--
+ALTER TABLE `inventario_cargos`
+  MODIFY `id_cargo` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
+--
 -- AUTO_INCREMENT de la tabla `mensajes`
 --
 ALTER TABLE `mensajes`
@@ -2473,7 +2634,7 @@ ALTER TABLE `mensajes`
 -- AUTO_INCREMENT de la tabla `notificaciones`
 --
 ALTER TABLE `notificaciones`
-  MODIFY `id_notificacion` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=282;
+  MODIFY `id_notificacion` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=307;
 
 --
 -- AUTO_INCREMENT de la tabla `pedidos_trabajo`
@@ -2486,6 +2647,12 @@ ALTER TABLE `pedidos_trabajo`
 --
 ALTER TABLE `tareas`
   MODIFY `id_tarea` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=228;
+
+--
+-- AUTO_INCREMENT de la tabla `tareas_asignaciones`
+--
+ALTER TABLE `tareas_asignaciones`
+  MODIFY `id_asignacion` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=130;
 
 --
 -- AUTO_INCREMENT de la tabla `tarea_adjuntos`
@@ -2632,6 +2799,13 @@ ALTER TABLE `tareas`
   ADD CONSTRAINT `tareas_ibfk_1` FOREIGN KEY (`id_categoria`) REFERENCES `categorias` (`id_categoria`),
   ADD CONSTRAINT `tareas_ibfk_2` FOREIGN KEY (`id_creador`) REFERENCES `usuarios` (`id_usuario`),
   ADD CONSTRAINT `tareas_ibfk_3` FOREIGN KEY (`id_asignado`) REFERENCES `usuarios` (`id_usuario`) ON DELETE SET NULL;
+
+--
+-- Filtros para la tabla `tareas_asignaciones`
+--
+ALTER TABLE `tareas_asignaciones`
+  ADD CONSTRAINT `tareas_asignaciones_ibfk_1` FOREIGN KEY (`id_tarea`) REFERENCES `tareas` (`id_tarea`) ON DELETE CASCADE,
+  ADD CONSTRAINT `tareas_asignaciones_ibfk_2` FOREIGN KEY (`id_usuario`) REFERENCES `usuarios` (`id_usuario`) ON DELETE CASCADE;
 
 --
 -- Filtros para la tabla `tarea_adjuntos`
