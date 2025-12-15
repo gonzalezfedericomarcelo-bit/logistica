@@ -1,5 +1,5 @@
 <?php
-// Archivo: perfil.php (vFinal Real - Galería Visualmente Correcta)
+// Archivo: perfil.php (vFinal Real - Con Cumpleaños y Firma FullScreen)
 session_start();
 include 'conexion.php';
 
@@ -14,9 +14,9 @@ $mensaje = '';
 $alerta_tipo = '';
 $usuario_data = false;
 
-// 2. Cargar Datos
+// 2. Cargar Datos (Incluyendo fecha_nacimiento)
 try {
-    $sql_load = "SELECT nombre_completo, usuario, email, telefono, foto_perfil, genero, firma_imagen_path FROM usuarios WHERE id_usuario = :id";
+    $sql_load = "SELECT nombre_completo, usuario, email, telefono, foto_perfil, genero, firma_imagen_path, fecha_nacimiento FROM usuarios WHERE id_usuario = :id";
     $stmt_load = $pdo->prepare($sql_load);
     $stmt_load->execute([':id' => $id_usuario]);
     $usuario_data = $stmt_load->fetch(PDO::FETCH_ASSOC);
@@ -41,7 +41,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $upload_dir = 'uploads/perfiles/';
             if (!is_dir($upload_dir)) { mkdir($upload_dir, 0777, true); }
 
-            // Limpiar Base64
             $data_parts = explode(',', $avatar_b64);
             $encoded_image = (count($data_parts) > 1) ? $data_parts[1] : $data_parts[0];
             $encoded_image = str_replace(' ', '+', $encoded_image);
@@ -53,13 +52,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
                 if (file_put_contents($ruta_completa, $decoded_image)) {
                     try {
-                        // Borrar anterior
                         $foto_antigua = $usuario_data['foto_perfil'] ?? 'default.png';
                         if ($foto_antigua != 'default.png' && file_exists($upload_dir . $foto_antigua)) {
                             @unlink($upload_dir . $foto_antigua);
                         }
 
-                        // Guardar en BD
                         $sql_up = "UPDATE usuarios SET foto_perfil = :foto WHERE id_usuario = :id";
                         $stmt_up = $pdo->prepare($sql_up);
                         $stmt_up->execute([':foto' => $new_filename, ':id' => $id_usuario]);
@@ -85,18 +82,19 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         }
     }
     
-    // --- ACCIÓN: Actualizar Info ---
+    // --- ACCIÓN: Actualizar Info (Con Fecha Nacimiento) ---
     if (isset($_POST['action']) && $_POST['action'] == 'actualizar_info') {
         $nombre = trim($_POST['nombre_completo']);
         $email = trim($_POST['email']);
         $tel = trim($_POST['telefono']);
         $gen = $_POST['genero'] ?? 'otro';
+        $fecha_nac = !empty($_POST['fecha_nacimiento']) ? $_POST['fecha_nacimiento'] : NULL;
         $firma_b64 = $_POST['firma_base64_hidden'] ?? '';
 
         $pdo->beginTransaction();
         try {
-            $pdo->prepare("UPDATE usuarios SET nombre_completo=?, email=?, telefono=?, genero=? WHERE id_usuario=?")
-                ->execute([$nombre, $email, $tel, $gen, $id_usuario]);
+            $pdo->prepare("UPDATE usuarios SET nombre_completo=?, email=?, telefono=?, genero=?, fecha_nacimiento=? WHERE id_usuario=?")
+                ->execute([$nombre, $email, $tel, $gen, $fecha_nac, $id_usuario]);
 
             if (!empty($firma_b64)) {
                 $dir_f = 'uploads/firmas/';
@@ -113,7 +111,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             }
             $pdo->commit();
             $_SESSION['usuario_nombre'] = $nombre; 
-            $mensaje = "Datos guardados."; $alerta_tipo = 'success';
+            $mensaje = "Datos guardados correctamente."; $alerta_tipo = 'success';
         } catch (Exception $e) {
             $pdo->rollBack();
             $mensaje = "Error: " . $e->getMessage(); $alerta_tipo = 'danger';
@@ -171,33 +169,53 @@ include 'navbar.php';
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        .signature-pad-container { border: 2px dashed #ccc; border-radius: 0.375rem; position: relative; height: 200px; background: #fff; }
-        #signature-canvas { width: 100%; height: 100%; cursor: crosshair; }
-        .signature-pad-actions { position: absolute; top: 5px; right: 5px; }
+        /* Estilos de la Firma */
+        .signature-pad-container { 
+            border: 2px dashed #ccc; 
+            border-radius: 0.375rem; 
+            position: relative; 
+            height: 200px; 
+            background: #fff; 
+            overflow: hidden;
+        }
+        #signature-canvas { width: 100%; height: 100%; cursor: crosshair; display: block; }
         
-        .avatar-option { 
-            transition: transform 0.2s; cursor: pointer; 
-            background: #fff; border: 1px solid #eee;
+        .signature-pad-actions { position: absolute; top: 5px; right: 5px; z-index: 10; }
+        
+        /* Línea guía y texto "Firmar aquí" */
+        .signature-guide {
+            position: absolute;
+            bottom: 25px;
+            left: 5%;
+            width: 90%;
+            border-bottom: 2px solid #e0e0e0;
+            text-align: center;
+            color: #ccc;
+            font-size: 0.9rem;
+            pointer-events: none; /* Que no interfiera con el dibujo */
+            user-select: none;
+            z-index: 1;
         }
-        .avatar-option:hover { 
-            transform: scale(1.05); border-color: #0d6efd; box-shadow: 0 4px 12px rgba(0,0,0,0.1); z-index: 10;
+
+        /* Modo Pantalla Completa */
+        .fullscreen-signature {
+            position: fixed !important;
+            top: 0;
+            left: 0;
+            width: 100vw !important;
+            height: 100vh !important;
+            z-index: 9999;
+            border: none;
+            border-radius: 0;
+            background: #fff;
         }
-        /* Scroll para categorías */
-        .nav-pills-scroll {
-            display: flex;
-            flex-wrap: nowrap;
-            overflow-x: auto;
-            padding-bottom: 5px;
-        }
+        
+        .avatar-option { transition: transform 0.2s; cursor: pointer; background: #fff; border: 1px solid #eee; }
+        .avatar-option:hover { transform: scale(1.05); border-color: #0d6efd; box-shadow: 0 4px 12px rgba(0,0,0,0.1); z-index: 10; }
+        .nav-pills-scroll { display: flex; flex-wrap: nowrap; overflow-x: auto; padding-bottom: 5px; }
         .nav-pills-scroll::-webkit-scrollbar { height: 4px; }
         .nav-pills-scroll::-webkit-scrollbar-thumb { background: #ccc; border-radius: 4px; }
-        
-        .avatar-grid-container {
-            height: 500px;
-            overflow-y: auto;
-            padding: 10px;
-            background-color: #f8f9fa;
-        }
+        .avatar-grid-container { height: 500px; overflow-y: auto; padding: 10px; background-color: #f8f9fa; }
     </style>
 </head>
 <body>
@@ -260,30 +278,56 @@ include 'navbar.php';
                             <div class="col-md-6 mb-3"><label class="form-label fw-bold small">Email</label><input type="email" class="form-control" name="email" value="<?php echo htmlspecialchars($usuario_data['email'] ?? ''); ?>"></div>
                             <div class="col-md-6 mb-3"><label class="form-label fw-bold small">Teléfono</label><input type="text" class="form-control" name="telefono" value="<?php echo htmlspecialchars($usuario_data['telefono'] ?? ''); ?>"></div>
                         </div>
-                        <div class="mb-3"><label class="form-label fw-bold small">Género</label>
-                            <select class="form-select" name="genero">
-                                <option value="masculino" <?php echo ($usuario_data['genero']=='masculino')?'selected':''; ?>>Masculino</option>
-                                <option value="femenino" <?php echo ($usuario_data['genero']=='femenino')?'selected':''; ?>>Femenino</option>
-                                <option value="otro" <?php echo ($usuario_data['genero']=='otro')?'selected':''; ?>>Otro</option>
-                            </select>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold small">Género</label>
+                                <select class="form-select" name="genero">
+                                    <option value="masculino" <?php echo ($usuario_data['genero']=='masculino')?'selected':''; ?>>Masculino</option>
+                                    <option value="femenino" <?php echo ($usuario_data['genero']=='femenino')?'selected':''; ?>>Femenino</option>
+                                    <option value="otro" <?php echo ($usuario_data['genero']=='otro')?'selected':''; ?>>Otro</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="fecha_nacimiento" class="form-label fw-bold small"><i class="fas fa-birthday-cake text-danger me-1"></i> Fecha de Nacimiento</label>
+                                <input type="date" class="form-control" id="fecha_nacimiento" name="fecha_nacimiento" 
+                                       value="<?php echo htmlspecialchars($usuario_data['fecha_nacimiento'] ?? ''); ?>">
+                                <div class="form-text small">Para saludarte en tu día.</div>
+                            </div>
                         </div>
                         
                         <h6 class="mt-4 mb-3 border-bottom pb-2 text-primary">Firma Digital</h6>
                         <div class="row">
-                            <div class="col-md-6 mb-3"><div class="p-2 border rounded text-center bg-light d-flex align-items-center justify-content-center" style="height: 150px;">
+                            <div class="col-md-5 mb-3"><div class="p-2 border rounded text-center bg-light d-flex align-items-center justify-content-center" style="height: 200px;">
                                 <?php if (!empty($usuario_data['firma_imagen_path'])): ?>
-                                    <img src="uploads/firmas/<?php echo htmlspecialchars($usuario_data['firma_imagen_path']); ?>" style="max-width:100%; max-height:130px;">
-                                <?php else: ?> <span class="text-muted small fst-italic">Sin firma</span> <?php endif; ?>
+                                    <img src="uploads/firmas/<?php echo htmlspecialchars($usuario_data['firma_imagen_path']); ?>" style="max-width:100%; max-height:180px;">
+                                <?php else: ?> <span class="text-muted small fst-italic">Sin firma guardada</span> <?php endif; ?>
                             </div></div>
-                            <div class="col-md-6 mb-3">
-                                <div class="signature-pad-container" style="height:150px;">
+                            <div class="col-md-7 mb-3">
+                                <div class="signature-pad-container" id="sig-container">
                                     <canvas id="signature-canvas"></canvas>
-                                    <div class="signature-pad-actions"><button class="btn btn-sm btn-danger" id="clear-signature"><i class="fas fa-eraser"></i></button></div>
+                                    
+                                    <div class="signature-guide">
+                                        Firme aquí
+                                    </div>
+
+                                    <div class="signature-pad-actions d-flex gap-2">
+                                        <button type="button" class="btn btn-sm btn-outline-primary" id="fullscreen-signature" title="Pantalla Completa">
+                                            <i class="fas fa-expand"></i>
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-danger" id="clear-signature" title="Borrar Firma">
+                                            <i class="fas fa-eraser"></i>
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-success d-none" id="close-fullscreen" title="Guardar y Cerrar">
+                                            <i class="fas fa-check"></i> Listo
+                                        </button>
+                                    </div>
                                 </div>
+                                <small class="text-muted">Use "Pantalla Completa" para mayor comodidad en móviles.</small>
                             </div>
                         </div>
                         <input type="hidden" name="firma_base64_hidden" id="firma_base64_hidden">
-                        <div class="text-end"><button type="submit" class="btn btn-success px-4"><i class="fas fa-save me-2"></i> Guardar</button></div>
+                        <div class="text-end"><button type="submit" class="btn btn-success px-4"><i class="fas fa-save me-2"></i> Guardar Todo</button></div>
                     </form>
                 </div>
             </div>
@@ -353,16 +397,11 @@ include 'navbar.php';
 
 <script>
     // --- BASE DE DATOS DE AVATARES CURADOS ---
-    // Nota: 'p' son parámetros extra para forzar ropa/estilo
     const avataresDB = [
-        // 1. MODERNO (Micah - Estilo limpio)
         {t:'micah',s:'Alan',c:'moderno'}, {t:'micah',s:'Betty',c:'moderno'}, {t:'micah',s:'Charlie',c:'moderno'},
         {t:'micah',s:'Diana',c:'moderno'}, {t:'micah',s:'Evan',c:'moderno'}, {t:'micah',s:'Fiona',c:'moderno'},
         {t:'micah',s:'George',c:'moderno'}, {t:'micah',s:'Hannah',c:'moderno'}, {t:'micah',s:'Ian',c:'moderno'},
         {t:'micah',s:'Julia',c:'moderno'}, {t:'micah',s:'Kevin',c:'moderno'}, {t:'micah',s:'Laura',c:'moderno'},
-
-        // 2. FORMAL (Avataaars FORZANDO TRAJE)
-        // clothing=blazerAndShirt (Traje)
         {t:'avataaars',s:'Boss1',c:'formal',p:'&clothing=blazerAndShirt'}, 
         {t:'avataaars',s:'Boss2',c:'formal',p:'&clothing=blazerAndShirt'}, 
         {t:'avataaars',s:'Boss3',c:'formal',p:'&clothing=blazerAndShirt'},
@@ -373,9 +412,6 @@ include 'navbar.php';
         {t:'avataaars',s:'Boss8',c:'formal',p:'&clothing=blazerAndShirt'},
         {t:'avataaars',s:'Boss9',c:'formal',p:'&clothing=blazerAndShirt'},
         {t:'avataaars',s:'Boss10',c:'formal',p:'&clothing=blazerAndShirt'},
-
-        // 3. CASUAL (Avataaars FORZANDO ROPA CASUAL)
-        // clothing=hoodie, shirtCrewNeck
         {t:'avataaars',s:'Cas1',c:'casual',p:'&clothing=hoodie'}, 
         {t:'avataaars',s:'Cas2',c:'casual',p:'&clothing=shirtCrewNeck'}, 
         {t:'avataaars',s:'Cas3',c:'casual',p:'&clothing=collarAndSweater'},
@@ -386,53 +422,43 @@ include 'navbar.php';
         {t:'avataaars',s:'Cas8',c:'casual',p:'&clothing=shirtVNeck'},
         {t:'avataaars',s:'Cas9',c:'casual',p:'&clothing=hoodie'},
         {t:'avataaars',s:'Cas10',c:'casual',p:'&clothing=graphicShirt'},
-
-        // 4. PERSONAS (Estilo Plano)
         {t:'personas',s:'Admin',c:'personas'}, {t:'personas',s:'User',c:'personas'}, {t:'personas',s:'Guest',c:'personas'},
         {t:'personas',s:'Dev',c:'personas'}, {t:'personas',s:'Manager',c:'personas'}, {t:'personas',s:'Sales',c:'personas'},
         {t:'personas',s:'Tech',c:'personas'}, {t:'personas',s:'Boss',c:'personas'}, {t:'personas',s:'Team',c:'personas'},
         {t:'personas',s:'Staff',c:'personas'}, {t:'personas',s:'Client',c:'personas'}, {t:'personas',s:'Help',c:'personas'},
-
-        // 5. ROBOTS (Bottts)
         {t:'bottts',s:'A1',c:'robots'}, {t:'bottts',s:'B2',c:'robots'}, {t:'bottts',s:'C3',c:'robots'},
         {t:'bottts',s:'D4',c:'robots'}, {t:'bottts',s:'E5',c:'robots'}, {t:'bottts',s:'F6',c:'robots'},
         {t:'bottts',s:'G7',c:'robots'}, {t:'bottts',s:'H8',c:'robots'}, {t:'bottts',s:'I9',c:'robots'},
         {t:'bottts',s:'J10',c:'robots'}, {t:'bottts',s:'K11',c:'robots'}, {t:'bottts',s:'L12',c:'robots'},
-
-        // 6. ANIME / RPG (Adventurer)
         {t:'adventurer',s:'Hero',c:'anime'}, {t:'adventurer',s:'Mage',c:'anime'}, {t:'adventurer',s:'Rogue',c:'anime'},
         {t:'adventurer',s:'Warrior',c:'anime'}, {t:'adventurer',s:'Elf',c:'anime'}, {t:'adventurer',s:'Orc',c:'anime'},
         {t:'adventurer',s:'Paladin',c:'anime'}, {t:'adventurer',s:'Archer',c:'anime'}, {t:'adventurer',s:'Cleric',c:'anime'},
         {t:'adventurer',s:'Ninja',c:'anime'}, {t:'adventurer',s:'King',c:'anime'}, {t:'adventurer',s:'Queen',c:'anime'},
-
-        // 7. RETRO (Pixel Art)
         {t:'pixel-art',s:'Mario',c:'pixel'}, {t:'pixel-art',s:'Luigi',c:'pixel'}, {t:'pixel-art',s:'Peach',c:'pixel'},
         {t:'pixel-art',s:'Link',c:'pixel'}, {t:'pixel-art',s:'Zelda',c:'pixel'}, {t:'pixel-art',s:'Sonic',c:'pixel'},
         {t:'pixel-art',s:'Mega',c:'pixel'}, {t:'pixel-art',s:'Pac',c:'pixel'}, {t:'pixel-art',s:'Space',c:'pixel'},
         {t:'pixel-art',s:'Invader',c:'pixel'},
-
-        // 8. BOCETOS (Notionists)
         {t:'notionists',s:'Idea',c:'bocetos'}, {t:'notionists',s:'Sketch',c:'bocetos'}, {t:'notionists',s:'Draw',c:'bocetos'},
         {t:'notionists',s:'Plan',c:'bocetos'}, {t:'notionists',s:'Work',c:'bocetos'}, {t:'notionists',s:'Team',c:'bocetos'},
         {t:'notionists',s:'Code',c:'bocetos'}, {t:'notionists',s:'Data',c:'bocetos'}, {t:'notionists',s:'Cloud',c:'bocetos'},
         {t:'notionists',s:'Coffee',c:'bocetos'},
-
-        // 9. DIBUJADO (Open Peeps)
         {t:'open-peeps',s:'One',c:'dibujado'}, {t:'open-peeps',s:'Two',c:'dibujado'}, {t:'open-peeps',s:'Three',c:'dibujado'},
         {t:'open-peeps',s:'Four',c:'dibujado'}, {t:'open-peeps',s:'Five',c:'dibujado'}, {t:'open-peeps',s:'Six',c:'dibujado'},
         {t:'open-peeps',s:'Seven',c:'dibujado'}, {t:'open-peeps',s:'Eight',c:'dibujado'}, {t:'open-peeps',s:'Nine',c:'dibujado'},
-
-        // 10. ARTÍSTICO (Lorelei)
         {t:'lorelei',s:'Art',c:'arte'}, {t:'lorelei',s:'Muse',c:'arte'}, {t:'lorelei',s:'Vinci',c:'arte'},
         {t:'lorelei',s:'Dali',c:'arte'}, {t:'lorelei',s:'Picasso',c:'arte'}, {t:'lorelei',s:'Frida',c:'arte'},
         {t:'lorelei',s:'Goya',c:'arte'}, {t:'lorelei',s:'Miro',c:'arte'}, {t:'lorelei',s:'Monet',c:'arte'}
     ];
 
     document.addEventListener('DOMContentLoaded', function() {
-        // Inicializar Firma
+        // --- LÓGICA DE FIRMA ---
         var canvas = document.getElementById('signature-canvas');
         if (canvas) {
             var signaturePad = new SignaturePad(canvas);
+            var container = document.getElementById('sig-container');
+            var btnExpand = document.getElementById('fullscreen-signature');
+            var btnClose = document.getElementById('close-fullscreen');
+            
             function resizeCanvas() {
                 var data = !signaturePad.isEmpty() ? signaturePad.toDataURL() : null;
                 var ratio = Math.max(window.devicePixelRatio || 1, 1);
@@ -444,13 +470,35 @@ include 'navbar.php';
             }
             window.addEventListener("resize", resizeCanvas);
             resizeCanvas();
-            document.getElementById('clear-signature').addEventListener('click', function (e) { e.preventDefault(); signaturePad.clear(); });
+
+            // Botón Borrar
+            document.getElementById('clear-signature').addEventListener('click', function (e) { 
+                e.preventDefault(); signaturePad.clear(); 
+            });
+
+            // Botón Fullscreen
+            btnExpand.addEventListener('click', function() {
+                container.classList.add('fullscreen-signature');
+                btnExpand.classList.add('d-none');
+                btnClose.classList.remove('d-none');
+                resizeCanvas();
+            });
+
+            // Botón Cerrar Fullscreen
+            btnClose.addEventListener('click', function() {
+                container.classList.remove('fullscreen-signature');
+                btnExpand.classList.remove('d-none');
+                btnClose.classList.add('d-none');
+                resizeCanvas();
+            });
+
+            // Guardar al hacer submit
             document.getElementById('main-profile-form').addEventListener('submit', function () {
                 if (!signaturePad.isEmpty()) document.getElementById('firma_base64_hidden').value = signaturePad.toDataURL();
             });
         }
 
-        // Renderizar inicial
+        // Renderizar inicial Avatares
         var avatarModal = document.getElementById('avatarModal');
         if(avatarModal){
             avatarModal.addEventListener('show.bs.modal', function () { 
@@ -476,7 +524,6 @@ include 'navbar.php';
         const filtrados = avataresDB.filter(a => a.c === filtro);
 
         filtrados.forEach((av, index) => {
-            // Construcción de URL con parámetros extra si existen (para forzar ropa)
             let extraParams = av.p ? av.p : '';
             const url = `https://api.dicebear.com/7.x/${av.t}/png?seed=${av.s}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffdfbf${extraParams}`;
             const imgId = `av-${filtro}-${index}`;

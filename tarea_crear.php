@@ -1,27 +1,21 @@
 <?php
-// Archivo: tarea_crear.php (MODIFICADO PARA CONVERTIR PEDIDOS)
+// Archivo: tarea_crear.php (MODIFICADO PARA ASIGNACIÓN MÚLTIPLE)
 // *** MODIFICADO (v4) PARA CORREGIR NOMBRE DE CREADOR EN PEDIDO FANTASMA ***
 // *** MODIFICADO (v5) POR GEMINI PARA APLICAR PERMISO 'crear_tarea_directa' ***
 // *** MODIFICADO (v6) POR GEMINI PARA INCLUIR ROLES 'auxiliar' y 'encargado' EN ASIGNACIÓN ***
+// *** MODIFICADO (v7) POR GEMINI PARA SOPORTE MULTI-USUARIO ***
 session_start();
 include 'conexion.php'; 
-include 'funciones_permisos.php'; // <-- AÑADIDO POR GEMINI
+include 'funciones_permisos.php'; 
 
-// --- INICIO BLOQUE DE SEGURIDAD AÑADIDO POR GEMINI ---
-// 1. Proteger la página
-// Solo usuarios con el permiso 'crear_tarea_directa' (ej: admin, encargado) pueden acceder.
-// Los 'auxiliar' que intenten entrar serán redirigidos.
+// --- INICIO BLOQUE DE SEGURIDAD ---
 if (!isset($_SESSION['usuario_id']) || !tiene_permiso('crear_tarea_directa', $pdo)) {
-    // Mensaje de error para el dashboard
     $_SESSION['action_error_message'] = "Acceso denegado. No tiene permiso para crear tareas directas.";
     header("Location: dashboard.php");
     exit();
 }
 // --- FIN BLOQUE DE SEGURIDAD ---
 
-// (Permisos: ahora controlado por navbar/funciones_permisos.php) // <-- Comentario original del usuario
-
-// (Función de upload de tu archivo original)
 function upload_files($file_array) { 
     $upload_dir = 'uploads/tareas/';
     if (!is_dir($upload_dir)) { if (!mkdir($upload_dir, 0777, true)) { error_log("Error: No se pudo crear " . $upload_dir); return []; } }
@@ -104,7 +98,12 @@ if (isset($_GET['convertir_pedido']) && is_numeric($_GET['convertir_pedido'])) {
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $titulo = trim($_POST['titulo']);
     $descripcion = trim($_POST['descripcion']);
-    $id_asignado = (int)$_POST['id_asignado'];
+    
+    // --- CAMBIO MULTI-USUARIO ---
+    $ids_asignados = isset($_POST['ids_asignados']) && is_array($_POST['ids_asignados']) ? $_POST['ids_asignados'] : [];
+    $id_asignado_principal = !empty($ids_asignados) ? (int)$ids_asignados[0] : 0; // El primero es el principal para compatibilidad
+    // ----------------------------
+
     $id_categoria = (int)$_POST['id_categoria'];
     $prioridad = $_POST['prioridad'];
     $fecha_limite = empty($_POST['fecha_limite']) ? null : $_POST['fecha_limite'];
@@ -113,8 +112,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     
     $id_pedido_convertido = (int)($_POST['id_pedido_a_convertir'] ?? 0);
 
-    if (empty($titulo) || empty($descripcion) || $id_asignado <= 0 || $id_categoria <= 0) {
-        $mensaje = "Error: Título, Descripción, Asignado y Categoría son obligatorios.";
+    if (empty($titulo) || empty($descripcion) || empty($ids_asignados) || $id_categoria <= 0) {
+        $mensaje = "Error: Título, Descripción, al menos un Asignado y Categoría son obligatorios.";
         $alerta_tipo = 'danger';
         $titulo_previo = $titulo;
         $descripcion_previa = $descripcion;
@@ -147,18 +146,16 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 $id_pedido_origen_final = $id_pedido_convertido;
             
             } else {
-                // --- MODO CREAR DIRECTO (Admin crea "Pedido Fantasma") ---
+                // --- MODO CREAR DIRECTO ---
             
                 $sql_cat_nombre = "SELECT nombre FROM categorias WHERE id_categoria = :id_cat";
                 $stmt_cat_nombre = $pdo->prepare($sql_cat_nombre);
                 $stmt_cat_nombre->execute([':id_cat' => $id_categoria]);
                 $nombre_categoria_para_pedido = $stmt_cat_nombre->fetchColumn() ?: 'Categoría Desconocida';
 
-                // *** INICIO CORRECCIÓN (v4): Obtener nombre de la BD, no de la sesión ***
                 $stmt_get_creator_name = $pdo->prepare("SELECT nombre_completo FROM usuarios WHERE id_usuario = :id");
                 $stmt_get_creator_name->execute([':id' => $id_creador]);
                 $nombre_admin_para_pedido = $stmt_get_creator_name->fetchColumn() ?: 'Usuario del Sistema';
-                // *** FIN CORRECCIÓN (v4) ***
                 
                 $default_area_id_para_pedido = 1; 
 
@@ -188,15 +185,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     ':prio' => $prioridad_pedido_map,
                     ':fecha_req' => $fecha_limite,
                     ':descrip' => $descripcion,
-                    ':solic_real' => $nombre_admin_para_pedido, // <-- CORREGIDO
+                    ':solic_real' => $nombre_admin_para_pedido,
                     ':solic_tel' => empty($solicitante_telefono_post) ? null : $solicitante_telefono_post,
                 ]);
                 
                 $id_pedido_origen_final = $pdo->lastInsertId();
             }
-            // --- FIN LÓGICA DIFERENCIADA ---
             
-            // 7. Insertar la Tarea (Lógica unificada)
+            // 7. Insertar la Tarea (Con el primer asignado como principal)
             $sql = "INSERT INTO tareas (titulo, descripcion, id_creador, id_asignado, id_categoria, prioridad, fecha_limite, adjunto_obligatorio, fecha_creacion, id_pedido_origen)
                     VALUES (:titulo, :descripcion, :id_creador, :id_asignado, :id_categoria, :prioridad, :fecha_limite, :adjunto_obligatorio, NOW(), :id_pedido_origen)";
             
@@ -205,7 +201,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 ':titulo' => $titulo,
                 ':descripcion' => $descripcion,
                 ':id_creador' => $id_creador,
-                ':id_asignado' => $id_asignado,
+                ':id_asignado' => $id_asignado_principal,
                 ':id_categoria' => $id_categoria,
                 ':prioridad' => $prioridad,
                 ':fecha_limite' => $fecha_limite,
@@ -214,8 +210,15 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             ]);
             
             $new_task_id = $pdo->lastInsertId();
+
+            // --- NUEVO: Guardar asignaciones múltiples en tabla intermedia ---
+            $sql_assign = "INSERT INTO tareas_asignaciones (id_tarea, id_usuario) VALUES (:id_tarea, :id_usuario)";
+            $stmt_assign = $pdo->prepare($sql_assign);
+            foreach ($ids_asignados as $id_user_assign) {
+                $stmt_assign->execute([':id_tarea' => $new_task_id, ':id_usuario' => $id_user_assign]);
+            }
             
-            // 8. Vincular el Pedido a la Tarea (Actualización final)
+            // 8. Vincular el Pedido a la Tarea
             $sql_update_pedido = "UPDATE pedidos_trabajo 
                                   SET id_tarea_generada = :id_tarea 
                                   WHERE id_pedido = :id_pedido";
@@ -225,7 +228,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 ':id_pedido' => $id_pedido_origen_final
             ]);
 
-            // (Lógica de Adjuntos y Notificación sin cambios)
+            // (Lógica de Adjuntos)
             if (isset($_FILES['adjuntos_iniciales']) && !empty($_FILES['adjuntos_iniciales']['name'][0])) {
                 $adjuntos_subidos = upload_files($_FILES['adjuntos_iniciales']);
                 if (!empty($adjuntos_subidos)) {
@@ -243,30 +246,33 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 }
             }
 
-            // Notificación al usuario asignado
+            // Notificación a TODOS los usuarios asignados
             $nombre_admin = $_SESSION['usuario_nombre'];
             $mensaje_notif = "{$nombre_admin} te ha asignado una nueva tarea: {$titulo}";
             $url_notif = "tarea_ver.php?id={$new_task_id}";
             $sql_notif = "INSERT INTO notificaciones (id_usuario_destino, mensaje, url, tipo, leida, fecha_creacion) 
                           VALUES (:id_destino, :mensaje, :url, 'tarea_asignada', 0, NOW())";
             $stmt_notif = $pdo->prepare($sql_notif);
-            $stmt_notif->execute([
-                ':id_destino' => $id_asignado,
-                ':mensaje' => $mensaje_notif,
-                ':url' => $url_notif
-            ]);
+            
+            foreach ($ids_asignados as $id_destinatario) {
+                $stmt_notif->execute([
+                    ':id_destino' => $id_destinatario,
+                    ':mensaje' => $mensaje_notif,
+                    ':url' => $url_notif
+                ]);
+            }
 
             $pdo->commit();
             $show_success_modal = true;
             
-            // Limpiar variables previas después de éxito
+            // Limpiar variables
             $titulo_previo = ''; $descripcion_previa = ''; $prioridad_previa = 'baja'; $id_pedido_a_convertir = 0; $telefono_previo = '';
 
         } catch (PDOException $e) {
             $pdo->rollBack();
             $mensaje = "Error al crear la tarea: " . $e->getMessage();
             $alerta_tipo = 'danger';
-        } catch (Exception $e) { // Capturar la excepción de generar_nuevo_numero_orden
+        } catch (Exception $e) { 
             $pdo->rollBack();
             $mensaje = "Error crítico: " . $e->getMessage();
             $alerta_tipo = 'danger';
@@ -274,19 +280,16 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     }
 }
 
-// Obtener listas para los dropdowns
+// Obtener listas
 try {
     $sql_cats = "SELECT id_categoria, nombre FROM categorias ORDER BY nombre";
     $categorias = $pdo->query($sql_cats)->fetchAll();
     
-    // --- INICIO MODIFICACIÓN GEMINI (v6) ---
-    // Cambiar la consulta para incluir 'empleado', 'auxiliar' y 'encargado'
     $sql_users = "SELECT id_usuario, nombre_completo, rol FROM usuarios 
                   WHERE rol IN ('empleado', 'auxiliar', 'encargado') 
                   AND activo = 1 
                   ORDER BY nombre_completo";
     $usuarios_asignables = $pdo->query($sql_users)->fetchAll();
-    // --- FIN MODIFICACIÓN GEMINI (v6) ---
 
 } catch (PDOException $e) {
     $mensaje = "Error al cargar categorías o usuarios: " . $e->getMessage();
@@ -325,11 +328,11 @@ include 'navbar.php';
                     <div class="mb-3">
                         <label for="titulo" class="form-label fw-bold">Título de la Tarea (*)</label>
                         <input type="text" class="form-control" id="titulo" name="titulo" 
-                               value="<?php echo htmlspecialchars($titulo_previo); // Autocompletado ?>" required>
+                               value="<?php echo htmlspecialchars($titulo_previo); ?>" required>
                     </div>
                     <div class="mb-3">
                         <label for="descripcion" class="form-label fw-bold">Descripción / Pedido (*)</label>
-                        <textarea class="form-control" id="descripcion" name="descripcion" rows="6" required><?php echo htmlspecialchars($descripcion_previa); // Autocompletado ?></textarea>
+                        <textarea class="form-control" id="descripcion" name="descripcion" rows="6" required><?php echo htmlspecialchars($descripcion_previa); ?></textarea>
                     </div>
                 </div>
             </div>
@@ -341,16 +344,15 @@ include 'navbar.php';
                         <div class="card-body">
                             <div class="row">
                                 <div class="col-md-6 mb-3">
-                                    <label for="id_asignado" class="form-label fw-bold">Asignar a Técnico (*)</label>
-                                    <select class="form-select" id="id_asignado" name="id_asignado" required>
-                                        <option value="">-- Seleccione un técnico --</option>
-                                        
+                                    <label for="ids_asignados" class="form-label fw-bold">Asignar a Técnicos (*)</label>
+                                    <select class="form-select" id="ids_asignados" name="ids_asignados[]" multiple required style="min-height: 150px;">
                                         <?php foreach ($usuarios_asignables as $usuario): ?>
                                             <option value="<?php echo $usuario['id_usuario']; ?>">
                                                 <?php echo htmlspecialchars($usuario['nombre_completo']); ?> (<?php echo htmlspecialchars(ucfirst($usuario['rol'])); ?>)
                                             </option>
                                         <?php endforeach; ?>
                                         </select>
+                                    <small class="text-muted"><i class="fas fa-info-circle"></i> Mantén presionado Ctrl (o Cmd) para seleccionar varios.</small>
                                 </div>
                                 <div class="col-md-6 mb-3">
                                     <label for="id_categoria" class="form-label fw-bold">Categoría (*)</label>
@@ -391,7 +393,7 @@ include 'navbar.php';
                                 <div class="col-md-12 mb-3">
                                     <label for="solicitante_telefono" class="form-label fw-bold">Teléfono (WhatsApp) (Opcional)</label>
                                     <input type="tel" class="form-control" id="solicitante_telefono" name="solicitante_telefono"
-                                           value="<?php echo htmlspecialchars($telefono_previo); // Autocompletado ?>"
+                                           value="<?php echo htmlspecialchars($telefono_previo); ?>"
                                            placeholder="Ej: 54911...">
                                     <small class="text-muted">Teléfono de contacto del solicitante (si se tiene). Incluir cód. de país (Ej: 54).</small>
                                 </div>
@@ -464,18 +466,15 @@ include 'navbar.php';
     
     <?php if ($show_success_modal && $new_task_id): ?>
     <script>
-        // Mostrar modal de éxito si la bandera está activa
         document.addEventListener('DOMContentLoaded', function() {
             const successModal = new bootstrap.Modal(document.getElementById('successModal'));
             document.getElementById('newTaskID').textContent = <?php echo json_encode($new_task_id); ?>;
             const taskListButton = document.getElementById('viewTaskListButton');
             if (taskListButton) {
-                // (Fusión: Redirige a la bandeja de pedidos si venimos de convertir, o a la lista de tareas si es nueva)
                 taskListButton.href = `<?php echo (isset($_POST['id_pedido_a_convertir']) && (int)$_POST['id_pedido_a_convertir'] > 0) ? 'admin_pedidos_lista.php' : 'tareas_lista.php?highlight_task=' . $new_task_id; ?>`;
             }
             successModal.show();
              
-             // No reseteamos el formulario si venimos de una conversión
              <?php if ($id_pedido_a_convertir == 0): ?>
                 document.querySelector('form').reset(); 
              <?php endif; ?>

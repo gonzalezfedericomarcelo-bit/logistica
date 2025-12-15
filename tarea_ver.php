@@ -1,26 +1,26 @@
 <?php
-// Archivo: tarea_ver.php (VERSIÓN COMPLETA FUSIONADA - ESTABLE + FUNCIONES DE REMITOS)
+// Archivo: tarea_ver.php (VERSIÓN COMPLETA FUSIONADA - ESTABLE + FUNCIONES DE REMITOS + MULTI-ASIGNACIÓN)
 // *** MODIFICADO (v3) POR GEMINI PARA CORREGIR LÓGICA DE 'es_tecnico_asignado' Y 'reanudar_reserva' ***
 // *** MODIFICADO (v4) POR GEMINI PARA DAR PERMISOS DE GESTIÓN AL 'encargado' ***
+// *** MODIFICADO (v5) POR GEMINI PARA SOPORTE MULTI-USUARIO ***
 session_start();
 include 'conexion.php';
+include_once 'funciones_permisos.php';
 
 // 1. Proteger la página
 if (!isset($_SESSION['usuario_id'])) { header("Location: login.php"); exit(); }
 
 $id_usuario = $_SESSION['usuario_id'];
 $rol_usuario = $_SESSION['usuario_rol'];
-// *** AÑADIDO: Definir el permiso de gestión para Admin O Encargado ***
-// (Esta línea es de tu código original y ahora la usaremos)
-$es_admin_o_encargado = in_array($rol_usuario, ['admin', 'encargado']);
-// *******************************************************************
+$es_admin_o_encargado = tiene_permiso('tareas_gestionar', $pdo);
+
 $id_tarea = (int)($_GET['id'] ?? 0);
 
-// --- Capturar mensajes de acción desde SESIÓN (para modales post-acción) ---
+// --- Capturar mensajes de acción desde SESIÓN ---
 $success_msg = $_SESSION['action_success_message'] ?? null;
 $error_msg = $_SESSION['action_error_message'] ?? null;
-unset($_SESSION['action_success_message']); // Limpiar
-unset($_SESSION['action_error_message']);   // Limpiar
+unset($_SESSION['action_success_message']); 
+unset($_SESSION['action_error_message']);   
 // --- FIN Captura mensajes ---
 $numero_orden_display = '';
 
@@ -37,37 +37,49 @@ if ($id_tarea <= 0) { header("Location: tareas_lista.php"); exit(); }
 
 // 2. Obtener datos de la tarea y relacionados
 try {
-    // (Fusión: Usamos la consulta base de tarea_ver.php)
-    $sql = "SELECT t.*, c.nombre AS categoria_nombre, ca.nombre_completo AS creador_nombre, asig.nombre_completo AS asignado_nombre FROM tareas t LEFT JOIN categorias c ON t.id_categoria = c.id_categoria LEFT JOIN usuarios ca ON t.id_creador = ca.id_usuario LEFT JOIN usuarios asig ON t.id_asignado = asig.id_usuario WHERE t.id_tarea = :id_tarea";
+    // CAMBIO MULTI-USUARIO: Usamos GROUP_CONCAT para traer todos los nombres
+    $sql = "SELECT t.*, c.nombre AS categoria_nombre, ca.nombre_completo AS creador_nombre,
+            (SELECT GROUP_CONCAT(u.nombre_completo SEPARATOR ', ') 
+             FROM tareas_asignaciones ta 
+             JOIN usuarios u ON ta.id_usuario = u.id_usuario 
+             WHERE ta.id_tarea = t.id_tarea) as asignado_nombre
+            FROM tareas t 
+            LEFT JOIN categorias c ON t.id_categoria = c.id_categoria 
+            LEFT JOIN usuarios ca ON t.id_creador = ca.id_usuario 
+            WHERE t.id_tarea = :id_tarea";
+            
     $stmt = $pdo->prepare($sql); $stmt->execute([':id_tarea' => $id_tarea]); $tarea = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$tarea) { header("Location: tareas_lista.php"); exit(); }
     
-    // --- INICIO DE LA MODIFICACIÓN DE GEMINI (v3) ---
-    // (Esta corrección permite a empleado y auxiliar ver sus tareas)
-    $es_tecnico_asignado = ((int)$tarea['id_asignado'] === $id_usuario);
-    // --- FIN DE LA MODIFICACIÓN DE GEMINI (v3) ---
+    // --- LÓGICA PERMISOS MULTI-USUARIO ---
+    // Verificar si el usuario actual está en la tabla de asignaciones
+    $stmt_check = $pdo->prepare("SELECT COUNT(*) FROM tareas_asignaciones WHERE id_tarea = :id AND id_usuario = :user");
+    $stmt_check->execute([':id' => $id_tarea, ':user' => $id_usuario]);
+    $es_tecnico_asignado = ($stmt_check->fetchColumn() > 0);
+    
+    // Fallback: si no hay nadie en la tabla nueva, mirar el campo antiguo
+    if (!$es_tecnico_asignado && (int)$tarea['id_asignado'] === $id_usuario) {
+        $es_tecnico_asignado = true;
+    }
+    // --------------------------------------
 
     // Protección para que un usuario no-admin/encargado no vea tareas ajenas
-    // --- INICIO DE LA MODIFICACIÓN DE GEMINI (v4) ---
-    // (Añadido !$es_admin_o_encargado para que el encargado pueda ver tareas aunque no esté asignado)
-    if (!$es_admin_o_encargado && !$es_tecnico_asignado && $rol_usuario !== 'auxiliar') { 
-    // --- FIN DE LA MODIFICACIÓN DE GEMINI (v5) ---
+    if (!$es_admin_o_encargado && !$es_tecnico_asignado && !tiene_permiso('tareas_ver_todas', $pdo)) { 
         header("Location: tareas_lista.php?error=" . urlencode("Sin permiso.")); 
         exit(); 
     }
 
-    // (Fusión: Usamos las consultas de tarea_ver_r.php para la DB correcta)
     // Adjuntos Iniciales
     $sql_adjuntos = "SELECT id_adjunto, nombre_archivo, ruta_archivo FROM adjuntos_tarea WHERE id_tarea = :id_tarea AND tipo_adjunto = 'inicial' ORDER BY fecha_subida ASC";
     $stmt_adjuntos = $pdo->prepare($sql_adjuntos); $stmt_adjuntos->execute([':id_tarea' => $id_tarea]); $adjuntos_iniciales = $stmt_adjuntos->fetchAll(PDO::FETCH_ASSOC);
 
-    // Adjuntos Finales (CON FECHA)
+    // Adjuntos Finales
     $sql_adjuntos_finales = "SELECT id_adjunto, nombre_archivo, ruta_archivo, fecha_subida FROM adjuntos_tarea WHERE id_tarea = :id_tarea AND tipo_adjunto = 'final' ORDER BY fecha_subida DESC";
     $stmt_adjuntos_finales = $pdo->prepare($sql_adjuntos_finales); $stmt_adjuntos_finales->execute([':id_tarea' => $id_tarea]); $adjuntos_finales_raw = $stmt_adjuntos_finales->fetchAll(PDO::FETCH_ASSOC);
     $adjuntos_finales_agrupados = []; foreach ($adjuntos_finales_raw as $adj) { $fecha_dia = date('Y-m-d', strtotime($adj['fecha_subida'])); $adjuntos_finales_agrupados[$fecha_dia][] = $adj; }
 
-    // Actualizaciones (Incluyendo 'causo_reserva' de tarea_ver_r.php)
+    // Actualizaciones
     $sql_actualizaciones = "SELECT a.id_actualizacion, a.id_usuario, a.contenido, a.fecha_actualizacion,
                                    u.nombre_completo AS usuario_nombre, u.rol AS usuario_rol,
                                    a.causo_reserva
@@ -77,16 +89,16 @@ try {
                             ORDER BY a.fecha_actualizacion DESC";
     $stmt_actualizaciones = $pdo->prepare($sql_actualizaciones); $stmt_actualizaciones->execute([':id_tarea' => $id_tarea]); $actualizaciones = $stmt_actualizaciones->fetchAll(PDO::FETCH_ASSOC);
 
-    // Adjuntos de actualizaciones (Usando la lógica de tarea_ver_r.php)
+    // Adjuntos de actualizaciones
     $sql_adjuntos_updates = "SELECT id_adjunto, id_actualizacion, tipo_adjunto, nombre_archivo, ruta_archivo, estado_conciliacion, descripcion_compra, precio_total, numero_compra FROM adjuntos_tarea WHERE id_tarea = :id_tarea AND tipo_adjunto IN ('actualizacion', 'remito') AND id_actualizacion IS NOT NULL";
     $stmt_adjuntos_updates = $pdo->prepare($sql_adjuntos_updates); $stmt_adjuntos_updates->execute([':id_tarea' => $id_tarea]); $adjuntos_updates_raw = $stmt_adjuntos_updates->fetchAll(PDO::FETCH_ASSOC);
 
     $adjuntos_por_actualizacion = [];
     foreach ($adjuntos_updates_raw as $adjunto) {
-        $adjuntos_por_actualizacion[$adjunto['id_actualizacion']][] = $adjunto; // Agrupa por ID de actualización
+        $adjuntos_por_actualizacion[$adjunto['id_actualizacion']][] = $adjunto; 
     }
 
-    // Notas específicas para Modales y Avisos + Lógica Recall
+    // Notas específicas para Modales
     $nota_modificacion_admin = ""; $nota_cancelacion_admin = ""; $latest_recall_request = null; $latest_admin_return = null;
     foreach ($actualizaciones as $act) {
         if (!$latest_recall_request && str_starts_with($act['contenido'], '[SOLICITUD TÉCNICO] Corrección solicitada') && $act['id_usuario'] != $id_usuario) { $latest_recall_request = $act; }
@@ -95,7 +107,7 @@ try {
         if (!$nota_cancelacion_admin && str_starts_with($act['contenido'], 'TAREA CANCELADA POR ADMINISTRADOR.')) { $nota_cancelacion_admin = $act['contenido']; }
     }
 
-    // Lógica Recall (sin cambios)
+    // Lógica Recall
     $show_pending_recall_warning = false; $recall_reason = '';
     if ($tarea['estado'] === 'finalizada_tecnico' && $latest_recall_request) {
         $recall_reason = str_replace('[SOLICITUD TÉCNICO] Corrección solicitada (post-entrega). Motivo: ', '', $latest_recall_request['contenido']);
@@ -106,7 +118,6 @@ try {
 
 } catch (PDOException $e) { die("Error al cargar datos: " . $e->getMessage()); }
 
-// Funciones traducir_estado y traducir_prioridad (con 'en_reserva' añadido de tarea_ver_r.php)
 function traducir_estado($estado) { $estados = ['asignada' => '<span class="badge bg-info p-2 fs-5 text-uppercase"><i class="fas fa-hand-point-right"></i> Asignada</span>', 'en_proceso' => '<span class="badge bg-warning text-dark p-2 fs-5 text-uppercase"><i class="fas fa-tools"></i> En Proceso</span>', 'finalizada_tecnico' => '<span class="badge bg-primary p-2 fs-5 text-uppercase"><i class="fas fa-search"></i> P/Revisión</span>', 'verificada' => '<span class="badge bg-success p-2 fs-5 text-uppercase"><i class="fas fa-check-double"></i> Cerrada</span>', 'modificacion_requerida' => '<span class="badge bg-danger p-2 fs-5 text-uppercase"><i class="fas fa-undo"></i> Modificación</span>', 'cancelada' => '<span class="badge bg-secondary p-2 fs-5 text-uppercase"><i class="fas fa-ban"></i> Cancelada</span>', 'en_reserva' => '<span class="badge bg-dark p-2 fs-5 text-uppercase"><i class="fas fa-pause-circle"></i> En Reserva</span>']; return $estados[$estado] ?? $estado; }
 function traducir_prioridad($prioridad) { $prioridades = ['baja' => '<span class="badge bg-success p-2 fs-5 text-uppercase"><i class="fas fa-angle-double-down"></i> Baja</span>', 'media' => '<span class="badge bg-info p-2 fs-5 text-uppercase"><i class="fas fa-equals"></i> Media</span>', 'alta' => '<span class="badge bg-warning text-dark p-2 fs-5 text-uppercase"><i class="fas fa-angle-double-up"></i> Alta</span>', 'urgente' => '<span class="badge bg-danger p-2 fs-5 text-uppercase"><i class="fas fa-exclamation-triangle"></i> URGENTE</span>']; return $prioridades[$prioridad] ?? $prioridad; }
 ?>
@@ -130,51 +141,20 @@ function traducir_prioridad($prioridad) { $prioridades = ['baja' => '<span class
         .animate__animated.animate__flash { --animate-duration: 2s; }
         .preserve-whitespace { white-space: pre-wrap; }
 
-        /* (Fusión: Estilos de tarea_ver_r.php) */
-        .list-group-item.update-en-reserva {
-            background-color: #fff3e0 !important;
-            border-left: 5px solid #fd7e14 !important;
-        }
-        .list-group-item.update-solicitud {
-            background-color: #fff8e1 !important;
-            border-left: 5px solid #ffc107 !important;
-        }
+        /* Estilos específicos */
+        .list-group-item.update-en-reserva { background-color: #fff3e0 !important; border-left: 5px solid #fd7e14 !important; }
+        .list-group-item.update-solicitud { background-color: #fff8e1 !important; border-left: 5px solid #ffc107 !important; }
         .form-label-sm { font-size: 0.875em; margin-bottom: 0.2rem; }
         .form-control-sm { font-size: 0.875rem; padding: 0.25rem 0.5rem; }
-        
-        /* Estilo base para las actualizaciones NO en hilos (para separarlas) */
-        .list-group-item.list-group-item-action {
-            margin-bottom: 8px; 
-            border-radius: 0.375rem !important;
-        }
-        
-        /* Ítem A: Remito Rechazado (Padre del hilo - Color Rojo) */
-        .list-group-item.update-rejected-remito {
-            background-color: #ffe0e0 !important; 
-            border-left: 5px solid #dc3545 !important;
-            margin-bottom: 0px !important; 
-            border-radius: 0.375rem 0.375rem 0 0 !important;
-        }
-        
-        /* Ítem B: Corrección (Hijo del hilo - Color Verde con Sangría) */
-        .list-group-item.correction-thread {
-            background-color: #f0fff0 !important; 
-            border-left: 5px solid #198754 !important; 
-            border-top: 1px dashed #198754 !important;
-            padding-left: 20px; /* Sangría */
-            margin-top: 0px; 
-            margin-bottom: 8px !important; 
-            border-radius: 0 0 0.375rem 0.375rem !important;
-        }
-        /* (Fin Fusión Estilos) */
+        .list-group-item.list-group-item-action { margin-bottom: 8px; border-radius: 0.375rem !important; }
+        .list-group-item.update-rejected-remito { background-color: #ffe0e0 !important; border-left: 5px solid #dc3545 !important; margin-bottom: 0px !important; border-radius: 0.375rem 0.375rem 0 0 !important; }
+        .list-group-item.correction-thread { background-color: #f0fff0 !important; border-left: 5px solid #198754 !important; border-top: 1px dashed #198754 !important; padding-left: 20px; margin-top: 0px; margin-bottom: 8px !important; border-radius: 0 0 0.375rem 0.375rem !important; }
     </style>
 </head>
 <body style="background-color: #f8f9fa;">
     <?php include 'navbar.php'; ?>
 
     <div class="container mt-4">
-
-        
         
         <div class="card mb-4 shadow-lg cabecera-tarea">
              <h1 class="display-5 fw-bold text-dark mb-2"><i class="fas fa-clipboard-list me-2 text-primary"></i> Tarea #<?php echo $id_tarea; ?>: <?php echo htmlspecialchars($tarea['titulo']); ?></h1>
@@ -192,18 +172,13 @@ function traducir_prioridad($prioridad) { $prioridades = ['baja' => '<span class
                     <?php endif; ?>
                 </div>
              <?php endif; ?>
-        </div> <?php // <-- FIN DEL DIV DE LA CABECERA ?>
+        </div>
 
-        <?php // <--- PEGA EL CÓDIGO AQUÍ ---> ?>
         <?php
-        // Verificar si la tarea está verificada Y si proviene de un pedido (tiene id_pedido_origen)
         if (isset($tarea['estado']) && $tarea['estado'] === 'verificada' && isset($tarea['id_pedido_origen']) && $tarea['id_pedido_origen'] > 0):
-
-            // --- Inicio: Lógica Opcional para obtener numero_orden ---
-            $numero_orden_display = $tarea['id_pedido_origen']; // Valor por defecto si no hacemos JOIN
+            $numero_orden_display = $tarea['id_pedido_origen'];
             try {
-                // Hacemos una consulta rápida para obtener el numero_orden si no lo tienes ya en $tarea
-                if (!isset($tarea['numero_orden_pedido'])) { // Solo si no existe ya en $tarea
+                if (!isset($tarea['numero_orden_pedido'])) { 
                     $sql_orden = "SELECT numero_orden FROM pedidos_trabajo WHERE id_pedido = :id_pedido LIMIT 1";
                     $stmt_orden = $pdo->prepare($sql_orden);
                     $stmt_orden->execute([':id_pedido' => $tarea['id_pedido_origen']]);
@@ -216,15 +191,9 @@ function traducir_prioridad($prioridad) { $prioridades = ['baja' => '<span class
                 }
             } catch (PDOException $e) {
                 error_log("Error al obtener numero_orden para PDF final: " . $e->getMessage());
-                // No hacemos nada, se usará el id_pedido_origen
             }
-            // --- Fin: Lógica Opcional ---
         ?>
-            
-        <?php
-        endif;
-        ?>
-        <?php // <--- FIN DEL CÓDIGO PEGADO ---> ?>
+        <?php endif; ?>
 
         <ul class="nav nav-pills nav-fill mb-3" id="tareaTab" role="tablist">
              <li class="nav-item"><button class="nav-link active" id="detalles-tab" data-bs-toggle="tab" data-bs-target="#detalles" type="button">**DETALLES**</button></li>
@@ -295,12 +264,9 @@ function traducir_prioridad($prioridad) { $prioridades = ['baja' => '<span class
                  $esta_en_reserva = ($tarea['estado'] === 'en_reserva');
                  $is_finalized = in_array($tarea['estado'], ['finalizada_tecnico', 'verificada', 'cancelada']);
                  $can_update = ($es_tecnico_asignado && !$is_finalized && !$esta_en_reserva && $tarea['estado'] !== 'asignada');
-                 
-                 // Variables de control para el threading visual
-                 $is_next_correction_thread = false;
                  ?>
 
-                 <?php if ($can_update): // Mostrar formulario de actualización ?>
+                 <?php if ($can_update): ?>
                      <div class="card mb-4 shadow-sm">
                          <div class="card-header bg-primary text-white">Registrar Novedad</div>
                          <div class="card-body">
@@ -355,21 +321,20 @@ function traducir_prioridad($prioridad) { $prioridades = ['baja' => '<span class
                              </form>
                          </div>
                      </div>
-                 <?php elseif ($es_tecnico_asignado && $esta_en_reserva): // Mensaje si está en reserva ?>
+                 <?php elseif ($es_tecnico_asignado && $esta_en_reserva): ?>
                      <div class="alert alert-dark text-center border-dark shadow-sm" role="alert">
                          <h5 class="alert-heading"><i class="fas fa-pause-circle me-2"></i> Tarea "En Reserva"</h5>
                          <p>La tarea está pausada, probablemente esperando materiales o acción externa.</p>
                          <hr>
                          <p class="mb-0">Cuando puedas continuar, ve a la pestaña **ACCIONES** y selecciona **"Quitar Estado de Reserva"**.</p>
                      </div>
-                 <?php elseif ($es_tecnico_asignado && $tarea['estado'] === 'asignada'): // Mensaje si está asignada ?>
+                 <?php elseif ($es_tecnico_asignado && $tarea['estado'] === 'asignada'): ?>
                       <div class="alert alert-warning text-center" role="alert">
                           <h5 class="alert-heading"><i class="fas fa-exclamation-triangle me-2"></i> Tarea No Iniciada</h5>
                           <p class="mb-0">Debes **Iniciar la Tarea** en la pestaña **"ACCIONES"** antes de poder agregar novedades.</p>
                       </div>
                  <?php elseif ($es_tecnico_asignado && $is_finalized): ?>
                      <div class="alert alert-info text-center"><i class="fas fa-info-circle me-2"></i> Tarea finalizada/cancelada. No se pueden agregar más novedades.</div>
-                 
                  <?php elseif (!$es_tecnico_asignado && $es_admin_o_encargado): ?>
                  <div class="alert alert-secondary text-center"><i class="fas fa-user-shield me-2"></i> Solo puedes ver el historial de novedades.</div>
                  <?php endif; ?>
@@ -381,40 +346,31 @@ function traducir_prioridad($prioridad) { $prioridades = ['baja' => '<span class
                      <div class="list-group">
                          <?php foreach ($updates_indexed as $index => $actualizacion): ?>
                              <?php
-                             // 1. Inicializar banderas
                              $current_user_id = $actualizacion['id_usuario'];
                              $current_update_id = $actualizacion['id_actualizacion'];
                              $is_rejected_remito_current = false;
                              $is_correction_thread_current = false;
                              
-                             // Buscar si esta actualización contiene un remito rechazado (para el estilo ROJO)
                              $adjuntos_actuales = $adjuntos_por_actualizacion[$current_update_id] ?? [];
                              $adjuntos_rem = array_filter($adjuntos_actuales, fn($adj) => $adj['tipo_adjunto'] === 'remito');
 
                              if (!empty($adjuntos_rem)) {
                                  $first_remito = reset($adjuntos_rem);
-                                 // Marcamos la actualización actual si su remito fue rechazado
                                  if (isset($first_remito['estado_conciliacion']) && $first_remito['estado_conciliacion'] === 'rechazado') {
                                      $is_rejected_remito_current = true;
                                  }
                              }
                              
-                             // 2. Heurística de Threading (Reverse Order: Newest first)
-                             // Verificamos si el ÍTEM SIGUIENTE (más antiguo, índice + 1) en la lista fue un rechazo.
                              $next_index = $index + 1;
-                             
                              if (isset($updates_indexed[$next_index])) {
                                  $next_update = $updates_indexed[$next_index];
                                  $next_update_user_id = $next_update['id_usuario'];
                                  $next_update_adjuntos = $adjuntos_por_actualizacion[$next_update['id_actualizacion']] ?? [];
                                  $next_update_remitos = array_filter($next_update_adjuntos, fn($adj) => $adj['tipo_adjunto'] === 'remito');
                                  
-                                 // Si el ítem más antiguo (índice + 1) es un remito que FUE rechazado
                                  if (!empty($next_update_remitos)) {
                                      $next_remito = reset($next_update_remitos);
                                      if (isset($next_remito['estado_conciliacion']) && $next_remito['estado_conciliacion'] === 'rechazado') {
-                                          // Y si la actualización actual (la corrección) fue hecha por el mismo usuario
-                                          // Esto crea el enlace visual: [Corrección] -> [Rechazo]
                                           if ($current_user_id === $next_update_user_id) {
                                                $is_correction_thread_current = true;
                                           }
@@ -422,9 +378,6 @@ function traducir_prioridad($prioridad) { $prioridades = ['baja' => '<span class
                                  }
                              }
                              
-                             // 3. Aplicar estilos
-                             
-                             // Estilos base (causo_reserva/solicitud)
                              $item_class = 'list-group-item-action';
                              if (isset($actualizacion['causo_reserva']) && $actualizacion['causo_reserva'] == 1) {
                                  $item_class = 'update-en-reserva';
@@ -432,15 +385,8 @@ function traducir_prioridad($prioridad) { $prioridades = ['baja' => '<span class
                                  $item_class = 'update-solicitud';
                              }
 
-                             // Aplicar Threading (sobrescribe todo)
-                             if ($is_rejected_remito_current) {
-                                 $item_class = 'update-rejected-remito'; // ROJO
-                             } 
-                             // Si es el ítem de corrección, aplica el estilo de hilo (VERDE con sangría)
-                             if ($is_correction_thread_current) {
-                                 $item_class = 'correction-thread'; // VERDE con sangría
-                             }
-
+                             if ($is_rejected_remito_current) { $item_class = 'update-rejected-remito'; } 
+                             if ($is_correction_thread_current) { $item_class = 'correction-thread'; }
                              ?>
                              <div class="list-group-item <?php echo $item_class; ?> flex-column align-items-start" id="update-item-<?php echo $current_update_id; ?>">
                                  <div class="d-flex w-100 justify-content-between">
@@ -449,10 +395,9 @@ function traducir_prioridad($prioridad) { $prioridades = ['baja' => '<span class
                                  </div>
                                  <p class="mb-1 preserve-whitespace"><?php echo htmlspecialchars($actualizacion['contenido']); ?></p>
 
-                                 <?php $adjuntos_actuales = $adjuntos_por_actualizacion[$current_update_id] ?? []; ?>
                                  <?php if (!empty($adjuntos_actuales)): ?>
                                      <div class="mt-2">
-                                         <?php // Separar adjuntos y remitos
+                                         <?php 
                                          $adjuntos_gen = array_filter($adjuntos_actuales, fn($adj) => $adj['tipo_adjunto'] === 'actualizacion');
                                          $adjuntos_rem = array_filter($adjuntos_actuales, fn($adj) => $adj['tipo_adjunto'] === 'remito');
                                          ?>
@@ -461,16 +406,8 @@ function traducir_prioridad($prioridad) { $prioridades = ['baja' => '<span class
                                              <ul class="list-unstyled d-flex flex-wrap gap-2 mt-1">
                                                  <?php foreach ($adjuntos_gen as $adjunto): ?>
                                                  <li>
-                                                     <a href="ver_adjunto.php?id=<?php echo $adjunto['id_adjunto']; ?>" target="_blank" 
-                                                        class="btn btn-sm btn-outline-info me-1" 
-                                                        title="Ver <?php echo htmlspecialchars($adjunto['nombre_archivo']); ?>">
-                                                        <i class="fas fa-eye"></i> Ver
-                                                     </a>
-                                                     <a href="descargar_adjunto.php?id=<?php echo $adjunto['id_adjunto']; ?>" 
-                                                        class="btn btn-sm btn-outline-secondary" 
-                                                        title="Descargar <?php echo htmlspecialchars($adjunto['nombre_archivo']); ?>">
-                                                        <i class="fas fa-file-download"></i>
-                                                     </a>
+                                                     <a href="ver_adjunto.php?id=<?php echo $adjunto['id_adjunto']; ?>" target="_blank" class="btn btn-sm btn-outline-info me-1"><i class="fas fa-eye"></i> Ver</a>
+                                                     <a href="descargar_adjunto.php?id=<?php echo $adjunto['id_adjunto']; ?>" class="btn btn-sm btn-outline-secondary"><i class="fas fa-file-download"></i></a>
                                                  </li>
                                                  <?php endforeach; ?>
                                              </ul>
@@ -480,16 +417,8 @@ function traducir_prioridad($prioridad) { $prioridades = ['baja' => '<span class
                                              <ul class="list-unstyled d-flex flex-wrap gap-2 mt-1">
                                                  <?php foreach ($adjuntos_rem as $adjunto): ?>
                                                  <li>
-                                                      <a href="ver_adjunto.php?id=<?php echo $adjunto['id_adjunto']; ?>" target="_blank" 
-                                                        class="btn btn-sm btn-outline-info me-1" 
-                                                        title="Ver <?php echo htmlspecialchars($adjunto['nombre_archivo']); ?>">
-                                                        <i class="fas fa-eye"></i> Ver
-                                                     </a>
-                                                     <a href="descargar_adjunto.php?id=<?php echo $adjunto['id_adjunto']; ?>" 
-                                                        class="btn btn-sm btn-outline-success" 
-                                                        title="Descargar <?php echo htmlspecialchars($adjunto['nombre_archivo']); ?>">
-                                                        <i class="fas fa-file-download"></i>
-                                                     </a>
+                                                      <a href="ver_adjunto.php?id=<?php echo $adjunto['id_adjunto']; ?>" target="_blank" class="btn btn-sm btn-outline-info me-1"><i class="fas fa-eye"></i> Ver</a>
+                                                     <a href="descargar_adjunto.php?id=<?php echo $adjunto['id_adjunto']; ?>" class="btn btn-sm btn-outline-success"><i class="fas fa-file-download"></i></a>
                                                  </li>
                                                  <?php endforeach; ?>
                                              </ul>
@@ -526,9 +455,8 @@ function traducir_prioridad($prioridad) { $prioridades = ['baja' => '<span class
                              <hr>
                              <form action="<?php echo $action_url_estado; ?>" method="POST" class="d-inline">
                                  <input type="hidden" name="id_tarea" value="<?php echo $id_tarea; ?>">
-                                 
-                                      <input type="hidden" name="nuevo_estado" value="reanudar_reserva">
-                                                                  <button type="submit" class="btn btn-success btn-lg">
+                                 <input type="hidden" name="nuevo_estado" value="reanudar_reserva">
+                                 <button type="submit" class="btn btn-success btn-lg">
                                      <i class="fas fa-play"></i> Quitar Estado de Reserva y Continuar
                                  </button>
                              </form>
@@ -593,7 +521,7 @@ function traducir_prioridad($prioridad) { $prioridades = ['baja' => '<span class
                                      <p class="mb-0 small fst-italic preserve-whitespace"><?php echo htmlspecialchars($tarea['nota_final'] ?? 'Sin nota.'); ?></p>
                                  </blockquote>
 
-                                 <?php if ($show_pending_recall_warning): // (Fusión: Lógica de Recall de tarea_ver_r.php) ?>
+                                 <?php if ($show_pending_recall_warning): ?>
                                      <div class="alert alert-warning border-warning fw-bold mt-3 animate__animated animate__pulse animate__infinite" role="alert" style="--animate-duration: 2s;">
                                          <h5 class="alert-heading"><i class="fas fa-exclamation-triangle me-2"></i> ¡Atención! El técnico solicita corregir</h5>
                                          <p class="mb-1"><strong>Motivo indicado:</strong></p>
@@ -633,7 +561,7 @@ function traducir_prioridad($prioridad) { $prioridades = ['baja' => '<span class
                                  </form>
                              </div>
                          </div>
-                     <?php elseif (in_array($tarea['estado'], ['asignada', 'en_proceso', 'modificacion_requerida', 'en_reserva'])): // (Fusión: Añadido 'en_reserva') ?>
+                     <?php elseif (in_array($tarea['estado'], ['asignada', 'en_proceso', 'modificacion_requerida', 'en_reserva'])): ?>
                          <div class="alert alert-info text-center">
                              <i class="fas fa-info-circle me-2"></i> Tarea <?php echo $tarea['estado'] === 'en_reserva' ? 'actualmente "En Reserva"' : 'en curso o pendiente'; ?>.<br> Puedes editar detalles o cancelarla si es necesario.
                              <div class="mt-3">
@@ -650,7 +578,7 @@ function traducir_prioridad($prioridad) { $prioridades = ['baja' => '<span class
                              <i class="fas fa-exclamation-triangle me-2"></i> Estado de tarea no reconocido: <?php echo htmlspecialchars($tarea['estado']); ?>
                          </div>
                      <?php endif; ?>
-                 <?php endif; // Fin del bloque de acciones ?>
+                 <?php endif; ?>
             </div>
         </div>
     </div>
@@ -669,8 +597,6 @@ function traducir_prioridad($prioridad) { $prioridades = ['baja' => '<span class
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // --- INICIO CÓDIGO JS COMPLETO (FUSIONADO) ---
-
         function showToast(title, message, type = 'success') {
             let i='', c='';
             if(type==='success'){i='<i class="fas fa-check-circle me-2"></i>';c='bg-success text-white';}
@@ -691,18 +617,16 @@ function traducir_prioridad($prioridad) { $prioridades = ['baja' => '<span class
                     const tab = bootstrap.Tab.getOrCreateInstance(tabTriggerEl);
                     if (tab) {
                         tab.show();
-                        console.log(`Pestaña ${tabTargetId} activada.`);
                         setTimeout(() => {
                             if (elementToHighlight) {
-                                console.log(`Resaltando ${elementToHighlightId}`);
                                 elementToHighlight.classList.add('highlight-section-flash');
                                 elementToHighlight.scrollIntoView({ behavior: 'smooth', block: 'center' });
                                 setTimeout(() => { elementToHighlight.classList.remove('highlight-section-flash'); }, 2000);
-                            } else { console.warn(`Elemento ${elementToHighlightId} no encontrado.`); }
+                            }
                         }, 300);
                     }
                 } catch (e) { console.error("Error al activar pestaña:", e); }
-            } else { console.warn(`No botón para target: ${tabTargetId}`); }
+            }
         }
 
         document.addEventListener('DOMContentLoaded', function() {
@@ -712,56 +636,47 @@ function traducir_prioridad($prioridad) { $prioridades = ['baja' => '<span class
             const errorMsg = <?php echo json_encode($error_msg); ?>;
             let urlNeedsCleaning = false;
 
-            // --- Lógica Modales Confirmación (Success/Error post-acción) ---
             const actionResultModalEl = document.getElementById('actionResultModal');
             if (actionResultModalEl) {
                 const actionResultModal = new bootstrap.Modal(actionResultModalEl);
                 const modalTitleEl = actionResultModalEl.querySelector('.modal-title');
                 const modalMessageEl = document.getElementById('actionResultModalMessage');
                 const modalHeader = actionResultModalEl.querySelector('.modal-header');
-                const modalIcon = modalTitleEl ? modalTitleEl.querySelector('i') : null;
 
                 if (successMsg) {
-                    if (modalTitleEl && modalIcon && modalMessageEl && modalHeader) {
+                    if (modalTitleEl && modalMessageEl && modalHeader) {
                         modalTitleEl.innerHTML = '<i class="fas fa-check-circle me-2"></i> Acción Completada'; modalMessageEl.textContent = successMsg; modalHeader.className = 'modal-header bg-success text-white'; actionResultModal.show(); urlNeedsCleaning = true;
-                    } else { console.error("Elementos del modal de éxito no encontrados."); }
+                    }
                 } else if (errorMsg) {
-                     if (modalTitleEl && modalIcon && modalMessageEl && modalHeader) {
+                     if (modalTitleEl && modalMessageEl && modalHeader) {
                         modalTitleEl.innerHTML = '<i class="fas fa-exclamation-triangle me-2"></i> Error'; modalMessageEl.textContent = errorMsg; modalHeader.className = 'modal-header bg-danger text-white'; actionResultModal.show(); urlNeedsCleaning = true;
-                    } else { console.error("Elementos del modal de error no encontrados."); }
+                    }
                 }
 
-                // Aseguramos que la limpieza de URL se ejecute después de que el modal se oculte
                 if (urlNeedsCleaning) {
                     actionResultModalEl.addEventListener('hidden.bs.modal', function () {
-                         const currentUrlClean = window.location.pathname + '?id=' + idTareaParam + window.location.hash; history.replaceState(null, null, currentUrlClean); console.log("URL limpiada post-modal.");
+                         const currentUrlClean = window.location.pathname + '?id=' + idTareaParam + window.location.hash; history.replaceState(null, null, currentUrlClean);
                     }, { once: true });
                 }
-            } else { console.warn("Modal 'actionResultModal' no encontrado.");}
+            }
 
-
-            // --- LÓGICA BOTÓN INICIAR TAREA ---
             const btnIniciarTarea = document.getElementById('btnIniciarTarea'); const confirmarInicioModal = document.getElementById('confirmarInicioModal');
             if (btnIniciarTarea && confirmarInicioModal) {
                 const iniciarModal = new bootstrap.Modal(confirmarInicioModal);
-                btnIniciarTarea.addEventListener('click', function(e) { e.preventDefault(); console.log("[Iniciar Tarea] Clic."); iniciarModal.show(); });
+                btnIniciarTarea.addEventListener('click', function(e) { e.preventDefault(); iniciarModal.show(); });
                 document.getElementById('btnConfirmarInicio').addEventListener('click', function() {
-                    console.log("[Iniciar Tarea] Confirmado.");
                     iniciarModal.hide();
                     const idTarea = btnIniciarTarea.getAttribute('data-id-tarea');
-                    console.log(`[Iniciar Tarea] Fetch ID: ${idTarea} a: <?php echo $action_url_estado; ?>`);
                     fetch('<?php echo $action_url_estado; ?>', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' },
                         body: `id_tarea=${idTarea}&nuevo_estado=en_proceso`
                     })
                     .then(response => {
-                        console.log("[Iniciar Tarea] Status:", response.status);
                         if (!response.ok) { return response.text().then(text => { throw new Error(`HTTP ${response.status}: ${text}`); }); }
                         return response.json();
                     })
                     .then(data => {
-                        console.log("[Iniciar Tarea] Datos:", data);
                         if (data.success && data.message) {
                             const resultModalEl = document.getElementById('actionResultModal');
                             const resultModal = bootstrap.Modal.getOrCreateInstance(resultModalEl);
@@ -782,14 +697,11 @@ function traducir_prioridad($prioridad) { $prioridades = ['baja' => '<span class
                         }
                     })
                     .catch(error => {
-                        console.error('[Iniciar Tarea] Error fetch/json:', error);
                         showToast('Error Conexión', `Error: ${error.message}.`, 'danger');
                     });
                 });
             }
 
-
-            // --- LÓGICA MODALES NOTIFICACIÓN (Aprobada, Modif, Cancelada) ---
             const modalTipo = urlParams.get('show_modal');
             let needsCleanFromModalNotif = false;
             if (modalTipo === 'aprobada') { const m=new bootstrap.Modal(document.getElementById('modalAprobada')); m.show(); const z=1060; var d=3*1000; var aE=Date.now()+d; var df={startVelocity:30,spread:360,ticks:60,zIndex:z+10}; function rIR(min,max){return Math.random()*(max-min)+min;} var i=setInterval(function(){var tL=aE-Date.now(); if(tL<=0){return clearInterval(i);} var pC=50*(tL/d); confetti({...df,particleCount:pC,origin:{x:rIR(0.1,0.3),y:Math.random()-0.2}}); confetti({...df,particleCount:pC,origin:{x:rIR(0.7,0.9),y:Math.random()-0.2}});}, 250); needsCleanFromModalNotif = true; }
@@ -797,7 +709,6 @@ function traducir_prioridad($prioridad) { $prioridades = ['baja' => '<span class
             else if (modalTipo === 'cancelada_admin') { const m=new bootstrap.Modal(document.getElementById('modalCanceladaAdmin')); m.show(); needsCleanFromModalNotif = true; }
             if (needsCleanFromModalNotif) { history.replaceState(null,null,window.location.pathname+'?id=' + idTareaParam + window.location.hash); urlNeedsCleaning = false; }
 
-            // --- LÓGICA MODAL TAREA REASIGNADA (de tarea_ver.php base) ---
             const reasignadaParam = urlParams.get('reasignada_a');
             const newAssigneeNameParam = urlParams.get('new_assignee_name');
             const modalReasignadaEl = document.getElementById('reassignInfoModal');
@@ -811,7 +722,6 @@ function traducir_prioridad($prioridad) { $prioridades = ['baja' => '<span class
                 const newAssigneeNameEl = document.getElementById('reassignNewAssigneeName');
                 const confirmBtn = document.getElementById('reassignModalConfirmButton');
 
-                // Llenar campos
                 document.getElementById('reassignTaskId').textContent = '#' + (idTareaParam || 'N/A');
                 document.getElementById('reassignTaskTitle').textContent = decodeURIComponent((urlParams.get('task_title') || 'No especificado').replace(/\+/g, ' '));
                 document.getElementById('reassignTaskDescription').textContent = decodeURIComponent((urlParams.get('task_desc') || '').replace(/\+/g, ' '));
@@ -838,7 +748,6 @@ function traducir_prioridad($prioridad) { $prioridades = ['baja' => '<span class
                 needsCleanFromReassign = true;
                 urlNeedsCleaning = false;
 
-                // Limpiar parámetros de reasignación DESPUÉS de mostrar
                  modalReasignadaEl.addEventListener('shown.bs.modal', function () {
                     const currentUrlClean = new URL(window.location);
                     currentUrlClean.searchParams.delete('reasignada_a');
@@ -849,37 +758,28 @@ function traducir_prioridad($prioridad) { $prioridades = ['baja' => '<span class
                     currentUrlClean.searchParams.delete('task_prio');
                     currentUrlClean.searchParams.delete('task_cat');
                     history.replaceState(null, null, currentUrlClean.toString());
-                    console.log("Parámetros de reasignación limpiados.");
                  }, { once: true });
             }
-            // --- FIN LÓGICA MODAL TAREA REASIGNADA ---
 
+            function activateTabByTargetId(tid) { if(!tid||tid==='#')return; const ts=tid.startsWith('#')?tid:`#${tid}`; const tte=document.querySelector(`.nav-pills button[data-bs-target="${ts}"]`); if(tte){ try{const t=bootstrap.Tab.getOrCreateInstance(tte); if(t){t.show();} } catch(e){console.error("Error activar:",e);}} } const cH=window.location.hash; if(cH&&cH.length>1){const tpi=cH.replace('-tab',''); setTimeout(()=>{activateTabByTargetId(tpi);},250); }
 
-            // --- CÓDIGO ACTIVAR PESTAÑA DESDE HASH ---
-            function activateTabByTargetId(tid) { if(!tid||tid==='#')return; const ts=tid.startsWith('#')?tid:`#${tid}`; const tte=document.querySelector(`.nav-pills button[data-bs-target="${ts}"]`); if(tte){console.log(`Activando: ${ts}`); try{const t=bootstrap.Tab.getOrCreateInstance(tte); if(t){t.show();console.log(`Pestaña ${ts} activada.`);}else{console.error(`No instancia Tab.`);}} catch(e){console.error("Error activar:",e);}} else{console.warn(`No botón para: ${ts}`);}} const cH=window.location.hash; if(cH&&cH.length>1){const tpi=cH.replace('-tab',''); console.log(`Hash: ${cH}. Target: ${tpi}`); setTimeout(()=>{activateTabByTargetId(tpi);},250); } else{console.log("No hash.");}
-
-            // --- CÓDIGO RESALTAR ACTUALIZACIÓN POR ID (Highlight Amarillo Temporal) ---
             const highlightUpdateId = urlParams.get('highlight_update');
             const isActualizacionesTabFromHash = window.location.hash === '#actualizaciones';
             let needsCleanFromHighlightUpdate = false;
             if (highlightUpdateId && !isNaN(highlightUpdateId) && isActualizacionesTabFromHash) {
-                console.log(`[Highlight Amarillo] ID: ${highlightUpdateId}`);
                 setTimeout(() => {
                     const updateElement = document.getElementById(`update-item-${highlightUpdateId}`);
                     if (updateElement) {
-                        console.log("[Highlight Amarillo] Elemento.");
                         updateElement.classList.add('highlight-update-flash');
                         updateElement.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
                         setTimeout(() => {
                             updateElement.classList.remove('highlight-update-flash');
-                            console.log("[Highlight Amarillo] Clase quitada.");
                             const cU = new URL(window.location);
                             cU.searchParams.delete('highlight_update');
                             history.replaceState(null, null, cU.pathname + cU.search + cU.hash);
                         }, 2000);
                         urlNeedsCleaning = false;
                     } else {
-                        console.warn(`[Highlight Amarillo] No elemento ID: update-item-${highlightUpdateId}`);
                         needsCleanFromHighlightUpdate = true;
                     }
                 }, 350);
@@ -890,29 +790,23 @@ function traducir_prioridad($prioridad) { $prioridades = ['baja' => '<span class
                 const cU = new URL(window.location); cU.searchParams.delete('highlight_update'); history.replaceState(null, null, cU.pathname + cU.search + cU.hash); urlNeedsCleaning = false;
             }
 
-
-            // --- CÓDIGO RESALTAR SECCIÓN ADJUNTOS FINALES ---
              const highlightFinalDocs = urlParams.has('highlight_final') && urlParams.get('highlight_final') === 'true';
              const isArchivosTabFromHash = window.location.hash === '#archivos';
              let needsCleanFromHighlightFinal = false;
              if (highlightFinalDocs && isArchivosTabFromHash) {
-                 console.log("[Highlight Final] Detectado.");
                  setTimeout(() => {
                      const sE = document.getElementById('final-docs-section');
                      if (sE) {
-                         console.log("[Highlight Final] Elemento.");
                          sE.classList.add('highlight-section-flash');
                          sE.scrollIntoView({ behavior: 'smooth', block: 'start' });
                          setTimeout(() => {
                              sE.classList.remove('highlight-section-flash');
-                             console.log("[Highlight Final] Clase quitada.");
                              const cU = new URL(window.location);
                              cU.searchParams.delete('highlight_final');
                              history.replaceState(null, null, cU.pathname + cU.search + cU.hash);
                          }, 2000);
                          urlNeedsCleaning = false;
                      } else {
-                         console.warn("[Highlight Final] No elemento #final-docs-section.");
                          needsCleanFromHighlightFinal = true;
                      }
                  }, 350);
@@ -923,10 +817,8 @@ function traducir_prioridad($prioridad) { $prioridades = ['baja' => '<span class
                   const cU = new URL(window.location); cU.searchParams.delete('highlight_final'); history.replaceState(null, null, cU.pathname + cU.search + cU.hash); urlNeedsCleaning = false;
              }
 
-            // --- LÓGICA LIGHTBOX IMÁGENES ---
             const iM=document.getElementById('imageModal'); if(iM){ iM.addEventListener('show.bs.modal', function(e){ const b=e.relatedTarget; const iu=b.getAttribute('data-bs-image-url'); const mi=iM.querySelector('#modalImage'); mi.src=iu; }); }
 
-            // --- (Fusión: JS DETALLES REMITO de tarea_ver_r.php) ---
             const remitoFileInput = document.getElementById('adjuntos_remito');
             const remitoDetailsContainer = document.getElementById('remito-details-container');
             const remitoDescripcionInput = document.getElementById('remito_descripcion');
@@ -945,18 +837,13 @@ function traducir_prioridad($prioridad) { $prioridades = ['baja' => '<span class
                     }
                 });
             }
-            // --- (Fin Fusión JS) ---
 
-
-            // --- Limpieza final de URL si quedó marcada y no se manejó específicamente ---
             if (urlNeedsCleaning) {
                 const cleanUrl = window.location.pathname + '?id=' + idTareaParam + window.location.hash;
                  if (window.location.search !== `?id=${idTareaParam}`) {
                     history.replaceState(null, null, cleanUrl);
-                    console.log("Limpieza final de URL ejecutada.");
                  }
             }
-
         });
     </script>
     <?php include 'footer.php'; ?>

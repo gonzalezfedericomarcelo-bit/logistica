@@ -1,5 +1,7 @@
 <?php
 date_default_timezone_set('America/Argentina/Buenos_Aires');
+setlocale(LC_TIME, 'es_AR.UTF-8', 'es_ES', 'spanish');
+
 // Configuración de la conexión a la base de datos
 $servidor = "localhost"; // Servidor de la base de datos (XAMPP)
 $usuario = "u415354546_logistica";       // Usuario de la base de datos
@@ -20,6 +22,11 @@ try {
     $dsn = "mysql:host=$servidor;dbname=$base_de_datos;charset=utf8mb4";
     $pdo = new PDO($dsn, $usuario, $password, $options);
     
+    // --- NUEVO: FORZAR ZONA HORARIA DE MYSQL A ARGENTINA (-3:00) ---
+    // Esto hace que las funciones NOW() en la base de datos guarden la hora correcta.
+    $pdo->exec("SET time_zone = '-03:00';");
+    // ---------------------------------------------------------------
+
     // Si la tabla de adjuntos usa un nombre diferente a 'adjuntos_tarea', 
     // es posible que esta línea adicional ayude a forzar el modo de SQL.
     // $pdo->exec("SET SESSION sql_mode = ''"); 
@@ -38,6 +45,7 @@ $project_root = dirname($path);
 
 // Ruta final al archivo de procesamiento:
 $action_url = "{$base_url}{$project_root}/tarea_actualizar_procesar.php";
+
 // --- INICIO: NUEVA FUNCIÓN PARA NÚMERO DE ORDEN CENTRALIZADO ---
 
 /**

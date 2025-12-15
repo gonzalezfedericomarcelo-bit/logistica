@@ -19,7 +19,9 @@ $usuario = trim($_POST['usuario_edit']);
 $email = trim($_POST['email_edit'] ?? '');
 $telefono = trim($_POST['telefono_edit'] ?? '');
 $genero = strtolower(trim($_POST['genero_edit'] ?? 'otro'));
-$grado = trim($_POST['grado_edit'] ?? ''); // <-- NUEVO CAMPO
+$grado = trim($_POST['grado_edit'] ?? ''); 
+// Nuevo: fecha
+$fecha_nacimiento = !empty($_POST['fecha_nacimiento_edit']) ? $_POST['fecha_nacimiento_edit'] : NULL;
 $password_nueva = $_POST['password_edit'] ?? '';
 
 // 3. Validar datos básicos
@@ -37,7 +39,7 @@ if ($id_usuario_edit <= 0 || empty($nombre_completo) || empty($usuario)) {
             $bind_params = [':id' => $id_usuario_edit];
 
             // 4. Obtener datos actuales
-            $sql_current = "SELECT nombre_completo, usuario, email, telefono, genero, grado, password FROM usuarios WHERE id_usuario = :id";
+            $sql_current = "SELECT nombre_completo, usuario, email, telefono, genero, grado, password, fecha_nacimiento FROM usuarios WHERE id_usuario = :id";
             $stmt_current = $pdo->prepare($sql_current);
             $stmt_current->execute($bind_params);
             $current_data = $stmt_current->fetch();
@@ -55,6 +57,12 @@ if ($id_usuario_edit <= 0 || empty($nombre_completo) || empty($usuario)) {
             if (($current_data['grado'] ?? '') !== $grado) { 
                 $update_fields[] = "grado = :grado"; 
                 $bind_params[':grado'] = $grado; 
+            }
+
+            // Actualizar FECHA NACIMIENTO
+            if (($current_data['fecha_nacimiento'] ?? '') !== $fecha_nacimiento) {
+                $update_fields[] = "fecha_nacimiento = :fecha_nac";
+                $bind_params[':fecha_nac'] = $fecha_nacimiento;
             }
 
             // Contraseña

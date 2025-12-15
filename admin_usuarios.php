@@ -1,5 +1,5 @@
 <?php
-// Archivo: admin_usuarios.php (CORREGIDO: Carga dinámica de roles)
+// Archivo: admin_usuarios.php (COMPLETO: Con botón para Resetear Cumpleaños)
 session_start();
 include 'conexion.php';
 include 'funciones_permisos.php'; 
@@ -29,11 +29,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['crear_usuario'])) {
     $telefono = trim($_POST['telefono'] ?? ''); 
     $genero = strtolower(trim($_POST['genero'] ?? 'otro')); 
     $grado = trim($_POST['grado'] ?? ''); 
+    // Fecha nacimiento
+    $fecha_nacimiento = !empty($_POST['fecha_nacimiento']) ? $_POST['fecha_nacimiento'] : NULL;
     $rol = 'empleado'; // Por defecto al crear
     
     $password_hashed = password_hash($password, PASSWORD_DEFAULT);
     try {
-        $sql = "INSERT INTO usuarios (nombre_completo, usuario, password, rol, email, telefono, genero, grado, activo) VALUES (:nombre_completo, :usuario, :password_hashed, :rol, :email, :telefono, :genero, :grado, 1)";
+        $sql = "INSERT INTO usuarios (nombre_completo, usuario, password, rol, email, telefono, genero, grado, fecha_nacimiento, activo) VALUES (:nombre_completo, :usuario, :password_hashed, :rol, :email, :telefono, :genero, :grado, :fecha_nac, 1)";
         $stmt = $pdo->prepare($sql);
         $stmt->bindParam(':nombre_completo', $nombre_completo); 
         $stmt->bindParam(':usuario', $usuario); 
@@ -42,7 +44,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['crear_usuario'])) {
         $stmt->bindParam(':email', $email); 
         $stmt->bindParam(':telefono', $telefono); 
         $stmt->bindParam(':genero', $genero);
-        $stmt->bindParam(':grado', $grado); 
+        $stmt->bindParam(':grado', $grado);
+        $stmt->bindParam(':fecha_nac', $fecha_nacimiento);
         
         if ($stmt->execute()) { $mensaje = "El usuario '$usuario' ha sido creado exitosamente."; $alerta_tipo = 'success'; }
         else { $mensaje = "Error desconocido al crear el usuario."; $alerta_tipo = 'danger'; }
@@ -58,7 +61,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['eliminar_usuario'])) {
 
 // 4. OBTENER LISTADO DE USUARIOS
 try {
-    $sql_empleados = "SELECT id_usuario, nombre_completo, usuario, email, telefono, genero, activo, rol, grado 
+    $sql_empleados = "SELECT id_usuario, nombre_completo, usuario, email, telefono, genero, activo, rol, grado, fecha_nacimiento 
                       FROM usuarios 
                       WHERE id_usuario != :admin_id 
                       ORDER BY nombre_completo";
@@ -68,12 +71,12 @@ try {
     $usuarios_empleados = $stmt_empleados->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) { error_log("Error al cargar lista de usuarios: " . $e->getMessage()); $usuarios_empleados = []; $mensaje = "Error crítico al cargar la lista de usuarios: " . $e->getMessage(); $alerta_tipo = 'danger'; }
 
-// 5. OBTENER LISTA DE ROLES (NUEVO: Dinámico desde la BD)
+// 5. OBTENER LISTA DE ROLES
 try {
     $stmt_roles = $pdo->query("SELECT nombre_rol FROM roles ORDER BY nombre_rol ASC");
     $lista_roles_db = $stmt_roles->fetchAll(PDO::FETCH_COLUMN);
 } catch (PDOException $e) {
-    $lista_roles_db = ['empleado', 'encargado', 'auxiliar', 'admin']; // Fallback por si falla la BD
+    $lista_roles_db = ['empleado', 'encargado', 'auxiliar', 'admin']; 
 }
 
 // LISTA DE GRADOS MILITARES
@@ -128,6 +131,12 @@ $lista_grados = ['SM', 'SP', 'SA', 'SI', 'SS', 'SG', 'CI', 'CB', 'VP', 'VS', 'VS
                             <div class="mb-3"> <label for="password" class="form-label">Contraseña Inicial</label> <input type="password" class="form-control" id="password" name="password" required> </div> 
                             <div class="mb-3"> <label for="email" class="form-label">Email</label> <input type="email" class="form-control" id="email" name="email"> </div> 
                             <div class="mb-3"> <label for="telefono" class="form-label">Teléfono</label> <input type="text" class="form-control" id="telefono" name="telefono"> </div> 
+                            
+                            <div class="mb-3"> 
+                                <label for="fecha_nacimiento" class="form-label text-primary"><i class="fas fa-birthday-cake me-1"></i> Fecha de Nacimiento</label> 
+                                <input type="date" class="form-control" id="fecha_nacimiento" name="fecha_nacimiento"> 
+                            </div>
+
                             <div class="mb-3"> <label for="genero" class="form-label">Género</label> <select class="form-select" id="genero" name="genero" required> <option value="masculino">Masculino</option> <option value="femenino">Femenino</option> <option value="otro" selected>Otro / No especificar</option> </select> </div> 
                         </div> 
                         <div class="modal-footer"> <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button> <button type="submit" class="btn btn-success"><i class="fas fa-plus"></i> Crear Usuario</button> </div> 
@@ -159,6 +168,12 @@ $lista_grados = ['SM', 'SP', 'SA', 'SI', 'SS', 'SG', 'CI', 'CB', 'VP', 'VS', 'VS
                             <div class="mb-3"> <label for="usuario_edit" class="form-label">Usuario (Login)</label> <input type="text" class="form-control" id="usuario_edit" name="usuario_edit" required> </div> 
                             <div class="mb-3"> <label for="email_edit" class="form-label">Email</label> <input type="email" class="form-control" id="email_edit" name="email_edit"> </div> 
                             <div class="mb-3"> <label for="telefono_edit" class="form-label">Teléfono</label> <input type="text" class="form-control" id="telefono_edit" name="telefono_edit"> </div> 
+                            
+                            <div class="mb-3"> 
+                                <label for="fecha_nacimiento_edit" class="form-label text-primary"><i class="fas fa-birthday-cake me-1"></i> Fecha de Nacimiento</label> 
+                                <input type="date" class="form-control" id="fecha_nacimiento_edit" name="fecha_nacimiento_edit"> 
+                            </div>
+
                             <div class="mb-3"> <label for="genero_edit" class="form-label">Género</label> <select class="form-select" id="genero_edit" name="genero_edit" required> <option value="masculino">Masculino</option> <option value="femenino">Femenino</option> <option value="otro">Otro / No especificar</option> </select> </div> <hr> <p class="small text-muted">Dejar en blanco para no cambiar la contraseña.</p> <div class="mb-3"> <label for="password_edit" class="form-label">Nueva Contraseña (Opcional)</label> <input type="password" class="form-control" id="password_edit" name="password_edit"> </div> 
                         </div> 
                         <div class="modal-footer"> <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button> <button type="submit" class="btn btn-info text-white"><i class="fas fa-save"></i> Guardar Cambios</button> </div> 
@@ -204,9 +219,17 @@ $lista_grados = ['SM', 'SP', 'SA', 'SI', 'SS', 'SG', 'CI', 'CB', 'VP', 'VS', 'VS
                     data-telefono="<?php echo htmlspecialchars($usuario['telefono'] ?? ''); ?>" 
                     data-genero="<?php echo htmlspecialchars($usuario['genero'] ?? 'otro'); ?>" 
                     data-grado="<?php echo htmlspecialchars($usuario['grado'] ?? ''); ?>" 
+                    data-fecha-nacimiento="<?php echo htmlspecialchars($usuario['fecha_nacimiento'] ?? ''); ?>"
                     onclick="loadEditUserModal(this)" title="Editar Usuario"> 
                 <i class="fas fa-edit"></i> 
             </button> 
+            
+            <button type="button" class="btn btn-sm btn-outline-danger me-1" 
+                    onclick="confirmResetCumple(<?php echo $usuario['id_usuario']; ?>, '<?php echo htmlspecialchars(addslashes($usuario['usuario'])); ?>')" 
+                    title="Resetear Saludo Cumpleaños"> 
+                <i class="fas fa-gift"></i> 
+            </button>
+            
             <button type="button" class="btn btn-sm btn-warning me-1" onclick="confirmResetPassword(<?php echo $usuario['id_usuario']; ?>, '<?php echo htmlspecialchars(addslashes($usuario['usuario'])); ?>')" title="Resetear Contraseña"> <i class="fas fa-key"></i> </button> 
             <?php $isActive = ($usuario['activo'] ?? 1) == 1; ?> 
             <button type="button" class="btn btn-sm <?php echo $isActive ? 'btn-secondary' : 'btn-success'; ?> me-1" onclick="confirmToggleStatus(<?php echo $usuario['id_usuario']; ?>, '<?php echo htmlspecialchars(addslashes($usuario['usuario'])); ?>', <?php echo $isActive ? 0 : 1; ?>)" title="<?php echo $isActive ? 'Desactivar' : 'Activar'; ?> Usuario"> <i class="fas <?php echo $isActive ? 'fa-user-slash' : 'fa-user-check'; ?>"></i> </button> 
@@ -218,7 +241,6 @@ $lista_grados = ['SM', 'SP', 'SA', 'SI', 'SS', 'SG', 'CI', 'CB', 'VP', 'VS', 'VS
                 <input type="hidden" name="id_usuario" value="<?php echo htmlspecialchars($usuario['id_usuario']); ?>">
                 <select name="nuevo_rol" class="form-select form-select-sm d-inline-block" style="width: 130px; max-width: 100%;">
                     <?php
-                    // AQUI USAMOS LA LISTA DINÁMICA DE LA BD
                     $current_rol = $usuario['rol'] ?? 'empleado'; 
                     foreach ($lista_roles_db as $rol_db) {
                         $selected = ($current_rol == $rol_db) ? 'selected' : '';
@@ -250,6 +272,7 @@ $lista_grados = ['SM', 'SP', 'SA', 'SI', 'SS', 'SG', 'CI', 'CB', 'VP', 'VS', 'VS
             const t=button.getAttribute('data-telefono'); 
             const g=button.getAttribute('data-genero')||'otro';
             const grado=button.getAttribute('data-grado')||''; 
+            const nac=button.getAttribute('data-fecha-nacimiento')||''; 
 
             document.getElementById('id_usuario_edit').value=id; 
             document.getElementById('nombre_completo_edit').value=n; 
@@ -258,6 +281,7 @@ $lista_grados = ['SM', 'SP', 'SA', 'SI', 'SS', 'SG', 'CI', 'CB', 'VP', 'VS', 'VS
             document.getElementById('telefono_edit').value=t; 
             document.getElementById('genero_edit').value=g; 
             document.getElementById('grado_edit').value=grado; 
+            document.getElementById('fecha_nacimiento_edit').value=nac; 
             
             document.getElementById('password_edit').value=''; 
             document.getElementById('editUsuarioModalLabel').textContent=`Editar Empleado #${id} (${u})`; 
@@ -269,6 +293,38 @@ $lista_grados = ['SM', 'SP', 'SA', 'SI', 'SS', 'SG', 'CI', 'CB', 'VP', 'VS', 'VS
         function showFeedbackModal(title, message, type = 'info') { if (!feedbackModal || !feedbackHeader || !feedbackTitle || !feedbackBody) { alert(message); return; } feedbackTitle.textContent = title; feedbackBody.textContent = message; feedbackHeader.className = 'modal-header'; feedbackTitle.querySelector('i')?.remove(); const btnClose = feedbackHeader.querySelector('.btn-close'); if (type === 'success') { feedbackHeader.classList.add('bg-success', 'text-white'); feedbackTitle.insertAdjacentHTML('afterbegin', '<i class="fas fa-check-circle me-2"></i>'); if(btnClose) btnClose.classList.add('btn-close-white'); } else if (type === 'danger') { feedbackHeader.classList.add('bg-danger', 'text-white'); feedbackTitle.insertAdjacentHTML('afterbegin', '<i class="fas fa-exclamation-triangle me-2"></i>'); if(btnClose) btnClose.classList.add('btn-close-white'); } else if (type === 'warning') { feedbackHeader.classList.add('bg-warning', 'text-dark'); feedbackTitle.insertAdjacentHTML('afterbegin', '<i class="fas fa-exclamation-triangle me-2"></i>'); if(btnClose) btnClose.classList.remove('btn-close-white'); } else { feedbackHeader.classList.add('bg-info', 'text-white'); feedbackTitle.insertAdjacentHTML('afterbegin', '<i class="fas fa-info-circle me-2"></i>'); if(btnClose) btnClose.classList.add('btn-close-white'); } feedbackModal.show(); }
         function confirmResetPassword(userId, userName) { if (confirm(`¿Está seguro de resetear la contraseña para el usuario '${userName}' (ID: ${userId})? Se enviará una nueva contraseña temporal por correo.`)) { const originalButton = event.target.closest('button'); if (originalButton) { originalButton.disabled = true; originalButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; } fetch('admin_usuarios_reset_password.php', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest'}, body: `id_usuario=${userId}` }).then(response => response.json().then(data => ({ status: response.status, body: data }))).then(({ status, body }) => { if (body.success) { showFeedbackModal('Éxito', body.message || "Correo con contraseña temporal enviado.", 'success'); } else { showFeedbackModal('Error', body.message || `Error ${status}`, 'danger'); } }).catch(error => { console.error("Error en fetch reset password:", error); showFeedbackModal('Error de Conexión', "No se pudo conectar con el servidor para resetear la contraseña.", 'danger'); }).finally(() => { if (originalButton) { originalButton.disabled = false; originalButton.innerHTML = '<i class="fas fa-key"></i>'; } }); } }
         function confirmToggleStatus(userId, userName, newStatus) { const actionText = newStatus === 1 ? 'ACTIVAR' : 'DESACTIVAR'; const confirmationMessage = `¿Está seguro de ${actionText} al usuario '${userName}' (ID: ${userId})?`; if (confirm(confirmationMessage)) { const originalButton = event.target.closest('button'); if (originalButton) { originalButton.disabled = true; originalButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; } fetch('admin_usuarios_toggle_status.php', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest'}, body: `id_usuario=${userId}&nuevo_estado=${newStatus}` }).then(response => response.json().then(data => ({ status: response.status, body: data }))).then(({ status, body }) => { if (body.success) { showFeedbackModal('Éxito', body.message || `Usuario ${actionText.toLowerCase()}do.`, 'success'); if(feedbackModalEl) { feedbackModalEl.addEventListener('hidden.bs.modal', () => { window.location.reload(); }, { once: true }); } else { window.location.reload(); } } else { showFeedbackModal('Error', body.message || `Error ${status}`, 'danger'); if (originalButton) { originalButton.disabled = false; originalButton.innerHTML = `<i class="fas ${newStatus === 0 ? 'fa-user-slash' : 'fa-user-check'}"></i>`; } } }).catch(error => { console.error("Error en fetch toggle status:", error); showFeedbackModal('Error de Conexión', "No se pudo conectar con el servidor para cambiar el estado.", 'danger'); if (originalButton) { originalButton.disabled = false; originalButton.innerHTML = `<i class="fas ${newStatus === 0 ? 'fa-user-slash' : 'fa-user-check'}"></i>`; } }); } }
+        
+        // --- NUEVA FUNCIÓN PARA RESETEAR CUMPLEAÑOS ---
+        function confirmResetCumple(userId, userName) {
+            if (confirm(`¿Resetear el saludo de cumpleaños para '${userName}'? \nVolverá a ver el modal la próxima vez que inicie sesión o recargue.`)) {
+                
+                const btn = event.target.closest('button');
+                const originalContent = btn.innerHTML;
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+
+                fetch('admin_usuarios_reset_cumple.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: `id_usuario=${userId}`
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        showFeedbackModal('Éxito', `Saludo reseteado. Si eres tú, ve al inicio para ver la fiesta.`, 'success');
+                    } else {
+                        showFeedbackModal('Error', data.message, 'danger');
+                    }
+                })
+                .catch(err => {
+                    showFeedbackModal('Error', 'No se pudo conectar.', 'danger');
+                })
+                .finally(() => {
+                    btn.disabled = false;
+                    btn.innerHTML = originalContent;
+                });
+            }
+        }
     </script>
     <div class="toast-container position-fixed bottom-0 end-0 p-3" id="notificationToastContainer" style="z-index: 1080;"></div>
     <?php include 'footer.php'; ?>

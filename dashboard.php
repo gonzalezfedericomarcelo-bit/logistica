@@ -10,6 +10,7 @@ include 'conexion.php';
 include 'helper_efemerides.php'; 
 include 'helper_frases.php'; 
 
+
 // 2. SEGURIDAD
 if (!isset($_SESSION['usuario_id'])) { header("Location: login.php"); exit(); }
 $id_usuario = $_SESSION['usuario_id'];

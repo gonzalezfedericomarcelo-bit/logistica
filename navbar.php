@@ -1,5 +1,18 @@
 <?php
+// PEGAR ESTO AL PRINCIPIO DE NAVBAR.PHP (Debajo de los include)
 
+if (isset($_SESSION['usuario_id'])) {
+    // 1. Forzar conteo de no leídas
+    $stmt_conteo = $pdo->prepare("SELECT COUNT(*) FROM notificaciones WHERE id_usuario_destino = :id AND leida = 0");
+    $stmt_conteo->execute([':id' => $_SESSION['usuario_id']]);
+    $total_notif = $stmt_conteo->fetchColumn();
+
+    // 2. Forzar carga de las últimas 5 (ORDENADAS POR ID DESCENDENTE)
+    // Al ordenar por ID, la última que entra siempre sale primera, no importa la hora.
+    $stmt_lista = $pdo->prepare("SELECT * FROM notificaciones WHERE id_usuario_destino = :id ORDER BY id_notificacion DESC LIMIT 5");
+    $stmt_lista->execute([':id' => $_SESSION['usuario_id']]);
+    $notificaciones_navbar = $stmt_lista->fetchAll(PDO::FETCH_ASSOC);
+}
 // Archivo: navbar.php (RESTAURADO: ÍCONOS, SUBMENÚS Y CENTRADO DE CAMPANA CORREGIDO)
 if (session_status() == PHP_SESSION_NONE) { session_start(); }
 
@@ -21,7 +34,7 @@ if (!function_exists('tiene_algun_permiso')) {
         return false;
     }
 }
-
+include 'logica_fondo_cumple.php';
 $permisos_del_menu_admin = ['acceso_pedidos_lista_encargado', 'admin_usuarios', 'admin_roles', 'admin_categorias', 'admin_areas', 'admin_destinos', 'admin_remitos'];
 $mostrar_menu_admin = tiene_algun_permiso($permisos_del_menu_admin, $pdo);
 // --- NUEVO: PERMISO PARA VER EL MENÚ DE ASCENSORES ---
@@ -170,6 +183,10 @@ if ($id_usuario_nav > 0 && isset($pdo)) {
                 </li>
                 <?php endif; ?>
 
+                <?php 
+                // --- MODIFICACIÓN: PROTECCIÓN DE TAREAS CON PERMISO ---
+                if (tiene_permiso('ver_lista_tareas', $pdo)): 
+                ?>
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle <?php echo (strpos(basename($_SERVER['PHP_SELF']), 'tarea_') !== false || basename($_SERVER['PHP_SELF']) == 'tareas_lista.php') ? 'active' : ''; ?>"
                         href="#" id="tareasDropdown" role="button" data-bs-toggle="dropdown">
@@ -183,40 +200,74 @@ if ($id_usuario_nav > 0 && isset($pdo)) {
                         <?php endif; ?>
                     </ul>
                 </li>
+                <?php endif; // Fin permiso Tareas ?>
+                
+                
+                <?php if (tiene_permiso('acceso_inventario', $pdo)): ?>
+    <li class="nav-item dropdown">
+        <a class="nav-link dropdown-toggle <?php echo (strpos(basename($_SERVER['PHP_SELF']), 'inventario_') !== false) ? 'active' : ''; ?>"
+           href="#" id="inventarioDropdown" role="button" data-bs-toggle="dropdown">
+            <i class="fas fa-boxes"></i> Inventario
+        </a>
+        <ul class="dropdown-menu">
+            <li>
+                <a class="dropdown-item" href="inventario_lista.php">
+                    <i class="fas fa-list me-2 text-primary"></i> Ver Inventario
+                </a>
+            </li>
+            <li><hr class="dropdown-divider"></li>
+            <li>
+                <a class="dropdown-item" href="inventario_nuevo.php">
+                    <i class="fas fa-plus-circle me-2 text-success"></i> Nuevo Cargo
+                </a>
+            </li>
+        </ul>
+    </li>
+<?php endif; ?>
+
 
                 <?php 
-                $puede_crear_avisos = tiene_permiso('acceso_avisos_crear', $pdo) || tiene_permiso('acceso_avisos_gestionar', $pdo);
+                // --- MODIFICACIÓN: PROTECCIÓN DE BLOG (AVISOS) ---
+                if (tiene_permiso('ver_avisos', $pdo)): // Nuevo permiso 'ver_avisos'
+                    $puede_crear_avisos = tiene_permiso('acceso_avisos_crear', $pdo) || tiene_permiso('acceso_avisos_gestionar', $pdo);
                 ?>
-                <?php if ($puede_crear_avisos): ?>
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle <?php echo (strpos(basename($_SERVER['PHP_SELF']), 'avisos_') !== false || basename($_SERVER['PHP_SELF']) == 'avisos.php') ? 'active' : ''; ?>"
-                            href="#" id="avisosDropdown" role="button" data-bs-toggle="dropdown">
-                            <i class="fas fa-blog"></i> Blog
-                        </a>
-                        <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" href="avisos.php"><i class="fas fa-eye me-2"></i> Ver Blog</a></li>
-                            <li><hr class="dropdown-divider"></li>
-                            <?php if (tiene_permiso('acceso_avisos_crear', $pdo)): ?>
-                                <li><a class="dropdown-item" href="avisos_crear.php"><i class="fas fa-plus-circle me-2 text-success"></i> Crear Entrada</a></li>
-                            <?php endif; ?>
-                            <?php if (tiene_permiso('acceso_avisos_gestionar', $pdo)): ?>
-                                <li><a class="dropdown-item" href="avisos_lista.php"><i class="fas fa-list-alt me-2 text-warning"></i> Administrar</a></li>
-                            <?php endif; ?>
-                        </ul>
-                    </li>
-                <?php else: ?>
-                    <li class="nav-item">
-                        <a class="nav-link <?php echo basename($_SERVER['PHP_SELF']) == 'avisos.php' ? 'active' : ''; ?>" href="avisos.php">
-                            <i class="fas fa-blog"></i> Blog
-                        </a>
-                    </li>
-                <?php endif; ?>
+                    <?php if ($puede_crear_avisos): ?>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle <?php echo (strpos(basename($_SERVER['PHP_SELF']), 'avisos_') !== false || basename($_SERVER['PHP_SELF']) == 'avisos.php') ? 'active' : ''; ?>"
+                                href="#" id="avisosDropdown" role="button" data-bs-toggle="dropdown">
+                                <i class="fas fa-blog"></i> Blog
+                            </a>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" href="avisos.php"><i class="fas fa-eye me-2"></i> Ver Blog</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <?php if (tiene_permiso('acceso_avisos_crear', $pdo)): ?>
+                                    <li><a class="dropdown-item" href="avisos_crear.php"><i class="fas fa-plus-circle me-2 text-success"></i> Crear Entrada</a></li>
+                                <?php endif; ?>
+                                <?php if (tiene_permiso('acceso_avisos_gestionar', $pdo)): ?>
+                                    <li><a class="dropdown-item" href="avisos_lista.php"><i class="fas fa-list-alt me-2 text-warning"></i> Administrar</a></li>
+                                <?php endif; ?>
+                            </ul>
+                        </li>
+                    <?php else: ?>
+                        <li class="nav-item">
+                            <a class="nav-link <?php echo basename($_SERVER['PHP_SELF']) == 'avisos.php' ? 'active' : ''; ?>" href="avisos.php">
+                                <i class="fas fa-blog"></i> Blog
+                            </a>
+                        </li>
+                    <?php endif; ?>
+                <?php endif; // Fin permiso Blog ?>
                 
+                <?php 
+                // --- MODIFICACIÓN: PROTECCIÓN DE CHAT ---
+                if (tiene_permiso('acceso_chat', $pdo)): // Nuevo permiso 'acceso_chat'
+                ?>
                 <li class="nav-item">
                     <a class="nav-link <?php echo basename($_SERVER['PHP_SELF']) == 'chat.php' ? 'active' : ''; ?>" href="chat.php">
                         <i class="fas fa-comments"></i> Chat
                     </a>
                 </li>
+                <?php endif; // Fin permiso Chat ?>
+
                 <?php if ($mostrar_ascensores): ?>
                 
                 <li class="nav-item dropdown">
@@ -268,9 +319,22 @@ if ($id_usuario_nav > 0 && isset($pdo)) {
                             <?php echo $notificaciones_no_leidas > 99 ? '99+' : $notificaciones_no_leidas; ?>
                         </span>
                     </a>
-                    <ul class="dropdown-menu dropdown-menu-end shadow border-0" aria-labelledby="notificationsDropdown"
-                        id="notifications-list" style="width: 350px;">
-                        <li><a class="dropdown-item text-center text-muted p-3"><i class="fas fa-spinner fa-spin me-2"></i>Cargando...</a></li>
+                    <ul class="dropdown-menu dropdown-menu-end shadow border-0" aria-labelledby="notificationsDropdown" id="notifications-list" style="width: 350px;">
+                        <?php if (isset($notificaciones_navbar) && count($notificaciones_navbar) > 0): ?>
+                            <?php foreach ($notificaciones_navbar as $notif): ?>
+                                <?php $estilo = $notif['leida'] == 0 ? 'fw-bold bg-light' : ''; ?>
+                                <li>
+                                    <a class="dropdown-item <?php echo $estilo; ?> text-wrap py-2" href="<?php echo $notif['url']; ?>" onclick="markRead(<?php echo $notif['id_notificacion']; ?>)">
+                                        <div class="small"><?php echo $notif['mensaje']; ?></div>
+                                        <div class="text-muted" style="font-size:0.75rem"><?php echo date('d/m H:i', strtotime($notif['fecha_creacion'])); ?></div>
+                                    </a>
+                                </li>
+                            <?php endforeach; ?>
+                        <?php else: ?>
+                            <li><span class="dropdown-item text-center text-muted p-3">Sin notificaciones</span></li>
+                        <?php endif; ?>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item text-center small" href="notificaciones_lista.php">Ver todas</a></li>
                     </ul>
                 </li>
 
@@ -439,7 +503,7 @@ if ($mostrar_navidad_global):
     renderizarLuces('luces-der');
     ?>
 <?php endif; ?>
-
+<?php include_once 'componente_cumpleanos.php'; ?>
 
 <script>
     let lastNotificationId = 0; 
@@ -451,7 +515,7 @@ if ($mostrar_navidad_global):
             pollNotifications(true); 
             setInterval(() => pollNotifications(false), 3000);
             const dE = document.getElementById('notificationsDropdown');
-            if(dE) dE.addEventListener('show.bs.dropdown', loadFullList);
+            //if(dE) dE.addEventListener('show.bs.dropdown', loadFullList);
         }
     });
 
@@ -519,7 +583,7 @@ if ($mostrar_navidad_global):
                 if(data.notifications && data.notifications.length > 0) {
                     data.notifications.forEach(n => {
                         const cls = n.leida == 0 ? 'fw-bold bg-light' : '';
-                        list.innerHTML += `<li><a class="dropdown-item ${cls} text-wrap py-2" href="${n.url}" onclick="markRead(${n.id_notificacion})"><div class="small">${n.mensaje}</div><div class="text-muted" style="font-size:0.75rem">${n.fecha_creacion}</div></a></li>`;
+                        list.innerHTML += `<li><a class="dropdown-item ${cls} text-wrap py-2" href="${n.url}" onclick="markRead(${n.id_notificacion})\"><div class="small">${n.mensaje}</div><div class="text-muted" style="font-size:0.75rem">${n.fecha_creacion}</div></a></li>`;
                     });
                 } else {
                     list.innerHTML = '<li class="p-3 text-center text-muted">Sin notificaciones</li>';

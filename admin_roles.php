@@ -69,6 +69,9 @@ try {
         elseif (strpos($clave, 'dashboard') !== false || strpos($clave, 'perfil') !== false || strpos($clave, 'chat') !== false) {
             $permisos_agrupados['Acceso General y Tablero'][] = $p;
         } 
+        elseif (strpos($clave, 'inventario') !== false) {
+            $permisos_agrupados['Gestión de Inventario'][] = $p;
+        }
         else {
              // Si no coincide con nada, va a "Otras"
              $permisos_agrupados['Otras Configuraciones'][] = $p;
