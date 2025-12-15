@@ -1,7 +1,8 @@
 <?php
-// Archivo: pedido_crear.php (COMPLETO Y FUNCIONAL v4 - Incluye Título Pedido)
+// Archivo: pedido_crear.php (COMPLETO Y FUNCIONAL vFinal - Con Selección Dinámica)
 // *** MODIFICADO (v4) PARA FONDO DE FIRMA TRANSPARENTE ***
 // *** MODIFICADO (v5) POR GEMINI PARA MOSTRAR MODAL DE ÉXITO EN LUGAR DE REDIRIGIR A PDF ***
+// *** MODIFICADO (v6) SELECCIÓN DINÁMICA: DESTINO -> ÁREA (Prioridad Actis) ***
 
 include 'acceso_protegido.php'; // Incluye sesión y $pdo
 
@@ -30,8 +31,8 @@ $selected_destino = $_POST['id_destino_interno'] ?? '';
 $selected_prioridad = $_POST['prioridad'] ?? 'rutina';
 $fecha_req_prev = $_POST['fecha_requerida'] ?? '';
 $desc_sint_prev = $_POST['descripcion_sintomas'] ?? '';
-$solic_real_prev = $_POST['solicicitar_real_nombre'] ?? '';
-$solic_telefono_prev = $_POST['solicitar_telefono'] ?? '';
+$solic_real_prev = $_POST['solicitante_real_nombre'] ?? '';
+$solic_telefono_prev = $_POST['solicitante_telefono'] ?? '';
 
 // --- INICIO MODIFICACIÓN GEMINI (v5): Capturar variables de éxito de la Sesión ---
 $show_success_modal = $_SESSION['pedido_creado_exito'] ?? false;
@@ -64,9 +65,16 @@ try {
          }
     }
 
-    // 5. Cargar Áreas y Destinos para los desplegables <select>
-    $areas = $pdo->query("SELECT id_area, nombre FROM areas ORDER BY nombre")->fetchAll(PDO::FETCH_ASSOC);
-    $destinos = $pdo->query("SELECT id_destino, nombre FROM destinos_internos ORDER BY nombre")->fetchAll(PDO::FETCH_ASSOC);
+    // 5. Cargar Destinos (MODIFICADO: Priorizando Actis y luego alfabético)
+    // El CASE WHEN asigna 0 si contiene 'Actis', de lo contrario 1, ordenando primero los 0.
+    $sql_destinos = "SELECT id_destino, nombre FROM destinos_internos 
+                     ORDER BY CASE WHEN nombre LIKE '%Actis%' THEN 0 ELSE 1 END, nombre ASC";
+    $destinos = $pdo->query($sql_destinos)->fetchAll(PDO::FETCH_ASSOC);
+
+    // Las áreas se cargarán por AJAX, iniciamos vacío por seguridad o cargamos todas si falla JS
+    // $areas = $pdo->query("SELECT id_area, nombre FROM areas ORDER BY nombre")->fetchAll(PDO::FETCH_ASSOC); 
+    // Comentamos la carga masiva de áreas para forzar el uso del select dinámico, 
+    // pero si quisieras un fallback podrías descomentarlo.
 
 } catch (PDOException $e) {
     $mensaje = "Error crítico al preparar el formulario: " . $e->getMessage();
@@ -132,6 +140,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $fecha_requerida_post = empty($_POST['fecha_requerida']) ? null : $_POST['fecha_requerida'];
     $descripcion_sintomas_post = trim($_POST['descripcion_sintomas'] ?? '');
 
+    // Validación básica
     if (empty($titulo_pedido_post) || $id_area_post <= 0 || empty($prioridad_post) || empty($descripcion_sintomas_post) || empty($solicitante_real_nombre_post)) {
         $mensaje = "Error: Faltan campos obligatorios (Título, Área, Prioridad, Descripción, Solicitante).";
         $alerta_tipo = 'danger';
@@ -147,17 +156,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     } else {
          // ---> OBTENER NOMBRE DEL ÁREA SELECCIONADA
          $nombre_area_seleccionada = 'N/A';
-         if (empty($areas)) { 
-             try { $areas = $pdo->query("SELECT id_area, nombre FROM areas")->fetchAll(PDO::FETCH_ASSOC); } catch (PDOException $e) {}
-         }
-         if ($id_area_post > 0 && !empty($areas)) {
-             foreach ($areas as $area_lookup) {
-                 if ($area_lookup['id_area'] == $id_area_post) {
-                     $nombre_area_seleccionada = $area_lookup['nombre'];
-                     break;
-                 }
-             }
-         }
+         // Como ahora cargamos por AJAX, consultamos directamente a la BD por el ID recibido
+         try {
+             $stmt_area_name = $pdo->prepare("SELECT nombre FROM areas WHERE id_area = :id");
+             $stmt_area_name->execute([':id' => $id_area_post]);
+             $nombre_area_seleccionada = $stmt_area_name->fetchColumn() ?: 'N/A';
+         } catch (PDOException $e) { }
          // ---> FIN OBTENER NOMBRE ÁREA <---
 
         $pdo->beginTransaction();
@@ -268,6 +272,9 @@ include 'navbar.php';
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
+
     <style>
         .signature-pad-container {
             border: 2px dashed #ccc;
@@ -310,7 +317,7 @@ include 'navbar.php';
                         </div>
                     <?php endif; ?>
 
-                    <?php $disableForm = ($alerta_tipo === 'danger' && empty($_POST) && (empty($areas) || empty($destinos))); ?>
+                    <?php $disableForm = ($alerta_tipo === 'danger' && empty($_POST) && (empty($destinos))); ?>
                     
                     <form action="pedido_crear.php" method="POST" id="pedido-form" <?php if ($disableForm) echo ' class="pe-none opacity-50"'; ?>>
 
@@ -328,25 +335,10 @@ include 'navbar.php';
                         <h5 class="text-primary mt-4"><i class="fas fa-map-pin me-1"></i> 1. Ubicación y Prioridad</h5>
                         <hr>
                         <div class="row mb-3">
-                             <div class="col-md-6">
-                                <label for="id_area" class="form-label fw-bold">Área Solicitante (*)</label>
-                                <select class="form-select" id="id_area" name="id_area" required <?php if ($disableForm) echo ' disabled'; ?>>
-                                    <option value="">-- Seleccione Área --</option>
-                                    <?php if (!empty($areas)): ?>
-                                        <?php foreach ($areas as $area): ?>
-                                            <option value="<?php echo $area['id_area']; ?>" <?php echo ($selected_area == $area['id_area']) ? 'selected' : ''; ?>>
-                                                <?php echo htmlspecialchars($area['nombre']); ?>
-                                            </option>
-                                        <?php endforeach; ?>
-                                    <?php else: ?>
-                                        <option value="" disabled>Error al cargar áreas</option>
-                                    <?php endif; ?>
-                                </select>
-                            </div>
                             <div class="col-md-6">
-                                <label for="id_destino_interno" class="form-label">Destino Interno Específico (Opcional)</label>
-                                <select class="form-select" id="id_destino_interno" name="id_destino_interno" <?php if ($disableForm) echo ' disabled'; ?>>
-                                     <option value="">-- Seleccione Destino (si aplica) --</option>
+                                <label for="id_destino_interno" class="form-label fw-bold">1° Destino / Sede (*)</label>
+                                <select class="form-select" id="id_destino_interno" name="id_destino_interno" required <?php if ($disableForm) echo ' disabled'; ?>>
+                                     <option value="">-- Seleccione Destino --</option>
                                      <?php if (!empty($destinos)): ?>
                                          <?php foreach ($destinos as $destino): ?>
                                             <option value="<?php echo $destino['id_destino']; ?>" <?php echo ($selected_destino == $destino['id_destino']) ? 'selected' : ''; ?>>
@@ -357,10 +349,18 @@ include 'navbar.php';
                                         <option value="" disabled>Error al cargar destinos</option>
                                      <?php endif; ?>
                                 </select>
-                                <small class="text-muted">Ej: N° Oficina, Interno Telefónico</small>
+                                <small class="text-muted">La sede principal o lugar macro.</small>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <label for="id_area" class="form-label fw-bold">2° Área Solicitante (*)</label>
+                                <select class="form-select" id="id_area" name="id_area" required disabled>
+                                    <option value="">-- Primero elija Destino --</option>
+                                </select>
+                                <small class="text-muted">Se cargará al elegir destino.</small>
                             </div>
                         </div>
-                         <div class="row mb-3">
+                        <div class="row mb-3">
                              <div class="col-md-6">
                                 <label class="form-label fw-bold">Prioridad (*)</label>
                                 <div>
@@ -506,12 +506,59 @@ include 'navbar.php';
   </div>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
 <div class="toast-container position-fixed bottom-0 end-0 p-3" id="notificationToastContainer" style="z-index: 1080;"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/signature_pad/1.5.3/signature_pad.min.js"></script>
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        
+        // --- SCRIPT AJAX PARA SELECT DEPENDIENTE (Destino -> Área) ---
+        // Inicializar Select2 con jQuery
+        if (typeof $ !== 'undefined') {
+            $('#id_destino_interno').select2({ theme: 'bootstrap-5', placeholder: 'Buscar Destino...' });
+            $('#id_area').select2({ theme: 'bootstrap-5', placeholder: 'Seleccione Área...' });
+
+            $('#id_destino_interno').on('change', function() {
+                var idDestino = $(this).val();
+                var $selectArea = $('#id_area');
+
+                // Limpiar área
+                $selectArea.empty().append('<option value="">Cargando...</option>').prop('disabled', true);
+
+                if (idDestino) {
+                    $.ajax({
+                        url: 'ajax_obtener_areas.php', // Tu archivo puente
+                        type: 'GET',
+                        data: { id_destino: idDestino },
+                        dataType: 'json',
+                        success: function(areas) {
+                            $selectArea.empty().append('<option value="">-- Seleccione Área --</option>');
+                            if (areas.length > 0) {
+                                $.each(areas, function(i, area) {
+                                    // IMPORTANTE: Aquí el value es el ID_AREA para la BD
+                                    $selectArea.append('<option value="' + area.id_area + '">' + area.nombre + '</option>');
+                                });
+                                $selectArea.prop('disabled', false);
+                            } else {
+                                $selectArea.append('<option value="">No hay áreas en este destino</option>');
+                            }
+                        },
+                        error: function() {
+                            alert('Error al cargar áreas desde el servidor.');
+                            $selectArea.empty().append('<option value="">Error</option>');
+                        }
+                    });
+                } else {
+                    $selectArea.empty().append('<option value="">-- Primero elija Destino --</option>');
+                }
+            });
+        }
+        // --- FIN SCRIPT AJAX ---
+
         var canvas = document.getElementById('signature-canvas');
         var wrapper = document.getElementById('signature-pad-wrapper');
         var aclaracionContainer = document.getElementById('aclaracion-container');

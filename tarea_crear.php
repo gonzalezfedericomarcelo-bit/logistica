@@ -1,5 +1,5 @@
 <?php
-// Archivo: tarea_crear.php (MODIFICADO PARA ASIGNACIÓN MÚLTIPLE)
+// Archivo: tarea_crear.php (MODIFICADO: Agregada Selección de Destino/Área Dinámica)
 // *** MODIFICADO (v4) PARA CORREGIR NOMBRE DE CREADOR EN PEDIDO FANTASMA ***
 // *** MODIFICADO (v5) POR GEMINI PARA APLICAR PERMISO 'crear_tarea_directa' ***
 // *** MODIFICADO (v6) POR GEMINI PARA INCLUIR ROLES 'auxiliar' y 'encargado' EN ASIGNACIÓN ***
@@ -111,6 +111,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $solicitante_telefono_post = trim($_POST['solicitante_telefono'] ?? '');
     
     $id_pedido_convertido = (int)($_POST['id_pedido_a_convertir'] ?? 0);
+    
+    // --- NUEVO: Recibir Ubicación ---
+    $id_destino_post = (int)($_POST['id_destino_interno'] ?? 0);
+    $id_area_post = (int)($_POST['id_area'] ?? 0);
 
     if (empty($titulo) || empty($descripcion) || empty($ids_asignados) || $id_categoria <= 0) {
         $mensaje = "Error: Título, Descripción, al menos un Asignado y Categoría son obligatorios.";
@@ -146,18 +150,28 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 $id_pedido_origen_final = $id_pedido_convertido;
             
             } else {
-                // --- MODO CREAR DIRECTO ---
+                // --- MODO CREAR DIRECTO (Generar Pedido Fantasma) ---
             
                 $sql_cat_nombre = "SELECT nombre FROM categorias WHERE id_categoria = :id_cat";
                 $stmt_cat_nombre = $pdo->prepare($sql_cat_nombre);
                 $stmt_cat_nombre->execute([':id_cat' => $id_categoria]);
                 $nombre_categoria_para_pedido = $stmt_cat_nombre->fetchColumn() ?: 'Categoría Desconocida';
 
+                // Si seleccionó un área, usamos su nombre, si no, usamos la categoría o "General"
+                if ($id_area_post > 0) {
+                    $stmt_area_name = $pdo->prepare("SELECT nombre FROM areas WHERE id_area = :id");
+                    $stmt_area_name->execute([':id' => $id_area_post]);
+                    $nombre_real_area = $stmt_area_name->fetchColumn();
+                    if ($nombre_real_area) {
+                        $nombre_categoria_para_pedido = $nombre_real_area;
+                    }
+                }
+
                 $stmt_get_creator_name = $pdo->prepare("SELECT nombre_completo FROM usuarios WHERE id_usuario = :id");
                 $stmt_get_creator_name->execute([':id' => $id_creador]);
                 $nombre_admin_para_pedido = $stmt_get_creator_name->fetchColumn() ?: 'Usuario del Sistema';
                 
-                $default_area_id_para_pedido = 1; 
+                $default_area_id_para_pedido = ($id_area_post > 0) ? $id_area_post : 1; 
 
                 $prioridad_pedido_map = match($prioridad) {
                     'urgente' => 'urgente',
@@ -170,9 +184,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 $numero_orden_generado = generar_nuevo_numero_orden($pdo);
 
                 $sql_insert_pedido = "INSERT INTO pedidos_trabajo
-                            (numero_orden, titulo_pedido, id_solicitante, id_auxiliar, id_area, area_solicitante, prioridad, fecha_requerida, descripcion_sintomas, solicitante_real_nombre, solicitante_telefono, fecha_emision, estado_pedido)
+                            (numero_orden, titulo_pedido, id_solicitante, id_auxiliar, id_area, area_solicitante, id_destino_interno, prioridad, fecha_requerida, descripcion_sintomas, solicitante_real_nombre, solicitante_telefono, fecha_emision, estado_pedido)
                         VALUES
-                            (:num_orden, :titulo_ped, :id_solic, :id_aux, :id_area, :area_nombre, :prio, :fecha_req, :descrip, :solic_real, :solic_tel, NOW(), 'aprobado')";
+                            (:num_orden, :titulo_ped, :id_solic, :id_aux, :id_area, :area_nombre, :id_dest, :prio, :fecha_req, :descrip, :solic_real, :solic_tel, NOW(), 'aprobado')";
                 
                 $stmt_insert_pedido = $pdo->prepare($sql_insert_pedido);
                 $stmt_insert_pedido->execute([
@@ -182,6 +196,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     ':id_aux' => $id_creador,
                     ':id_area' => $default_area_id_para_pedido,
                     ':area_nombre' => $nombre_categoria_para_pedido,
+                    ':id_dest' => ($id_destino_post > 0) ? $id_destino_post : null, // Guardamos destino si existe
                     ':prio' => $prioridad_pedido_map,
                     ':fecha_req' => $fecha_limite,
                     ':descrip' => $descripcion,
@@ -290,6 +305,10 @@ try {
                   AND activo = 1 
                   ORDER BY nombre_completo";
     $usuarios_asignables = $pdo->query($sql_users)->fetchAll();
+    
+    // Obtener Destinos para select (Priorizando Actis)
+    $destinos = $pdo->query("SELECT id_destino, nombre FROM destinos_internos 
+                             ORDER BY CASE WHEN nombre LIKE '%Actis%' THEN 0 ELSE 1 END, nombre ASC")->fetchAll(PDO::FETCH_ASSOC);
 
 } catch (PDOException $e) {
     $mensaje = "Error al cargar categorías o usuarios: " . $e->getMessage();
@@ -306,6 +325,8 @@ include 'navbar.php';
     <title>Crear Nueva Tarea</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
 </head>
 <body>
 
@@ -322,6 +343,31 @@ include 'navbar.php';
             
             <input type="hidden" name="id_pedido_a_convertir" value="<?php echo $id_pedido_a_convertir; ?>">
             
+            <?php if ($id_pedido_a_convertir == 0): ?>
+            <div class="card shadow-sm mb-4 border-info">
+                <div class="card-header bg-info text-white"><i class="fas fa-map-marker-alt me-1"></i> Ubicación del Trabajo</div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3 mb-md-0">
+                            <label class="form-label fw-bold">1° Destino / Sede</label>
+                            <select class="form-select" id="id_destino_interno" name="id_destino_interno">
+                                <option value="">-- Seleccione Destino --</option>
+                                <?php foreach ($destinos as $dest): ?>
+                                    <option value="<?php echo $dest['id_destino']; ?>"><?php echo htmlspecialchars($dest['nombre']); ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">2° Área Específica</label>
+                            <select class="form-select" id="id_area" name="id_area" disabled>
+                                <option value="">-- Primero elija Destino --</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <?php endif; ?>
+
             <div class="card shadow-sm mb-4">
                 <div class="card-header fs-5"><i class="fas fa-info-circle me-1"></i> Detalles Principales</div>
                 <div class="card-body">
@@ -463,6 +509,8 @@ include 'navbar.php';
     </div>
     
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     
     <?php if ($show_success_modal && $new_task_id): ?>
     <script>
@@ -482,6 +530,49 @@ include 'navbar.php';
     </script>
     <?php endif; ?>
     
+    <script>
+        $(document).ready(function() {
+            // Inicializar Select2 en los nuevos campos (si están visibles)
+            if ($('#id_destino_interno').length > 0) {
+                $('#id_destino_interno').select2({ theme: 'bootstrap-5', placeholder: 'Buscar Destino...' });
+                $('#id_area').select2({ theme: 'bootstrap-5', placeholder: 'Seleccione Área...' });
+
+                // Lógica de carga
+                $('#id_destino_interno').on('change', function() {
+                    var idDestino = $(this).val();
+                    var $selectArea = $('#id_area');
+                    $selectArea.empty().append('<option value="">Cargando...</option>').prop('disabled', true);
+
+                    if (idDestino) {
+                        $.ajax({
+                            url: 'ajax_obtener_areas.php',
+                            type: 'GET',
+                            data: { id_destino: idDestino },
+                            dataType: 'json',
+                            success: function(areas) {
+                                $selectArea.empty().append('<option value="">-- Seleccione Área --</option>');
+                                if (areas.length > 0) {
+                                    $.each(areas, function(i, a) {
+                                        // Aquí el value es ID_AREA (Importante para tarea_crear.php backend)
+                                        $selectArea.append('<option value="' + a.id_area + '">' + a.nombre + '</option>');
+                                    });
+                                    $selectArea.prop('disabled', false);
+                                } else {
+                                    $selectArea.append('<option value="">Sin áreas en este destino</option>');
+                                }
+                            }
+                        });
+                    } else {
+                        $selectArea.empty().append('<option value="">-- Primero elija Destino --</option>');
+                    }
+                });
+            }
+            
+            // Select2 para asignados (existente)
+            $('#ids_asignados').select2({ theme: 'bootstrap-5' });
+        });
+    </script>
+
     <div class="toast-container position-fixed bottom-0 end-0 p-3" id="notificationToastContainer" style="z-index: 1080;">
     </div>
     <?php include 'footer.php'; ?>
