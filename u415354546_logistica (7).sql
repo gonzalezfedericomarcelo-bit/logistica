@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1:3306
--- Tiempo de generación: 15-12-2025 a las 22:07:57
+-- Tiempo de generación: 15-12-2025 a las 22:58:04
 -- Versión del servidor: 11.8.3-MariaDB-log
 -- Versión de PHP: 7.2.34
 
@@ -182,99 +182,100 @@ INSERT INTO `adjuntos_tarea` (`id_adjunto`, `id_tarea`, `id_actualizacion`, `nom
 CREATE TABLE `areas` (
   `id_area` int(11) NOT NULL,
   `nombre` varchar(100) NOT NULL,
-  `descripcion` text DEFAULT NULL
+  `descripcion` text DEFAULT NULL,
+  `id_destino` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Volcado de datos para la tabla `areas`
 --
 
-INSERT INTO `areas` (`id_area`, `nombre`, `descripcion`) VALUES
-(1, 'LABORATORIO', ''),
-(3, 'COMPRAS', ''),
-(4, 'ESTADISTICA', ''),
-(5, 'SISTEMAS', ''),
-(6, 'PABELLON MEDICO', ''),
-(7, 'QUINCHO', ''),
-(8, 'INSUMOS MEDICOS', ''),
-(9, 'AMBA', ''),
-(10, 'DEPOSITO SUMINISTROS', ''),
-(11, 'PABELLON CHOFERES', ''),
-(12, 'RESIDUOS PATOGENICOS', ''),
-(13, 'MANTENIMIENTO CIVILES', ''),
-(14, 'VIF', ''),
-(15, 'CONMUTADOR', ''),
-(16, 'PERSONAL', ''),
-(17, 'VESTAURIO HOMBRES', ''),
-(18, 'VESTUARIO MUJERES', ''),
-(19, 'CLINICA MEDICA', ''),
-(20, 'GASTROENTEROLOGIA', ''),
-(21, 'NUTRICION', ''),
-(22, 'ISLA CLINICA MEDICA', 'Enfermera Pamela'),
-(23, 'PEDIATRIA', ''),
-(25, 'ODONTOLOGIA', ''),
-(26, 'AUDIOMETRIA', ''),
-(27, 'PSIQUIATRIA', ''),
-(28, 'ISLA OFTALMOLOGIA', ''),
-(29, 'OFTALMOLOGIA', ''),
-(30, 'ALERGIA', ''),
-(31, 'DERMATOLOGIA', ''),
-(32, 'ONCOLOGIA/CIRUGIA', ''),
-(33, 'BAÑO MUJERES OFTALMOLOGIA', ''),
-(34, 'GINECOLOGIA', ''),
-(35, 'ECOGRAFIA', ''),
-(36, 'NEUROLOGIA', ''),
-(37, 'ISLA GINECOLOGIA', 'Enfermeras Debora y Ludmila'),
-(38, 'AUXILIAR COMPRAS', 'AC ANDREA GECHUVIND'),
-(39, 'INVENTARIO', ''),
-(40, 'BAÑO MUJERES 3° PISO', 'BAÑO DE ATE'),
-(42, 'DEPOSITO INFORMATICA', 'Deposito del SG GONZALEZ'),
-(43, 'ASCENSORES', ''),
-(44, 'DEMANDA ESPONTANEA', ''),
-(45, 'HEMATOLOGIA', ''),
-(46, 'UROLOGIA', ''),
-(47, 'PODOLOGIA', ''),
-(48, 'CARDIOLOGIA', ''),
-(49, 'BAÑO PB DISCAPACITADOS', ''),
-(50, 'ISLA VACUNATORIO', 'Enfermera Lujan'),
-(51, 'KINESIOLOGIA', ''),
-(52, 'VACUNATORIO', ''),
-(53, 'TRAUMATOLOGIA', ''),
-(54, 'NEUMONOLOGIA', ''),
-(55, 'FICHERO MEDICO', ''),
-(56, 'ADMISION/TURNOS', ''),
-(57, 'RADIOIMAGENES', ''),
-(58, 'SALA DE ESPERA RADIOIMAGENES', ''),
-(59, 'SALA DE ESPERA GINECOLOGIA', ''),
-(60, 'SALA DE ESPERA PECERA', ''),
-(61, 'SALA DE ESPERA CLINICA MEDICA', ''),
-(62, 'SALA DE ESPERA OFTALMOLOGIA', ''),
-(63, 'SALA DE ESPERA PSQUIATRIA', ''),
-(64, 'SEGURIDAD', ''),
-(65, 'GRUPO ELECTROGENO', ''),
-(66, 'SECRETARIA', ''),
-(67, 'JEFA RRHH', 'AC Sandra Iramain'),
-(68, 'DIRECCION MEDICA', 'CR SANDMANN'),
-(69, 'SUBGERENCIA', 'GR MAGALLANES'),
-(70, 'DIRECCION OPERATIVA', 'CR REGOJO'),
-(71, 'SEGURIDAD E HIGIENE', ''),
-(72, 'SALON SAN MARTIN', ''),
-(73, 'BAÑOS DIRECCION', ''),
-(74, 'COCINA DIRECCION', ''),
-(75, 'JEFATURA COMPRAS', 'SP GONZALEZ'),
-(76, 'INTENDENCIA', 'AC Galeano y AC Lecuona'),
-(77, 'FINANZAS', 'AC Emanuel Morales'),
-(78, 'ASCENSOR DIRECCION', ''),
-(79, 'LAVADERO', ''),
-(80, 'ARCHIVO PASIVO', ''),
-(81, 'DEPOSITO APOYO LOGISTICO SUBSUELO', ''),
-(82, 'APOYO LOGISTICO', ''),
-(83, 'DEPOSITO REZAGOS', 'Chinos'),
-(84, 'BAÑOS PUBLICOS PB', ''),
-(85, 'GENERAL', 'Opcion para los CM'),
-(86, 'INFORMATICA Ap Log', ''),
-(87, 'TERRAZAS', ''),
-(88, 'DELEGACION ACTIS', '');
+INSERT INTO `areas` (`id_area`, `nombre`, `descripcion`, `id_destino`) VALUES
+(1, 'LABORATORIO', '', 1),
+(3, 'COMPRAS', '', 1),
+(4, 'ESTADISTICA', '', 1),
+(5, 'SISTEMAS', '', 1),
+(6, 'PABELLON MEDICO', '', 1),
+(7, 'QUINCHO', '', 1),
+(8, 'INSUMOS MEDICOS', '', 1),
+(9, 'AMBA', '', 1),
+(10, 'DEPOSITO SUMINISTROS', '', 1),
+(11, 'PABELLON CHOFERES', '', 1),
+(12, 'RESIDUOS PATOGENICOS', '', 1),
+(13, 'MANTENIMIENTO CIVILES', '', 1),
+(14, 'VIF', '', 1),
+(15, 'CONMUTADOR', '', 1),
+(16, 'PERSONAL', '', 1),
+(17, 'VESTAURIO HOMBRES', '', 1),
+(18, 'VESTUARIO MUJERES', '', 1),
+(19, 'CLINICA MEDICA', '', 1),
+(20, 'GASTROENTEROLOGIA', '', 1),
+(21, 'NUTRICION', '', 1),
+(22, 'ISLA CLINICA MEDICA', 'Enfermera Pamela', 1),
+(23, 'PEDIATRIA', '', 1),
+(25, 'ODONTOLOGIA', '', 1),
+(26, 'AUDIOMETRIA', '', 1),
+(27, 'PSIQUIATRIA', '', 1),
+(28, 'ISLA OFTALMOLOGIA', '', 1),
+(29, 'OFTALMOLOGIA', '', 1),
+(30, 'ALERGIA', '', 1),
+(31, 'DERMATOLOGIA', '', 1),
+(32, 'ONCOLOGIA/CIRUGIA', '', 1),
+(33, 'BAÑO MUJERES OFTALMOLOGIA', '', 1),
+(34, 'GINECOLOGIA', '', 1),
+(35, 'ECOGRAFIA', '', 1),
+(36, 'NEUROLOGIA', '', 1),
+(37, 'ISLA GINECOLOGIA', 'Enfermeras Debora y Ludmila', 1),
+(38, 'AUXILIAR COMPRAS', 'AC ANDREA GECHUVIND', 1),
+(39, 'INVENTARIO', '', 1),
+(40, 'BAÑO MUJERES 3° PISO', 'BAÑO DE ATE', 1),
+(42, 'DEPOSITO INFORMATICA', 'Deposito del SG GONZALEZ', 1),
+(43, 'ASCENSORES', '', 1),
+(44, 'DEMANDA ESPONTANEA', '', 1),
+(45, 'HEMATOLOGIA', '', 1),
+(46, 'UROLOGIA', '', 1),
+(47, 'PODOLOGIA', '', 1),
+(48, 'CARDIOLOGIA', '', 1),
+(49, 'BAÑO PB DISCAPACITADOS', '', 1),
+(50, 'ISLA VACUNATORIO', 'Enfermera Lujan', 1),
+(51, 'KINESIOLOGIA', '', 1),
+(52, 'VACUNATORIO', '', 1),
+(53, 'TRAUMATOLOGIA', '', 1),
+(54, 'NEUMONOLOGIA', '', 1),
+(55, 'FICHERO MEDICO', '', 1),
+(56, 'ADMISION/TURNOS', '', 1),
+(57, 'RADIOIMAGENES', '', 1),
+(58, 'SALA DE ESPERA RADIOIMAGENES', '', 1),
+(59, 'SALA DE ESPERA GINECOLOGIA', '', 1),
+(60, 'SALA DE ESPERA PECERA', '', 1),
+(61, 'SALA DE ESPERA CLINICA MEDICA', '', 1),
+(62, 'SALA DE ESPERA OFTALMOLOGIA', '', 1),
+(63, 'SALA DE ESPERA PSQUIATRIA', '', 1),
+(64, 'SEGURIDAD', '', 1),
+(65, 'GRUPO ELECTROGENO', '', 1),
+(66, 'SECRETARIA', '', 1),
+(67, 'JEFA RRHH', 'AC Sandra Iramain', 1),
+(68, 'DIRECCION MEDICA', 'CR SANDMANN', 1),
+(69, 'SUBGERENCIA', 'GR MAGALLANES', 1),
+(70, 'DIRECCION OPERATIVA', 'CR REGOJO', 1),
+(71, 'SEGURIDAD E HIGIENE', '', 1),
+(72, 'SALON SAN MARTIN', '', 1),
+(73, 'BAÑOS DIRECCION', '', 1),
+(74, 'COCINA DIRECCION', '', 1),
+(75, 'JEFATURA COMPRAS', 'SP GONZALEZ', 1),
+(76, 'INTENDENCIA', 'AC Galeano y AC Lecuona', 1),
+(77, 'FINANZAS', 'AC Emanuel Morales', 1),
+(78, 'ASCENSOR DIRECCION', '', 1),
+(79, 'LAVADERO', '', 1),
+(80, 'ARCHIVO PASIVO', '', 1),
+(81, 'DEPOSITO APOYO LOGISTICO SUBSUELO', '', 1),
+(82, 'APOYO LOGISTICO', '', 1),
+(83, 'DEPOSITO REZAGOS', 'Chinos', 1),
+(84, 'BAÑOS PUBLICOS PB', '', 1),
+(85, 'GENERAL', 'Opcion para los CM', 1),
+(86, 'INFORMATICA Ap Log', '', 1),
+(87, 'TERRAZAS', '', 1),
+(88, 'DELEGACION ACTIS', '', 1);
 
 -- --------------------------------------------------------
 
@@ -1828,6 +1829,7 @@ INSERT INTO `rol_permiso` (`nombre_rol`, `clave_permiso`) VALUES
 ('encargado_suplente_2', 'acceso_dashboard'),
 ('encargado_suplente_3', 'acceso_dashboard'),
 ('enc_suplente', 'acceso_dashboard'),
+('auxiliar', 'acceso_inventario'),
 ('enc_suplente', 'acceso_inventario'),
 ('auxiliar', 'acceso_pedidos_crear'),
 ('encargado', 'acceso_pedidos_crear'),
@@ -2217,7 +2219,7 @@ INSERT INTO `usuarios` (`id_usuario`, `nombre_completo`, `grado`, `usuario`, `pa
 (9, 'Renzo Balladares', 'CI', 'rballadares', '$2y$10$geznNX0wiWro/xRXhqKba.fyXJQYTsdfOmjK5RudfgP14p4okG.wW', 'renzo.balladares@iosfa.gob.ar', '11 6664-2706', 'masculino', 'empleado', 'default.png', NULL, '2025-11-02 22:39:21', 1, 0, 0, NULL, 0),
 (10, 'Luana Villa', 'VS', 'lvilla', '$2y$10$yMbR3zlsAchEfYwUxgdNH.aZ1GAgVr26Rb.w9kn1SKctNbcGkwCUq', 'luana.villa@iosfa.gob.ar', '11 3932-4067', 'femenino', 'auxiliar', 'avatar_10_1763638904.png', 'firma_10_1762175583.png', '2025-11-02 22:39:21', 1, 0, 0, '2021-06-14', 0),
 (11, 'Constanza Pihuala', 'VS', 'cpihuala', '$2y$10$9vCBZlqr/7gM4i7H4XKNF.Qv.DVSkuc0stum.Ib7FKy2Ghm8TeUlW', 'constanza.pihuela@iosfa.gob.ar', '11 2670-1182', 'femenino', 'auxiliar', 'avatar_11_1763639136.png', 'firma_11_1762345413.png', '2025-11-02 22:39:21', 1, 0, 0, '2002-12-15', 0),
-(13, 'Sebastian Lazzari', 'VS', 'slazzari', '$2y$10$aOLzGIurui9PcT.LDWNmUuGcGSDBRPSMx8KtV973jxz8FEUzltkQi', 'sebastian.lazzari@iosfa.gob.ar', '11 3197-6540', 'masculino', 'empleado', 'avatar_13_1764589808.png', NULL, '2025-11-02 22:39:21', 1, 0, 0, '2004-10-18', 0),
+(13, 'Sebastian Lazzari', 'VS', 'slazzari', '$2y$10$aOLzGIurui9PcT.LDWNmUuGcGSDBRPSMx8KtV973jxz8FEUzltkQi', 'sebastian.lazzari@iosfa.gob.ar', '11 3197-6540', 'masculino', 'auxiliar', 'avatar_13_1764589808.png', NULL, '2025-11-02 22:39:21', 1, 0, 0, '2004-10-18', 0),
 (15, 'Federico González', 'SG', 'fgonzalez', '$2y$10$kmhmW5Z8xY7dPzYYN9uLHe7worrWpYmZENdfiDD3ejmCgrYuDkgVy', 'gonzalezfedericomarcelo@gmail.com', '', 'masculino', 'enc_suplente', 'avatar_15_1764868292.png', 'firma_15_1762519277.png', '2025-11-02 22:39:21', 1, 0, 0, '2025-12-15', 0),
 (17, 'Ariel Benso', 'VS', 'abenso', '$2y$10$fY4QxyNxhQDc.8iXtcsX5uvI0Iq9PYXkH/CJz4kNdMmM13VdZbJdu', 'airel.benzo@iosfa.gob.ar', '11 2496-3156', 'masculino', 'empleado', 'avatar_17_1764775672.png', 'firma_17_1764775616.png', '2025-11-02 22:39:21', 1, 0, 0, '2002-05-08', 0),
 (18, 'Rocco Bonfiglioli', 'VS', 'rbonfiglioli', '$2y$10$h2g5KIbYnnwocuEH32wsdO.yKW0nqLL3APARV1Uf0l/Tnh6/LCB9i', 'rocco.bonfiglioli@iosfa.gob.ar', '11 3930-6011', 'masculino', 'empleado', 'perfil_18_1762442251.png', 'firma_18_1762442071.png', '2025-11-02 22:39:21', 1, 0, 0, '2005-12-25', 0),
@@ -2269,7 +2271,8 @@ ALTER TABLE `adjuntos_tarea`
 --
 ALTER TABLE `areas`
   ADD PRIMARY KEY (`id_area`),
-  ADD UNIQUE KEY `nombre` (`nombre`);
+  ADD UNIQUE KEY `nombre` (`nombre`),
+  ADD KEY `fk_area_destino` (`id_destino`);
 
 --
 -- Indices de la tabla `ascensores`
@@ -2695,6 +2698,12 @@ ALTER TABLE `adjuntos_actualizacion`
 ALTER TABLE `adjuntos_tarea`
   ADD CONSTRAINT `adjuntos_tarea_ibfk_1` FOREIGN KEY (`id_tarea`) REFERENCES `tareas` (`id_tarea`) ON DELETE CASCADE,
   ADD CONSTRAINT `adjuntos_tarea_ibfk_2` FOREIGN KEY (`id_usuario_subida`) REFERENCES `usuarios` (`id_usuario`);
+
+--
+-- Filtros para la tabla `areas`
+--
+ALTER TABLE `areas`
+  ADD CONSTRAINT `fk_area_destino` FOREIGN KEY (`id_destino`) REFERENCES `destinos_internos` (`id_destino`) ON DELETE SET NULL;
 
 --
 -- Filtros para la tabla `ascensores`
