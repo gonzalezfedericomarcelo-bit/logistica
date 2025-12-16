@@ -221,6 +221,11 @@ if ($id_usuario_nav > 0 && isset($pdo)) {
                     <i class="fas fa-plus-circle me-2 text-success"></i> Nuevo Cargo
                 </a>
             </li>
+            <li>
+                            <a class="dropdown-item" href="admin_link_externo.php">
+                                <i class="fas fa-qrcode me-2 text-warning"></i> Generar Firma Remota
+                            </a>
+                        </li>
         </ul>
     </li>
 <?php endif; ?>
