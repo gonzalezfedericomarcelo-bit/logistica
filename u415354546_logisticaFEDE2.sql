@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1:3306
--- Tiempo de generación: 17-12-2025 a las 12:24:33
+-- Tiempo de generación: 17-12-2025 a las 15:53:02
 -- Versión del servidor: 11.8.3-MariaDB-log
 -- Versión de PHP: 7.2.34
 
@@ -173,7 +173,8 @@ INSERT INTO `adjuntos_tarea` (`id_adjunto`, `id_tarea`, `id_actualizacion`, `nom
 (186, 215, NULL, 'IMG-20251201-WA0030.jpg', 'final_692ef084c60075.75865039.jpg', NULL, NULL, NULL, 'pendiente', 'final', 13, '2025-12-02 13:58:28'),
 (187, 219, NULL, 'STOCK 1° SEMESTRE 2024 Ins Med.xlsx', 'final_69302577548cc1.03979849.xlsx', NULL, NULL, NULL, 'pendiente', 'final', 11, '2025-12-03 11:56:39'),
 (188, 221, 148, 'LISTADO CAMARAS.xlsx', 'update_20251210_6939a609aced68.79437524.xlsx', NULL, NULL, NULL, 'pendiente', 'actualizacion', 13, '2025-12-10 16:55:37'),
-(189, 221, NULL, 'LISTADO CAMARAS.xlsx', 'final_69417c4a259d61.90947849.xlsx', NULL, NULL, NULL, 'pendiente', 'final', 13, '2025-12-16 15:35:38');
+(189, 221, NULL, 'LISTADO CAMARAS.xlsx', 'final_69417c4a259d61.90947849.xlsx', NULL, NULL, NULL, 'pendiente', 'final', 13, '2025-12-16 15:35:38'),
+(190, 228, NULL, 'Adobe Scan 17 dic 2025 (1).pdf', 'tarea_6942c91c20c319.67100554.pdf', NULL, NULL, NULL, 'pendiente', 'inicial', 7, '2025-12-17 15:15:40');
 
 -- --------------------------------------------------------
 
@@ -1084,7 +1085,13 @@ INSERT INTO `chat` (`id_chat`, `id_usuario`, `mensaje`, `fecha`, `tipo_mensaje`,
 (28, 10, '<p>Se lo paso en formato pdf tambien</p>', '2025-12-10 12:04:48', 'archivo', '1765368288_MODELO_DE_SOLICITUD_ELEMENTOS.pdf', 'MODELO DE SOLICITUD ELEMENTOS.pdf', 15, 1),
 (29, 15, '', '2025-12-10 12:06:44', 'audio', 'voice_1765368404_15.webm', 'Nota de voz', 10, 1),
 (30, 11, '📎 Archivo adjunto', '2025-12-10 13:00:21', 'archivo', '1765371621_STOCK_1___SEMESTRE_2024_Ins_Med.xlsx', 'STOCK 1° SEMESTRE 2024 Ins Med.xlsx', 15, 1),
-(31, 15, '<p>gracias</p><p><br></p>', '2025-12-10 13:00:29', 'texto', NULL, NULL, 11, 1);
+(31, 15, '<p>gracias</p><p><br></p>', '2025-12-10 13:00:29', 'texto', NULL, NULL, 11, 1),
+(32, 13, '📎 Archivo adjunto', '2025-12-17 11:07:21', 'archivo', '1765980441_LISTADO_DE_MATAFUEGOS_SG_GONZALEZ.xlsx', 'LISTADO DE MATAFUEGOS SG GONZALEZ.xlsx', 15, 1),
+(33, 13, '📎 Archivo adjunto', '2025-12-17 11:07:35', 'archivo', '1765980455_LISTADO_CAMARAS.xlsx', 'LISTADO CAMARAS.xlsx', 15, 1),
+(34, 13, '📎 Archivo adjunto', '2025-12-17 11:07:41', 'archivo', '1765980461_LISTADO_DE_TELEFONOS_ACTIS.xlsx', 'LISTADO DE TELEFONOS ACTIS.xlsx', 15, 1),
+(35, 13, '📎 Archivo adjunto', '2025-12-17 11:27:29', 'archivo', '1765981649_202512172240.pdf', '202512172240.pdf', 15, 1),
+(36, 13, '📎 Archivo adjunto', '2025-12-17 11:49:42', 'archivo', '1765982982_202512172240.docx', '202512172240.docx', 15, 1),
+(37, 15, '📎 Archivo adjunto', '2025-12-17 11:55:23', 'archivo', '1765983323_1765982982_202512172240.docx', '1765982982_202512172240.docx', 13, 1);
 
 -- --------------------------------------------------------
 
@@ -1201,6 +1208,23 @@ INSERT INTO `empresas_mantenimiento` (`id_empresa`, `nombre`, `telefono`, `email
 -- --------------------------------------------------------
 
 --
+-- Estructura de tabla para la tabla `historial_movimientos`
+--
+
+CREATE TABLE `historial_movimientos` (
+  `id_movimiento` int(11) NOT NULL,
+  `id_bien` int(11) NOT NULL,
+  `tipo_movimiento` varchar(50) NOT NULL,
+  `usuario_registro` int(11) NOT NULL,
+  `fecha_movimiento` datetime DEFAULT current_timestamp(),
+  `ubicacion_anterior` varchar(255) DEFAULT NULL,
+  `ubicacion_nueva` varchar(255) DEFAULT NULL,
+  `observacion_movimiento` text DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Estructura de tabla para la tabla `inventario_cargos`
 --
 
@@ -1216,16 +1240,99 @@ CREATE TABLE `inventario_cargos` (
   `nombre_jefe_servicio` varchar(150) NOT NULL,
   `firma_responsable` varchar(255) DEFAULT NULL,
   `firma_relevador` varchar(255) DEFAULT NULL,
-  `firma_jefe` varchar(255) DEFAULT NULL
+  `firma_jefe` varchar(255) DEFAULT NULL,
+  `id_estado_fk` int(11) DEFAULT NULL,
+  `complementos` text DEFAULT NULL,
+  `archivo_remito` varchar(255) DEFAULT NULL,
+  `archivo_comprobante` varchar(255) DEFAULT NULL,
+  `nombre_tecnico` varchar(150) DEFAULT NULL,
+  `fecha_fabricacion` int(11) DEFAULT NULL,
+  `vida_util_limite` int(11) DEFAULT NULL,
+  `mat_tipo_carga_id` int(11) DEFAULT NULL,
+  `mat_capacidad` varchar(50) DEFAULT NULL,
+  `mat_clase` varchar(50) DEFAULT NULL,
+  `mat_fecha_carga` date DEFAULT NULL,
+  `mat_fecha_ph` date DEFAULT NULL,
+  `mat_clase_id` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
 
 --
 -- Volcado de datos para la tabla `inventario_cargos`
 --
 
-INSERT INTO `inventario_cargos` (`id_cargo`, `id_usuario_relevador`, `fecha_creacion`, `elemento`, `codigo_inventario`, `servicio_ubicacion`, `observaciones`, `nombre_responsable`, `nombre_jefe_servicio`, `firma_responsable`, `firma_relevador`, `firma_jefe`) VALUES
-(1, 15, '2025-12-15 19:00:21', 'PC', '43242', 'INFORMATICA Ap Log', 'BIEN', 'SG GONZALEZ', 'SM I MARCELO CAÑETE', 'uploads/firmas/resp_1765836021_694084f527c56.png', 'uploads/firmas/rel_1765836021_694084f527e01.png', 'uploads/firmas/jefe_1765836021_694084f527e6a.png'),
-(2, 15, '2025-12-15 22:23:49', 'CAMARA MARCA2 MODELO2 DASDSAD', '1683', 'INFORMATICA Ap Log', '', 'Federico Gonzalez', 'Cañete', 'uploads/firmas/resp_1765848229_6940b4a5802c3.png', 'uploads/firmas/rel_1765848229_6940b4a58048b.png', 'uploads/firmas/jefe_1765848229_6940b4a580398.png');
+INSERT INTO `inventario_cargos` (`id_cargo`, `id_usuario_relevador`, `fecha_creacion`, `elemento`, `codigo_inventario`, `servicio_ubicacion`, `observaciones`, `nombre_responsable`, `nombre_jefe_servicio`, `firma_responsable`, `firma_relevador`, `firma_jefe`, `id_estado_fk`, `complementos`, `archivo_remito`, `archivo_comprobante`, `nombre_tecnico`, `fecha_fabricacion`, `vida_util_limite`, `mat_tipo_carga_id`, `mat_capacidad`, `mat_clase`, `mat_fecha_carga`, `mat_fecha_ph`, `mat_clase_id`) VALUES
+(5, 2, '2025-12-17 12:17:39', 'MATAFUEGO POLVO QUÍMICO (ABC) 5KG (ABC)', '405480', 'ASCENSORES', 'Carga: 2022-10-01 / PH: 2025-10-01', 'Juan Pepito', 'CR Arturo Pinguli', 'uploads/firmas/resp_1765984659_6942c993ba84e.png', 'uploads/firmas/rel_17659846596942c993baaa9.png', 'uploads/firmas/jefe_1765984659_6942c993ba979.png', 1, 'Carro', NULL, NULL, NULL, 2010, 2030, 1, '5', NULL, '2022-10-01', '2025-10-01', 1),
+(6, 13, '2025-12-17 12:29:18', 'MATAFUEGO CO2 (BC) 5KG (BC)', 'ab3654', 'LAVADERO', '', 'PAULA', 'CAÑETE', 'uploads/firmas/resp_1765985358_6942cc4e7794b.png', NULL, 'uploads/firmas/jefe_1765985358_6942cc4e77a64.png', 1, 'carro', NULL, NULL, '', 2000, 2005, 2, '5', NULL, '1990-01-01', '2024-01-01', 2);
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `inventario_config_clases`
+--
+
+CREATE TABLE `inventario_config_clases` (
+  `id_clase` int(11) NOT NULL,
+  `nombre` varchar(50) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+
+--
+-- Volcado de datos para la tabla `inventario_config_clases`
+--
+
+INSERT INTO `inventario_config_clases` (`id_clase`, `nombre`) VALUES
+(1, 'ABC'),
+(2, 'BC'),
+(3, 'A'),
+(4, 'D'),
+(5, 'K'),
+(6, 'AB');
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `inventario_config_matafuegos`
+--
+
+CREATE TABLE `inventario_config_matafuegos` (
+  `id_config` int(11) NOT NULL,
+  `tipo_carga` varchar(100) NOT NULL,
+  `vida_util_anios` int(11) NOT NULL DEFAULT 20
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+
+--
+-- Volcado de datos para la tabla `inventario_config_matafuegos`
+--
+
+INSERT INTO `inventario_config_matafuegos` (`id_config`, `tipo_carga`, `vida_util_anios`) VALUES
+(1, 'Polvo Químico (ABC)', 20),
+(2, 'CO2 (BC)', 5),
+(3, 'Agua (A)', 20),
+(4, 'Haloclean', 20);
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `inventario_estados`
+--
+
+CREATE TABLE `inventario_estados` (
+  `id_estado` int(11) NOT NULL,
+  `nombre` varchar(50) NOT NULL,
+  `color_badge` varchar(20) DEFAULT 'bg-secondary'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+
+--
+-- Volcado de datos para la tabla `inventario_estados`
+--
+
+INSERT INTO `inventario_estados` (`id_estado`, `nombre`, `color_badge`) VALUES
+(1, 'Activo', 'bg-success'),
+(2, 'Para recarga', 'bg-warning'),
+(3, 'Carga Vencida', 'bg-secondary'),
+(4, 'P. Hid. Vencida', 'bg-dark'),
+(5, 'Fuera de servicio', 'bg-danger'),
+(6, 'Prueba Vencida', 'bg-dark'),
+(7, 'En Mantenimiento', 'bg-warning');
 
 -- --------------------------------------------------------
 
@@ -1571,7 +1678,17 @@ INSERT INTO `notificaciones` (`id_notificacion`, `id_usuario_destino`, `id_tarea
 (312, 7, NULL, 'pedido_nuevo', 'Nuevo pedido (76/25: Arreglos Hall Inventario) del área INVENTARIO requiere aprobación.', 'encargado_pedidos_lista.php?highlight_pedido=231', 0, '2025-12-16 10:27:40', NULL, NULL),
 (313, 7, NULL, 'tarea_terminada', 'El técnico Sebastian Lazzari ha finalizado la tarea #221: Relavamiento de Camaras. Requiere su verificación.', 'https://federicogonzalez.net/logistica/tarea_ver.php?id=221#acciones', 0, '2025-12-16 12:35:38', NULL, NULL),
 (314, 7, NULL, 'tarea_reanudad', 'El técnico Sebastian Lazzari ha **REANUDADO** la tarea #58: CONMUTADOR (estaba \'En Reserva\').', 'https://federicogonzalez.net/logistica/tarea_ver.php?id=58', 0, '2025-12-16 12:37:33', NULL, NULL),
-(315, 7, NULL, 'tarea_actualizacion', 'Sebastian Lazzari agregó una novedad a la tarea #58: CONMUTADOR. Marcó la opción \'En Reserva\'.', 'https://federicogonzalez.net/logistica/tarea_ver.php?id=58&highlight_update=149#actualizaciones', 0, '2025-12-16 12:43:04', NULL, NULL);
+(315, 7, NULL, 'tarea_actualizacion', 'Sebastian Lazzari agregó una novedad a la tarea #58: CONMUTADOR. Marcó la opción \'En Reserva\'.', 'https://federicogonzalez.net/logistica/tarea_ver.php?id=58&highlight_update=149#actualizaciones', 0, '2025-12-16 12:43:04', NULL, NULL),
+(316, 15, NULL, 'chat', '📎 Archivo de Sebastian Lazzari', 'chat.php?chat_id=13&msg_id=32', 0, '2025-12-17 11:07:21', NULL, NULL),
+(317, 15, NULL, 'chat', '📎 Archivo de Sebastian Lazzari', 'chat.php?chat_id=13&msg_id=33', 0, '2025-12-17 11:07:35', NULL, NULL),
+(318, 15, NULL, 'chat', '📎 Archivo de Sebastian Lazzari', 'chat.php?chat_id=13&msg_id=34', 0, '2025-12-17 11:07:41', NULL, NULL),
+(319, 15, NULL, 'chat', '📎 Archivo de Sebastian Lazzari', 'chat.php?chat_id=13&msg_id=35', 0, '2025-12-17 11:27:29', NULL, NULL),
+(320, 15, NULL, 'chat', '📎 Archivo de Sebastian Lazzari', 'chat.php?chat_id=13&msg_id=36', 1, '2025-12-17 11:49:42', NULL, NULL),
+(321, 13, NULL, 'chat', '📎 Archivo de Federico González', 'chat.php?chat_id=15&msg_id=37', 1, '2025-12-17 11:55:23', NULL, NULL),
+(322, 6, NULL, 'pedido_nuevo', 'Nuevo pedido (77/25: arreglo fuelle inodoro) del área COMPRAS requiere aprobación.', 'encargado_pedidos_lista.php?highlight_pedido=232', 0, '2025-12-17 12:10:01', NULL, NULL),
+(323, 17, NULL, 'tarea_asignada', 'Alejandro Batista te ha asignado una nueva tarea: arreglo fuelle inodoro', 'tarea_ver.php?id=228', 0, '2025-12-17 12:15:40', NULL, NULL),
+(324, 18, NULL, 'tarea_asignada', 'Alejandro Batista te ha asignado una nueva tarea: Arreglos Hall Inventario', 'tarea_ver.php?id=229', 0, '2025-12-17 12:17:15', NULL, NULL),
+(325, 13, NULL, 'tarea_verificada', 'El Gestor **Alejandro Batista** ha **APROBADO** la tarea #221: Relavamiento de Camaras.', 'https://federicogonzalez.net/logistica/tarea_ver.php?id=221&show_modal=aprobada', 0, '2025-12-17 12:19:36', NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -1700,7 +1817,8 @@ INSERT INTO `pedidos_trabajo` (`id_pedido`, `numero_orden`, `titulo_pedido`, `id
 (228, '73/25', 'Destapar bacha', 10, 'ODONTOLOGIA', NULL, 25, 1, 'Dr Mabel Carnovalli', '1138821917', 10, 'importante', NULL, 'La bacha del sector de esterilización de odonto estaba tapada', '2025-12-12 14:03:07', 'aprobado', 225, 'uploads/firmas_pedidos/solic_DrMabelCarnovalli_1765548187.png'),
 (229, '74/25', 'Escaner', 10, 'AUXILIAR COMPRAS', NULL, 38, 1, 'Andrea Gechuvind', NULL, 10, 'rutina', NULL, 'No figuraba dirección de escaner y no podia escanear.', '2025-12-15 13:30:53', 'aprobado', 227, 'uploads/firmas_pedidos/solic_AndreaGechuvind_1765805453.png'),
 (230, '75/25', 'Oficinas Delegación', 10, 'Delegacion Actis', NULL, 88, 1, 'TC ROBERTO RUZZANTE', NULL, 10, 'importante', NULL, 'Configuración de cero de escaner para las oficinas de delgacion y relevamineto de persicopios.', '2025-12-15 13:36:10', 'aprobado', 226, 'uploads/firmas_pedidos/solic_TCROBERTORUZZANTE_1765805770.png'),
-(231, '76/25', 'Arreglos Hall Inventario', 10, 'INVENTARIO', NULL, 39, 1, 'Alejandra González', '111413502', 10, 'rutina', NULL, 'Colocación barral para cortinas en el hall de Inventarios y ver si se puede habilitar la bacha del hall.', '2025-12-16 10:27:40', 'pendiente_encargado', NULL, 'uploads/firmas_pedidos/solic_AlejandraGonzlez_1765891660.png');
+(231, '76/25', 'Arreglos Hall Inventario', 10, 'INVENTARIO', NULL, 39, 1, 'Alejandra González', '111413502', 10, 'rutina', NULL, 'Colocación barral para cortinas en el hall de Inventarios y ver si se puede habilitar la bacha del hall.', '2025-12-16 10:27:40', 'aprobado', 229, 'uploads/firmas_pedidos/solic_AlejandraGonzlez_1765891660.png'),
+(232, '77/25', 'arreglo fuelle inodoro', 7, 'COMPRAS', NULL, 3, 1, 'Andrea Gechuvind', NULL, 7, 'urgente', NULL, 'fuelle inodoro', '2025-12-17 12:10:01', 'aprobado', 228, 'uploads/firmas_pedidos/solic_AndreaGechuvind_1765984201.png');
 
 -- --------------------------------------------------------
 
@@ -2099,13 +2217,15 @@ INSERT INTO `tareas` (`id_tarea`, `id_pedido_origen`, `titulo`, `descripcion`, `
 (218, 221, 'Colocar cerradura', 'SOLICITUD ORIGINAL (Pedido #66/25):\r\n--------------------------------------------------\r\nColocación de cerradura en cocina en compras', 14, 6, 17, 'media', 'verificada', '2025-12-02 13:26:03', '2025-12-03', NULL, 0, 0, 'Se coloca cerradura nueva en cocina de primer piso dirección', NULL, '2025-12-03 15:23:25', NULL, NULL),
 (219, 222, 'Listado de stock de insumos médicos', 'Enviarme en digital el archivo del listado de insumos médicos.', 3, 15, 11, 'alta', 'verificada', '2025-12-03 11:11:24', NULL, NULL, 0, 1, 'Envio listado de insumos medicos 2025', NULL, '2025-12-03 11:57:01', NULL, NULL),
 (220, 223, 'Techo nuevo', 'SOLICITUD ORIGINAL (Pedido #68/25):\r\n--------------------------------------------------\r\nSe requiere reparacion del techo de la entrada del CM, n se despego material y las maderas que sostienen estan todas podridas. Se puede caer en cualquier momento.', 1, 6, 8, 'urgente', 'asignada', '2025-12-04 10:42:27', NULL, NULL, 0, 0, NULL, NULL, NULL, NULL, NULL),
-(221, 224, 'Relavamiento de Camaras', 'SOLICITUD ORIGINAL (Pedido #69/25):\r\n--------------------------------------------------\r\nRealizar relevamineto de Camaras de Seguridad de la Policlinica Actis y posteriormente realizar el listado actualizado correspondiente', 4, 7, 13, 'media', 'finalizada_tecnico', '2025-12-09 15:11:56', '2025-12-17', NULL, 0, 1, 'Este es el detalle de las cámaras que tenemos en la oficina del SG GONZALEZ 2025:\r\nMás adelante paso el listado completo de los sensores de movimiento y las sirenas que hay en la policlinica', NULL, '2025-12-16 12:35:38', NULL, NULL),
+(221, 224, 'Relavamiento de Camaras', 'SOLICITUD ORIGINAL (Pedido #69/25):\r\n--------------------------------------------------\r\nRealizar relevamineto de Camaras de Seguridad de la Policlinica Actis y posteriormente realizar el listado actualizado correspondiente', 4, 7, 13, 'media', 'verificada', '2025-12-09 15:11:56', '2025-12-17', NULL, 0, 1, 'Este es el detalle de las cámaras que tenemos en la oficina del SG GONZALEZ 2025:\r\nMás adelante paso el listado completo de los sensores de movimiento y las sirenas que hay en la policlinica', NULL, '2025-12-17 12:19:36', NULL, NULL),
 (222, 225, 'Boton trabado', 'SOLICITUD ORIGINAL (Pedido #70/25):\r\n--------------------------------------------------\r\nBoton de la mochila de pared del inodoro del baño de hombres estaba trabado.', 8, 6, 18, 'alta', 'verificada', '2025-12-11 14:16:29', NULL, NULL, 0, 0, 'Se saca la tapa de pared del inodoro y se destraba sin novedad', NULL, '2025-12-15 12:03:51', NULL, NULL),
 (223, 226, 'Destapar desague', 'SOLICITUD ORIGINAL (Pedido #71/25):\r\n--------------------------------------------------\r\nEl techo de Psiquiatria estaba todo inundado porque el desague estaba tapado.', 15, 6, 18, 'urgente', 'verificada', '2025-12-11 14:23:02', NULL, NULL, 0, 0, 'Se saca todos los restos de barro y hojas que tapan la canaleta y se destapa lo inundado sin novedad', NULL, '2025-12-15 12:03:30', NULL, NULL),
 (224, 227, 'Destapacion de rejilla', 'SOLICITUD ORIGINAL (Pedido #72/25):\r\n--------------------------------------------------\r\nLa rejilla del piso del Baño Publico de hombres se inundaba al abrir las canillas del Baño publico femenino,', 15, 6, 17, 'alta', 'verificada', '2025-12-11 14:25:48', NULL, NULL, 0, 0, 'Se sopapea y se logra destapar el desagüe del baño sin novedad', NULL, '2025-12-15 12:02:47', NULL, NULL),
 (225, 228, 'Destapar bacha', 'SOLICITUD ORIGINAL (Pedido #73/25):\r\n--------------------------------------------------\r\nLa bacha del sector de esterilización de odonto estaba tapada', 15, 7, 19, 'alta', 'asignada', '2025-12-15 12:04:57', NULL, NULL, 0, 0, NULL, NULL, NULL, NULL, NULL),
 (226, 230, 'Oficinas Delegación', 'SOLICITUD ORIGINAL (Pedido #75/25):\r\n--------------------------------------------------\r\nConfiguración de cero de escaner para las oficinas de delgacion y relevamineto de persicopios.', 1, 6, 8, 'alta', 'asignada', '2025-12-15 14:19:43', '2025-12-15', NULL, 0, 0, NULL, NULL, NULL, NULL, NULL),
-(227, 229, 'Escaner', 'SOLICITUD ORIGINAL (Pedido #74/25):\r\n--------------------------------------------------\r\nNo figuraba dirección de escaner y no podia escanear.', 4, 6, 13, 'media', 'asignada', '2025-12-15 14:20:35', '2025-12-16', NULL, 0, 0, NULL, NULL, NULL, NULL, NULL);
+(227, 229, 'Escaner', 'SOLICITUD ORIGINAL (Pedido #74/25):\r\n--------------------------------------------------\r\nNo figuraba dirección de escaner y no podia escanear.', 4, 6, 13, 'media', 'asignada', '2025-12-15 14:20:35', '2025-12-16', NULL, 0, 0, NULL, NULL, NULL, NULL, NULL),
+(228, 232, 'arreglo fuelle inodoro', 'SOLICITUD ORIGINAL (Pedido #77/25):\r\n--------------------------------------------------\r\nfuelle inodoro', 8, 7, 17, 'urgente', 'asignada', '2025-12-17 15:15:40', NULL, NULL, 0, 0, NULL, NULL, NULL, NULL, NULL),
+(229, 231, 'Arreglos Hall Inventario', 'SOLICITUD ORIGINAL (Pedido #76/25):\r\n--------------------------------------------------\r\nColocación barral para cortinas en el hall de Inventarios y ver si se puede habilitar la bacha del hall.', 1, 7, 18, 'media', 'asignada', '2025-12-17 15:17:15', NULL, NULL, 0, 0, NULL, NULL, NULL, NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -2189,7 +2309,9 @@ INSERT INTO `tareas_asignaciones` (`id_asignacion`, `id_tarea`, `id_usuario`, `f
 (63, 225, 19, '2025-12-15 18:06:33'),
 (64, 199, 25, '2025-12-15 18:06:33'),
 (128, 226, 8, '2025-12-15 18:23:33'),
-(129, 226, 13, '2025-12-15 18:23:33');
+(129, 226, 13, '2025-12-15 18:23:33'),
+(130, 228, 17, '2025-12-17 12:15:40'),
+(131, 229, 18, '2025-12-17 12:17:15');
 
 -- --------------------------------------------------------
 
@@ -2239,7 +2361,7 @@ CREATE TABLE `usuarios` (
 --
 
 INSERT INTO `usuarios` (`id_usuario`, `nombre_completo`, `grado`, `usuario`, `password`, `email`, `telefono`, `genero`, `rol`, `foto_perfil`, `firma_imagen_path`, `fecha_creacion`, `activo`, `reset_pendiente`, `chat_notificacion_leida`, `fecha_nacimiento`, `ultimo_saludo_cumple`) VALUES
-(2, 'Administrador', NULL, 'admin', '$2y$10$QkTMXnNEyoei0ySlLVd8NO8Yp1hER5Ke59oRlqURb1Dm7OJ21CWT6', 'gonzalezmarcelo159@gmail.com', '1166116861', 'masculino', 'admin', 'avatar_2_1764062292.png', 'firma_2_1762268322.png', '2025-11-02 22:39:21', 1, 0, 0, '1991-07-09', 0),
+(2, 'Administrador', NULL, 'admin', '$2y$10$QkTMXnNEyoei0ySlLVd8NO8Yp1hER5Ke59oRlqURb1Dm7OJ21CWT6', 'gonzalezmarcelo159@gmail.com', '1166116861', 'masculino', 'admin', 'avatar_2_1764062292.png', 'firma_2_1765984697.png', '2025-11-02 22:39:21', 1, 0, 0, '1991-07-09', 0),
 (6, 'Marcelo Cañete', 'SM', 'mcanete', '$2y$10$f5.pqoxvAFN/d5F8plvTteV8VmX8LwZMdDIskQNKcL4ou0JFdmMrq', 'marcelo.caniete@iosfa.gob.ar', '', 'masculino', 'encargado', 'user_6_1761797833.png', 'firma_6_1762175616.png', '2025-11-02 22:39:21', 1, 0, 0, NULL, 0),
 (7, 'Alejandro Batista', 'AC', 'abatista', '$2y$10$Jfqe/VxnFXtePIbJsTFR6.R5h/S6AbpSM4i662zjVtSq1bValyA36', 'alejandro.batista@iosfa.gob.ar', '', 'masculino', 'encargado', 'user_7_1761797963.png', 'firma_7_1762175675.png', '2025-11-02 22:39:21', 1, 0, 0, NULL, 0),
 (8, 'Ezequiel Paz', 'SG', 'epaz', '$2y$10$pZHakqGgyFJPaZSNlDcfbuMyW0jHoVuvmOi14pDf9L8X.J8XfRlSO', 'epaz@gmail.com', '11 6848-4970', 'masculino', 'empleado', 'default.png', 'firma_8_1762353970.png', '2025-11-02 22:39:21', 1, 0, 0, NULL, 0),
@@ -2249,7 +2371,7 @@ INSERT INTO `usuarios` (`id_usuario`, `nombre_completo`, `grado`, `usuario`, `pa
 (13, 'Sebastian Lazzari', 'VS', 'slazzari', '$2y$10$aOLzGIurui9PcT.LDWNmUuGcGSDBRPSMx8KtV973jxz8FEUzltkQi', 'sebastian.lazzari@iosfa.gob.ar', '11 3197-6540', 'masculino', 'auxiliar', 'avatar_13_1764589808.png', NULL, '2025-11-02 22:39:21', 1, 0, 0, '2004-10-18', 0),
 (15, 'Federico González', 'SG', 'fgonzalez', '$2y$10$kmhmW5Z8xY7dPzYYN9uLHe7worrWpYmZENdfiDD3ejmCgrYuDkgVy', 'gonzalezfedericomarcelo@gmail.com', '', 'masculino', 'enc_suplente', 'avatar_15_1764868292.png', 'firma_15_1762519277.png', '2025-11-02 22:39:21', 1, 0, 0, '2025-12-15', 2025),
 (17, 'Ariel Benso', 'VS', 'abenso', '$2y$10$fY4QxyNxhQDc.8iXtcsX5uvI0Iq9PYXkH/CJz4kNdMmM13VdZbJdu', 'airel.benzo@iosfa.gob.ar', '11 2496-3156', 'masculino', 'empleado', 'avatar_17_1764775672.png', 'firma_17_1764775616.png', '2025-11-02 22:39:21', 1, 0, 0, '2002-05-08', 0),
-(18, 'Rocco Bonfiglioli', 'VS', 'rbonfiglioli', '$2y$10$h2g5KIbYnnwocuEH32wsdO.yKW0nqLL3APARV1Uf0l/Tnh6/LCB9i', 'rocco.bonfiglioli@iosfa.gob.ar', '11 3930-6011', 'masculino', 'empleado', 'perfil_18_1762442251.png', 'firma_18_1762442071.png', '2025-11-02 22:39:21', 1, 0, 0, '2005-12-25', 0),
+(18, 'Rocco Bonfiglioli', 'VS', 'rbonfiglioli', '$2y$10$h2g5KIbYnnwocuEH32wsdO.yKW0nqLL3APARV1Uf0l/Tnh6/LCB9i', 'rocco.bonfiglioli@iosfa.gob.ar', '11 3930-6011', 'masculino', 'empleado', 'perfil_18_1762442251.png', 'firma_18_1762442071.png', '2025-11-02 22:39:21', 1, 0, 0, '2005-12-26', 0),
 (19, 'Juan Pablo Hernandez', 'AC', 'jphernandez', '$2y$10$0QRuOwFpRVdyYMwzOJgTJeLcc.iJFAMkVEZ6L4VnVVrV7HPKx1F3e', 'juan.hernandez@iosfa.gob.ar', '1125999143', 'masculino', 'empleado', 'default.png', NULL, '2025-11-02 22:39:21', 1, 0, 0, NULL, 0),
 (21, 'Guadalupe Cáceres', 'VS', 'gcaceres', '$2y$10$K.Q7.Q7.Q7.Q7.Q7.Q7.Q7.Q7.Q7.Q7.Q7.Q7.Q7.Q7.Q7.Q7.Q7.', 'gcaceres@gmail.com', '', 'otro', 'empleado', 'default.png', NULL, '2025-11-18 00:05:50', 1, 0, 0, NULL, 0),
 (22, 'Paula López', 'SS', 'plopez', '$2y$10$K.Q7.Q7.Q7.Q7.Q7.Q7.Q7.Q7.Q7.Q7.Q7.Q7.Q7.Q7.Q7.Q7.Q7.', 'plopez@gmail.com', '', 'otro', 'empleado', 'default.png', NULL, '2025-11-18 00:05:50', 1, 0, 0, NULL, 0),
@@ -2422,10 +2544,34 @@ ALTER TABLE `empresas_mantenimiento`
   ADD PRIMARY KEY (`id_empresa`);
 
 --
+-- Indices de la tabla `historial_movimientos`
+--
+ALTER TABLE `historial_movimientos`
+  ADD PRIMARY KEY (`id_movimiento`);
+
+--
 -- Indices de la tabla `inventario_cargos`
 --
 ALTER TABLE `inventario_cargos`
   ADD PRIMARY KEY (`id_cargo`);
+
+--
+-- Indices de la tabla `inventario_config_clases`
+--
+ALTER TABLE `inventario_config_clases`
+  ADD PRIMARY KEY (`id_clase`);
+
+--
+-- Indices de la tabla `inventario_config_matafuegos`
+--
+ALTER TABLE `inventario_config_matafuegos`
+  ADD PRIMARY KEY (`id_config`);
+
+--
+-- Indices de la tabla `inventario_estados`
+--
+ALTER TABLE `inventario_estados`
+  ADD PRIMARY KEY (`id_estado`);
 
 --
 -- Indices de la tabla `mensajes`
@@ -2544,7 +2690,7 @@ ALTER TABLE `adjuntos_actualizacion`
 -- AUTO_INCREMENT de la tabla `adjuntos_tarea`
 --
 ALTER TABLE `adjuntos_tarea`
-  MODIFY `id_adjunto` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=190;
+  MODIFY `id_adjunto` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=191;
 
 --
 -- AUTO_INCREMENT de la tabla `areas`
@@ -2616,7 +2762,7 @@ ALTER TABLE `categorias`
 -- AUTO_INCREMENT de la tabla `chat`
 --
 ALTER TABLE `chat`
-  MODIFY `id_chat` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=32;
+  MODIFY `id_chat` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=38;
 
 --
 -- AUTO_INCREMENT de la tabla `configuracion_novedades`
@@ -2649,10 +2795,34 @@ ALTER TABLE `empresas_mantenimiento`
   MODIFY `id_empresa` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
+-- AUTO_INCREMENT de la tabla `historial_movimientos`
+--
+ALTER TABLE `historial_movimientos`
+  MODIFY `id_movimiento` int(11) NOT NULL AUTO_INCREMENT;
+
+--
 -- AUTO_INCREMENT de la tabla `inventario_cargos`
 --
 ALTER TABLE `inventario_cargos`
-  MODIFY `id_cargo` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id_cargo` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+
+--
+-- AUTO_INCREMENT de la tabla `inventario_config_clases`
+--
+ALTER TABLE `inventario_config_clases`
+  MODIFY `id_clase` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+
+--
+-- AUTO_INCREMENT de la tabla `inventario_config_matafuegos`
+--
+ALTER TABLE `inventario_config_matafuegos`
+  MODIFY `id_config` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+
+--
+-- AUTO_INCREMENT de la tabla `inventario_estados`
+--
+ALTER TABLE `inventario_estados`
+  MODIFY `id_estado` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
 
 --
 -- AUTO_INCREMENT de la tabla `mensajes`
@@ -2664,25 +2834,25 @@ ALTER TABLE `mensajes`
 -- AUTO_INCREMENT de la tabla `notificaciones`
 --
 ALTER TABLE `notificaciones`
-  MODIFY `id_notificacion` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=316;
+  MODIFY `id_notificacion` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=326;
 
 --
 -- AUTO_INCREMENT de la tabla `pedidos_trabajo`
 --
 ALTER TABLE `pedidos_trabajo`
-  MODIFY `id_pedido` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=232;
+  MODIFY `id_pedido` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=233;
 
 --
 -- AUTO_INCREMENT de la tabla `tareas`
 --
 ALTER TABLE `tareas`
-  MODIFY `id_tarea` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=228;
+  MODIFY `id_tarea` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=230;
 
 --
 -- AUTO_INCREMENT de la tabla `tareas_asignaciones`
 --
 ALTER TABLE `tareas_asignaciones`
-  MODIFY `id_asignacion` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=130;
+  MODIFY `id_asignacion` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=132;
 
 --
 -- AUTO_INCREMENT de la tabla `tarea_adjuntos`
