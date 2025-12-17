@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1:3306
--- Tiempo de generación: 17-12-2025 a las 17:11:00
+-- Tiempo de generación: 17-12-2025 a las 22:35:49
 -- Versión del servidor: 11.8.3-MariaDB-log
 -- Versión de PHP: 7.2.34
 
@@ -1247,6 +1247,7 @@ CREATE TABLE `inventario_cargos` (
   `id_usuario_relevador` int(11) NOT NULL,
   `fecha_creacion` datetime DEFAULT current_timestamp(),
   `elemento` varchar(255) NOT NULL,
+  `destino_principal` varchar(255) DEFAULT NULL,
   `codigo_inventario` varchar(100) DEFAULT NULL,
   `servicio_ubicacion` varchar(150) NOT NULL,
   `observaciones` text DEFAULT NULL,
@@ -1270,14 +1271,6 @@ CREATE TABLE `inventario_cargos` (
   `mat_clase_id` int(11) DEFAULT NULL,
   `mat_numero_grabado` varchar(100) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
-
---
--- Volcado de datos para la tabla `inventario_cargos`
---
-
-INSERT INTO `inventario_cargos` (`id_cargo`, `id_usuario_relevador`, `fecha_creacion`, `elemento`, `codigo_inventario`, `servicio_ubicacion`, `observaciones`, `nombre_responsable`, `nombre_jefe_servicio`, `firma_responsable`, `firma_relevador`, `firma_jefe`, `id_estado_fk`, `complementos`, `archivo_remito`, `archivo_comprobante`, `nombre_tecnico`, `fecha_fabricacion`, `vida_util_limite`, `mat_tipo_carga_id`, `mat_capacidad`, `mat_clase`, `mat_fecha_carga`, `mat_fecha_ph`, `mat_clase_id`, `mat_numero_grabado`) VALUES
-(5, 2, '2025-12-17 12:17:39', 'MATAFUEGO POLVO QUÍMICO (ABC) 5KG (ABC)', '405480', 'ASCENSORES', 'Carga: 2022-10-01 / PH: 2025-10-01', 'Juan Pepito', 'CR Arturo Pinguli', 'uploads/firmas/resp_1765984659_6942c993ba84e.png', 'uploads/firmas/rel_17659846596942c993baaa9.png', 'uploads/firmas/jefe_1765984659_6942c993ba979.png', 3, 'Carro', NULL, NULL, NULL, 2010, 2030, 1, '5', NULL, '2022-10-01', '2025-10-01', 1, ''),
-(6, 13, '2025-12-17 12:29:18', 'MATAFUEGO CO2 (BC) 5KG (BC)', 'ab3654', 'LAVADERO', '', 'PAULA', 'CAÑETE', 'uploads/firmas/resp_1765985358_6942cc4e7794b.png', NULL, 'uploads/firmas/jefe_1765985358_6942cc4e77a64.png', 11, 'carro', NULL, NULL, '', 2000, 2005, 2, '5', NULL, '1990-01-01', '2024-01-01', 2, '12345');
 
 -- --------------------------------------------------------
 
@@ -1346,6 +1339,17 @@ INSERT INTO `inventario_config_matafuegos` (`id_config`, `tipo_carga`, `vida_uti
 -- --------------------------------------------------------
 
 --
+-- Estructura de tabla para la tabla `inventario_config_motivos`
+--
+
+CREATE TABLE `inventario_config_motivos` (
+  `id_motivo` int(11) NOT NULL,
+  `motivo` varchar(255) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Estructura de tabla para la tabla `inventario_estados`
 --
 
@@ -1370,6 +1374,55 @@ INSERT INTO `inventario_estados` (`id_estado`, `nombre`, `color_badge`) VALUES
 (9, 'En Reparación', 'bg-warning'),
 (10, 'Para Baja', 'bg-dark'),
 (11, 'Prueba Vencida', 'bg-danger');
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `inventario_transferencias_pendientes`
+--
+
+CREATE TABLE `inventario_transferencias_pendientes` (
+  `id_token` int(11) NOT NULL,
+  `token_hash` varchar(64) NOT NULL,
+  `id_bien` int(11) NOT NULL,
+  `nuevo_destino_id` int(11) DEFAULT NULL,
+  `nuevo_destino_nombre` varchar(255) DEFAULT NULL,
+  `nueva_area_nombre` varchar(255) DEFAULT NULL,
+  `nuevo_responsable_nombre` varchar(255) DEFAULT NULL,
+  `firma_nuevo_responsable_path` varchar(255) DEFAULT NULL,
+  `nuevo_jefe_nombre` varchar(255) DEFAULT NULL,
+  `firma_nuevo_jefe_path` varchar(255) DEFAULT NULL,
+  `motivo_transferencia` varchar(255) DEFAULT NULL,
+  `observaciones` text DEFAULT NULL,
+  `email_verificacion` varchar(100) DEFAULT NULL,
+  `token_otp` varchar(6) DEFAULT NULL,
+  `creado_por` int(11) DEFAULT NULL,
+  `fecha_creacion` datetime DEFAULT current_timestamp(),
+  `fecha_expiracion` datetime DEFAULT NULL,
+  `estado` enum('pendiente','esperando_otp','confirmado','expirado') DEFAULT 'pendiente'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Volcado de datos para la tabla `inventario_transferencias_pendientes`
+--
+
+INSERT INTO `inventario_transferencias_pendientes` (`id_token`, `token_hash`, `id_bien`, `nuevo_destino_id`, `nuevo_destino_nombre`, `nueva_area_nombre`, `nuevo_responsable_nombre`, `firma_nuevo_responsable_path`, `nuevo_jefe_nombre`, `firma_nuevo_jefe_path`, `motivo_transferencia`, `observaciones`, `email_verificacion`, `token_otp`, `creado_por`, `fecha_creacion`, `fecha_expiracion`, `estado`) VALUES
+(1, '902622af60fa769b65d71d406b608e5f96f2a557e24de187ef552c69a0b6bee6', 7, 0, NULL, 'AUDIOMETRIA', 'FEDE', 'uploads/firmas/transf_resp_69431119cf903.png', 'CAÑETE', 'uploads/firmas/transf_jefe_69431119cfa50.png', 'PROQ UE QUIEROP', 'PROQ UE QUIEROP', 'gonzalezmarcelo159@gmail.com', '354010', 13, '2025-12-17 17:22:49', '2025-12-19 17:22:49', 'pendiente'),
+(2, 'd0aea7a68245bfa220074cda7070dcdec4f5dae614c08de7ec336c05703b43d0', 8, 3, NULL, 'General', 'DSFDSFSD', 'uploads/firmas/transf_resp_694311a15e0a9.png', 'DSFDSFSD', 'uploads/firmas/transf_jefe_694311a15e178.png', 'PROQ UE QUIEROP2', 'PROQ UE QUIEROP2', NULL, NULL, 13, '2025-12-17 17:25:05', '2025-12-19 17:25:05', 'pendiente'),
+(3, '5e7f3d160a6bc55858399adafec0fe6f98f1ad6095a4cfe6044aadd3cbc10d58', 8, 9, NULL, 'General', 'dsafdsfsd', 'uploads/firmas/transf_resp_6943127569674.png', 'fsdfdsfds', 'uploads/firmas/transf_jefe_694312756979d.png', '123321321', '123321321', 'gonzalezmarcelo159@gmail.com', '521772', 13, '2025-12-17 17:28:37', '2025-12-19 17:28:37', 'pendiente'),
+(4, '4568f2ebf29bde655fa1ab3ddde713e832f1742e01b783859709f22fa2d1ee8b', 7, 2, NULL, 'General', 'FEDE', 'uploads/firmas/transf_resp_6943136620711.png', 'CAÑETE', 'uploads/firmas/transf_jefe_694313662081a.png', 'PROQ UE QUIEROP4', 'PROQ UE QUIEROP4', 'gonzalezmarcelo159@gmail.com', '545942', 13, '2025-12-17 17:32:38', '2025-12-19 17:32:38', 'pendiente'),
+(5, '9c3def33772077cbfa7ff8518670a8d3280ece9468841df76f5f89169f853ba3', 7, 5, NULL, 'General', 'FEDE', 'uploads/firmas/transf_resp_694314796be27.png', 'CAÑETE', 'uploads/firmas/transf_jefe_694314796bf20.png', 'quiero', 'quiero', 'gonzalezmarcelo159@gmail.com', '968574', 13, '2025-12-17 17:37:13', '2025-12-19 17:37:13', 'pendiente'),
+(6, 'd5ba741906be0e23c3974c086c6144a9b3e4594cc4e32a22361a9318cfdf6f04', 7, 3, NULL, 'General', 'fede', 'uploads/firmas/transf_resp_69431536e876c.png', 'caletye', 'uploads/firmas/transf_jefe_69431536e8869.png', 'quiero', 'quiero', 'gonzalezmarcelo159@gmail.com', '977107', 2, '2025-12-17 17:40:22', '2025-12-19 17:40:22', 'pendiente'),
+(7, '1833e804452264926c21ee2d69a93240453f5714dc75b77fe2f325fd0970650b', 8, 2, NULL, 'General', 'fede', 'uploads/firmas/transf_resp_694315f65b8b8.png', 'CAÑETE', 'uploads/firmas/transf_jefe_694315f65b9b8.png', 'quiero', 'quiero', 'gonzalezmarcelo159@gmail.com', '316610', 13, '2025-12-17 17:43:34', '2025-12-19 17:43:34', 'pendiente'),
+(8, 'c8f9567cc853c5954ac7fafd95e594beb32ea30c4ed7f426606051514acd8c8f', 8, 3, NULL, 'General', 'fede', 'uploads/firmas/transf_resp_694316f236395.png', 'caletye', 'uploads/firmas/transf_jefe_694316f2364ae.png', 'quiero', 'quiero', 'gonzalezmarcelo159@gmail.com', '672836', 2, '2025-12-17 17:47:46', '2025-12-19 17:47:46', 'pendiente'),
+(9, 'f70fbdcfca092e60b895d7a6c8b0fd3d76511a6abf32f4e6085baa4875835547', 7, 3, NULL, 'General', 'FEDE', 'uploads/firmas/transf_resp_694317c245ba4.png', 'CAÑETE', 'uploads/firmas/transf_jefe_694317c245cb7.png', 'quiero', 'quiero', 'gonzalezmarcelo159@gmail.com', '870837', 13, '2025-12-17 17:51:14', '2025-12-19 17:51:14', 'confirmado'),
+(10, 'bb1fc25d4ba89e5a3bc3fe0a0cacdb570bc98f3dd05f0149f364477f89ea64e8', 7, 8, 'CM SANTA RITA', '', 'DSFDSFSD', 'uploads/firmas/transf_resp_694319f2c12b8.png', 'DSFDSFSD', 'uploads/firmas/transf_resp_694319f2c12b8.png', 'PROQ UE QUIEROP', 'PROQ UE QUIEROP', 'gonzalezmarcelo159@gmail.com', '498323', 13, '2025-12-17 18:00:34', '2025-12-19 18:00:34', 'confirmado'),
+(11, 'c8b0773071391ed0ab74255edd7cb429d25b3b12316751ee782cfa8e30528416', 7, 3, 'CM MORON', '', 'FEDE', 'uploads/firmas/transf_resp_69431cf192313.png', 'FEDE', 'uploads/firmas/transf_resp_69431cf192313.png', 'PROQ UE QUIEROP', 'PROQ UE QUIEROP', NULL, NULL, 13, '2025-12-17 18:13:21', '2025-12-19 18:13:21', 'pendiente'),
+(12, '651f730039fe455cd52aefc7af3399481ad9210b1e6f16b5c3c76f7554df44c0', 7, 3, 'CM MORON', '', 'FEDE', 'uploads/firmas/transf_resp_69431d32a397b.png', 'FEDE', 'uploads/firmas/transf_resp_69431d32a397b.png', 'PROQ UE QUIEROP', 'PROQ UE QUIEROP', NULL, NULL, 13, '2025-12-17 18:14:26', '2025-12-19 18:14:26', 'pendiente'),
+(13, 'b2a5e618e32a6c117f2a00ca9651c339b56f582feab75fa3682f560c97c56406', 7, 3, 'CM MORON', '', 'FEDE', 'uploads/firmas/transf_resp_69431e9a1fcea.png', 'FEDE', 'uploads/firmas/transf_resp_69431e9a1fcea.png', 'PROQ UE QUIEROP', 'PROQ UE QUIEROP', NULL, NULL, 13, '2025-12-17 18:20:26', '2025-12-19 18:20:26', 'pendiente'),
+(14, '0bb6096b65a8f1d1ab67e25d59a007b793dede86f6d029fafc8be36290d49567', 7, 3, 'CM MORON', '', 'DSFDSFSD', 'uploads/firmas/transf_resp_6943221ce8f86.png', 'DSFDSFSD', 'uploads/firmas/transf_resp_6943221ce8f86.png', 'PROQ UE QUIEROP', 'PROQ UE QUIEROP', 'gonzalezmarcelo159@gmail.com', '878591', 13, '2025-12-17 18:35:24', '2025-12-19 18:35:24', 'confirmado'),
+(15, 'b52356dfa3860cb674f37c7ff4fcd5f1574caf5c61b421de1c8d1d183cf18c74', 7, 1, 'POLICLINICA ACTIS', 'DELEGACION ACTIS', 'FEDEgoznalez', 'uploads/firmas/transf_resp_69432726a7b9c.png', 'FEDEgoznalez', 'uploads/firmas/transf_resp_69432726a7b9c.png', 'quiero', 'quiero', 'gonzalezmarcelo159@gmail.com', '919124', 13, '2025-12-17 18:56:54', '2025-12-19 18:56:54', 'confirmado'),
+(16, '187f3a0ebb77914aa8bae7e6f23d1dd5983bb28e0a1e2c1759f8a9849a5bba68', 7, 1, 'POLICLINICA ACTIS', 'CONMUTADOR', 'FEDE', 'uploads/firmas/transf_resp_69432a8f3ec83.png', 'FEDE', 'uploads/firmas/transf_resp_69432a8f3ec83.png', 'dsfds', 'dsfds', 'gonzalezmarcelo159@gmail.com', '288948', 13, '2025-12-17 19:11:27', '2025-12-19 19:11:27', 'confirmado');
 
 -- --------------------------------------------------------
 
@@ -1729,7 +1782,9 @@ INSERT INTO `notificaciones` (`id_notificacion`, `id_usuario_destino`, `id_tarea
 (326, 2, NULL, 'tarea_verificada', '⚠️ Parte pendiente de revisión (2025-12-17) enviado por Federico González.', 'asistencia_listado_general.php?resaltar=83', 1, '2025-12-17 13:35:41', NULL, NULL),
 (327, 6, NULL, 'tarea_verificada', '⚠️ Parte pendiente de revisión (2025-12-17) enviado por Federico González.', 'asistencia_listado_general.php?resaltar=83', 1, '2025-12-17 13:35:41', NULL, NULL),
 (328, 7, NULL, 'tarea_verificada', '⚠️ Parte pendiente de revisión (2025-12-17) enviado por Federico González.', 'asistencia_listado_general.php?resaltar=83', 0, '2025-12-17 13:35:41', NULL, NULL),
-(329, 15, NULL, 'tarea_verificada', 'Tu parte de novedades ha sido APROBADO.', 'asistencia_pdf.php?id=83', 1, '2025-12-17 13:54:16', NULL, NULL);
+(329, 15, NULL, 'tarea_verificada', 'Tu parte de novedades ha sido APROBADO.', 'asistencia_pdf.php?id=83', 1, '2025-12-17 13:54:16', NULL, NULL),
+(330, 2, NULL, 'info_sistema', '🌹 Federico González ACEPTÓ la rosa de regalo.', 'admin_usuarios.php?id_buscar=15', 1, '2025-12-17 14:18:30', NULL, NULL),
+(331, 2, NULL, 'info_sistema', '🎉 Federico González agradeció el saludo de cumpleaños.', 'admin_usuarios.php?id_buscar=15', 1, '2025-12-17 14:18:37', NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -1885,7 +1940,7 @@ INSERT INTO `permisos` (`clave_permiso`, `nombre_mostrar`, `descripcion`) VALUES
 ('acceso_avisos_gestionar', 'Gestionar Avisos (Admin)', 'Gestionar Avisos (Admin)'),
 ('acceso_chat', 'Menú: Acceso al Chat Global', NULL),
 ('acceso_dashboard', 'Acceso Dashboard', 'Acceso Dashboard'),
-('acceso_inventario', 'Acceso a Inventario / Cargos', 'Permite crear cargos patrimoniales y firmar actas.'),
+('acceso_inventario', 'Inventario: Acceso y Lectura', 'Permite crear cargos patrimoniales y firmar actas.'),
 ('acceso_pedidos_crear', 'Crear Pedidos', 'Crear Pedidos'),
 ('acceso_pedidos_lista', 'Ver Lista Pedidos (Admin)', 'Ver Lista Pedidos (Admin)'),
 ('acceso_pedidos_lista_encargado', 'Bandeja de Pedidos (Encargado)', 'Bandeja de Pedidos (Encargado)'),
@@ -1910,6 +1965,16 @@ INSERT INTO `permisos` (`clave_permiso`, `nombre_mostrar`, `descripcion`) VALUES
 ('crear_aviso', 'Crear Avisos Generales', 'Crear Avisos Generales'),
 ('crear_incidencia_ascensor', '', 'Reportar fallas'),
 ('crear_tarea_directa', 'Crear Tarea Directa (Admin)', 'Crear Tarea Directa (Admin)'),
+('inventario_baja', 'Inventario: Dar de Baja (Lógica)', NULL),
+('inventario_config', 'Inventario: Configuración Avanzada', NULL),
+('inventario_editar', 'Inventario: Editar Bienes', NULL),
+('inventario_eliminar', 'Inventario: Eliminar Definitivamente', NULL),
+('inventario_historial', 'Inventario: Ver Historial General (Movimientos)', NULL),
+('inventario_mantenimiento', 'Inventario: Registrar Mantenimiento', NULL),
+('inventario_nuevo', 'Inventario: Cargar Nuevos Bienes', NULL),
+('inventario_reportes', 'Inventario: Generar Reportes PDF', NULL),
+('inventario_transferir', 'Inventario: Transferir de Área', NULL),
+('inventario_ver_transferencias', 'Inventario: Ver Historial de Transferencias', NULL),
 ('recibir_notif_ascensores', '', 'Recibe alertas sobre estado de ascensores'),
 ('tareas_gestionar', 'Tareas: Gestionar (Editar/Revisar/Eliminar)', NULL),
 ('tareas_ver_todas', 'Tareas: Ver Todo (Global)', NULL),
@@ -2015,6 +2080,7 @@ INSERT INTO `rol_permiso` (`nombre_rol`, `clave_permiso`) VALUES
 ('encargado_suplente_2', 'acceso_dashboard'),
 ('encargado_suplente_3', 'acceso_dashboard'),
 ('enc_suplente', 'acceso_dashboard'),
+('admin', 'acceso_inventario'),
 ('auxiliar', 'acceso_inventario'),
 ('enc_suplente', 'acceso_inventario'),
 ('auxiliar', 'acceso_pedidos_crear'),
@@ -2118,6 +2184,26 @@ INSERT INTO `rol_permiso` (`nombre_rol`, `clave_permiso`) VALUES
 ('encargado_suplente_2', 'crear_tarea_directa'),
 ('encargado_suplente_3', 'crear_tarea_directa'),
 ('enc_suplente', 'crear_tarea_directa'),
+('admin', 'inventario_baja'),
+('auxiliar', 'inventario_baja'),
+('admin', 'inventario_config'),
+('auxiliar', 'inventario_config'),
+('admin', 'inventario_editar'),
+('auxiliar', 'inventario_editar'),
+('admin', 'inventario_eliminar'),
+('auxiliar', 'inventario_eliminar'),
+('admin', 'inventario_historial'),
+('auxiliar', 'inventario_historial'),
+('admin', 'inventario_mantenimiento'),
+('auxiliar', 'inventario_mantenimiento'),
+('admin', 'inventario_nuevo'),
+('auxiliar', 'inventario_nuevo'),
+('admin', 'inventario_reportes'),
+('auxiliar', 'inventario_reportes'),
+('admin', 'inventario_transferir'),
+('auxiliar', 'inventario_transferir'),
+('admin', 'inventario_ver_transferencias'),
+('auxiliar', 'inventario_ver_transferencias'),
 ('admin', 'recibir_notif_ascensores'),
 ('auxiliar', 'recibir_notif_ascensores'),
 ('encargado', 'recibir_notif_ascensores'),
@@ -2615,10 +2701,22 @@ ALTER TABLE `inventario_config_matafuegos`
   ADD PRIMARY KEY (`id_config`);
 
 --
+-- Indices de la tabla `inventario_config_motivos`
+--
+ALTER TABLE `inventario_config_motivos`
+  ADD PRIMARY KEY (`id_motivo`);
+
+--
 -- Indices de la tabla `inventario_estados`
 --
 ALTER TABLE `inventario_estados`
   ADD PRIMARY KEY (`id_estado`);
+
+--
+-- Indices de la tabla `inventario_transferencias_pendientes`
+--
+ALTER TABLE `inventario_transferencias_pendientes`
+  ADD PRIMARY KEY (`id_token`);
 
 --
 -- Indices de la tabla `mensajes`
@@ -2845,13 +2943,13 @@ ALTER TABLE `empresas_mantenimiento`
 -- AUTO_INCREMENT de la tabla `historial_movimientos`
 --
 ALTER TABLE `historial_movimientos`
-  MODIFY `id_movimiento` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id_movimiento` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
 
 --
 -- AUTO_INCREMENT de la tabla `inventario_cargos`
 --
 ALTER TABLE `inventario_cargos`
-  MODIFY `id_cargo` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+  MODIFY `id_cargo` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
 
 --
 -- AUTO_INCREMENT de la tabla `inventario_config_clases`
@@ -2866,10 +2964,22 @@ ALTER TABLE `inventario_config_matafuegos`
   MODIFY `id_config` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
+-- AUTO_INCREMENT de la tabla `inventario_config_motivos`
+--
+ALTER TABLE `inventario_config_motivos`
+  MODIFY `id_motivo` int(11) NOT NULL AUTO_INCREMENT;
+
+--
 -- AUTO_INCREMENT de la tabla `inventario_estados`
 --
 ALTER TABLE `inventario_estados`
   MODIFY `id_estado` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
+
+--
+-- AUTO_INCREMENT de la tabla `inventario_transferencias_pendientes`
+--
+ALTER TABLE `inventario_transferencias_pendientes`
+  MODIFY `id_token` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=17;
 
 --
 -- AUTO_INCREMENT de la tabla `mensajes`
@@ -2881,7 +2991,7 @@ ALTER TABLE `mensajes`
 -- AUTO_INCREMENT de la tabla `notificaciones`
 --
 ALTER TABLE `notificaciones`
-  MODIFY `id_notificacion` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=330;
+  MODIFY `id_notificacion` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=332;
 
 --
 -- AUTO_INCREMENT de la tabla `pedidos_trabajo`
