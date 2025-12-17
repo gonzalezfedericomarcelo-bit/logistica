@@ -50,26 +50,34 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $pdo->prepare("DELETE FROM inventario_config_clases WHERE id_clase = ?")->execute([$_POST['id']]);
     }
 
-    // 4. CONFIGURACIÓN GENERAL (NUEVO - ALERTAS)
+    // 4. CONFIGURACIÓN GENERAL (ALERTAS)
     if (isset($_POST['guardar_general'])) {
-        // Usamos ON DUPLICATE KEY UPDATE por seguridad, aunque el script db ya lo insertó
-        $sql = "INSERT INTO inventario_config_general (clave, valor, descripcion) VALUES ('alerta_vida_util_meses', ?, 'Meses alerta') 
-                ON DUPLICATE KEY UPDATE valor = VALUES(valor)";
-        $pdo->prepare($sql)->execute([$_POST['alerta_vida_util']]);
+        $configs = [
+            'alerta_vida_util_meses' => $_POST['alerta_vida_util'],
+            'alerta_vencimiento_carga_dias' => $_POST['alerta_carga_dias'],
+            'alerta_vencimiento_ph_dias' => $_POST['alerta_ph_dias']
+        ];
+
+        $stmt = $pdo->prepare("INSERT INTO inventario_config_general (clave, valor, descripcion) VALUES (?, ?, 'Config Alerta') ON DUPLICATE KEY UPDATE valor = VALUES(valor)");
+        
+        foreach($configs as $k => $v) {
+            $stmt->execute([$k, $v]);
+        }
     }
 
     header("Location: inventario_config.php"); exit();
 }
 
-// Cargar Datos
+// Cargar Datos Listas
 $estados = $pdo->query("SELECT * FROM inventario_estados")->fetchAll();
 $tipos_mat = $pdo->query("SELECT * FROM inventario_config_matafuegos")->fetchAll();
 $clases_fuego = $pdo->query("SELECT * FROM inventario_config_clases")->fetchAll();
 
-// Cargar config alerta (si no existe, default 12)
-$conf_vida_stmt = $pdo->prepare("SELECT valor FROM inventario_config_general WHERE clave='alerta_vida_util_meses'");
-$conf_vida_stmt->execute();
-$conf_vida_util = $conf_vida_stmt->fetchColumn() ?: 12;
+// Cargar Configuración General
+$conf_data = $pdo->query("SELECT clave, valor FROM inventario_config_general")->fetchAll(PDO::FETCH_KEY_PAIR);
+$conf_vida_util = $conf_data['alerta_vida_util_meses'] ?? 12;
+$conf_carga_dias = $conf_data['alerta_vencimiento_carga_dias'] ?? 30;
+$conf_ph_dias = $conf_data['alerta_vencimiento_ph_dias'] ?? 30;
 
 ?>
 <!DOCTYPE html>
@@ -86,21 +94,38 @@ $conf_vida_util = $conf_vida_stmt->fetchColumn() ?: 12;
         <h3 class="mb-4"><i class="fas fa-cogs"></i> Configuración de Inventario</h3>
         
         <div class="card shadow-sm mb-4 border-primary">
-            <div class="card-header bg-primary text-white"><i class="fas fa-bell me-2"></i> Configuración de Alertas</div>
+            <div class="card-header bg-primary text-white fw-bold"><i class="fas fa-bell me-2"></i> Configuración de Alertas y Vencimientos</div>
             <div class="card-body">
-                <form method="POST" class="row align-items-end">
+                <form method="POST">
                     <input type="hidden" name="guardar_general" value="1">
-                    <div class="col-md-8">
-                        <label class="form-label fw-bold">Alerta Fin Vida Útil (Meses antes)</label>
-                        <div class="input-group">
-                            <span class="input-group-text"><i class="fas fa-hourglass-half"></i></span>
-                            <input type="number" name="alerta_vida_util" class="form-control" value="<?php echo htmlspecialchars($conf_vida_util); ?>" required min="1">
-                            <span class="input-group-text">Meses</span>
+                    <div class="row g-3 align-items-end">
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold small text-uppercase text-muted">Aviso Vencimiento Carga</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-warning text-dark"><i class="fas fa-battery-half"></i></span>
+                                <input type="number" name="alerta_carga_dias" class="form-control fw-bold" value="<?php echo htmlspecialchars($conf_carga_dias); ?>" required min="1">
+                                <span class="input-group-text">Días antes</span>
+                            </div>
                         </div>
-                        <small class="text-muted">El sistema mostrará una tarjeta de alerta cuando falten estos meses para el vencimiento de vida útil.</small>
-                    </div>
-                    <div class="col-md-4">
-                        <button class="btn btn-primary w-100 fw-bold">Guardar Configuración</button>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold small text-uppercase text-muted">Aviso Vencimiento PH</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-info text-white"><i class="fas fa-flask"></i></span>
+                                <input type="number" name="alerta_ph_dias" class="form-control fw-bold" value="<?php echo htmlspecialchars($conf_ph_dias); ?>" required min="1">
+                                <span class="input-group-text">Días antes</span>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold small text-uppercase text-muted">Aviso Fin Vida Útil</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-danger text-white"><i class="fas fa-hourglass-end"></i></span>
+                                <input type="number" name="alerta_vida_util" class="form-control fw-bold" value="<?php echo htmlspecialchars($conf_vida_util); ?>" required min="1">
+                                <span class="input-group-text">Meses antes</span>
+                            </div>
+                        </div>
+                        <div class="col-12 text-end mt-4">
+                            <button class="btn btn-success fw-bold px-4"><i class="fas fa-save me-2"></i> Guardar Configuración</button>
+                        </div>
                     </div>
                 </form>
             </div>

@@ -46,6 +46,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['id_cargo'])) {
     $remito = subirAdjunto('archivo_remito');
     $comp = subirAdjunto('archivo_comprobante');
 
+    // Preparar Fechas: Si están vacías, enviamos NULL para no romper la BD
+    $fecha_carga = !empty($_POST['mat_fecha_carga']) ? $_POST['mat_fecha_carga'] : null;
+    $fecha_ph = !empty($_POST['mat_fecha_ph']) ? $_POST['mat_fecha_ph'] : null;
+
     // Actualizar Fechas, Técnico y Estado
     $sql = "UPDATE inventario_cargos SET 
             mat_fecha_carga = :mvc, 
@@ -60,8 +64,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['id_cargo'])) {
 
     $stmt = $pdo->prepare($sql);
     $stmt->execute([
-        ':mvc' => $_POST['mat_fecha_carga'],
-        ':mvph' => $_POST['mat_fecha_ph'],
+        ':mvc' => $fecha_carga,
+        ':mvph' => $fecha_ph,
         ':ntec' => $_POST['nombre_tecnico'],
         ':id' => $id
     ]);
@@ -119,15 +123,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['id_cargo'])) {
                             <input type="hidden" name="id_cargo" value="<?php echo $bien['id_cargo']; ?>">
                             
                             <h6 class="fw-bold text-decoration-underline mb-3">1. Actualizar Vencimientos</h6>
-                            <div class="alert alert-warning small"><i class="fas fa-info-circle"></i> Ingrese la fecha en que se realizó el trabajo. El sistema calculará el vencimiento automáticamente.</div>
+                            <div class="alert alert-warning small"><i class="fas fa-info-circle"></i> Ingrese la fecha SÓLO del trabajo realizado. Puede dejar vacía la que no corresponda.</div>
+                            
                             <div class="row g-3 mb-4">
                                 <div class="col-md-6">
                                     <label class="form-label fw-bold">Fecha Realización Carga</label>
-                                    <input type="date" name="mat_fecha_carga" class="form-control border-success" required value="<?php echo $bien['mat_fecha_carga']; ?>">
+                                    <input type="date" name="mat_fecha_carga" class="form-control border-success" value="<?php echo $bien['mat_fecha_carga']; ?>">
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label fw-bold">Fecha Realización PH</label>
-                                    <input type="date" name="mat_fecha_ph" class="form-control border-success" required value="<?php echo $bien['mat_fecha_ph']; ?>">
+                                    <input type="date" name="mat_fecha_ph" class="form-control border-success" value="<?php echo $bien['mat_fecha_ph']; ?>">
                                 </div>
                             </div>
 

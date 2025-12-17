@@ -10,7 +10,7 @@ if (!isset($_SESSION['usuario_id']) || !tiene_permiso('acceso_inventario', $pdo)
 
 // --- 1. LÓGICA AUTOMÁTICA DE VENCIMIENTOS ---
 try {
-    // A. Carga Vencida (> 1 año)
+    // Actualizar estados automáticamente si las fechas vencieron
     $pdo->exec("UPDATE inventario_cargos 
                 SET id_estado_fk = (SELECT id_estado FROM inventario_estados WHERE nombre='Carga Vencida' LIMIT 1)
                 WHERE mat_tipo_carga_id IS NOT NULL 
@@ -18,7 +18,6 @@ try {
                 AND DATE_ADD(mat_fecha_carga, INTERVAL 1 YEAR) < CURDATE()
                 AND id_estado_fk NOT IN (SELECT id_estado FROM inventario_estados WHERE nombre IN ('Para Baja', 'Baja', 'Carga Vencida', 'Prueba Vencida'))");
 
-    // B. Prueba Hidráulica Vencida
     $pdo->exec("UPDATE inventario_cargos 
                 SET id_estado_fk = (SELECT id_estado FROM inventario_estados WHERE nombre='Prueba Vencida' LIMIT 1)
                 WHERE mat_tipo_carga_id IS NOT NULL 
@@ -26,12 +25,16 @@ try {
                 AND DATE_ADD(mat_fecha_ph, INTERVAL 1 YEAR) < CURDATE()
                 AND id_estado_fk NOT IN (SELECT id_estado FROM inventario_estados WHERE nombre IN ('Para Baja', 'Baja', 'Prueba Vencida'))");
 
-} catch (Exception $e) { /* Log error */ }
+} catch (Exception $e) { /* Silenciar error si tabla no existe aun */ }
 
-$conf_meses = $pdo->query("SELECT valor FROM inventario_config_general WHERE clave='alerta_vida_util_meses'")->fetchColumn() ?: 12;
+// Cargar Configuraciones de Alertas
+$conf = $pdo->query("SELECT clave, valor FROM inventario_config_general")->fetchAll(PDO::FETCH_KEY_PAIR);
+$conf_vida_util_meses = $conf['alerta_vida_util_meses'] ?? 12;
+$conf_carga_dias = $conf['alerta_vencimiento_carga_dias'] ?? 30;
+$conf_ph_dias = $conf['alerta_vencimiento_ph_dias'] ?? 30;
 
 
-// --- 2. FILTROS ---
+// --- 2. FILTROS DE BÚSQUEDA ---
 $where = "1=1";
 $params = [];
 
@@ -53,32 +56,84 @@ if (!empty($f_estado)) {
     $params[':est_nom'] = $f_estado;
 }
 
-// Filtros KPI
+// Filtro Tipo Bien
+$f_tipo = isset($_GET['tipo_bien']) ? $_GET['tipo_bien'] : '';
+if (!empty($f_tipo)) {
+    if ($f_tipo == 'Matafuegos') {
+        $where .= " AND i.mat_tipo_carga_id IS NOT NULL";
+    } elseif ($f_tipo == 'General') {
+        $where .= " AND i.mat_tipo_carga_id IS NULL";
+    } else {
+        $subsql = "(SELECT tipo_carga FROM inventario_config_matafuegos WHERE id_config = i.mat_tipo_carga_id)";
+        $where .= " AND $subsql = :tipo_nom";
+        $params[':tipo_nom'] = $f_tipo;
+    }
+}
+
+// Filtros KPI (Tarjetas)
 $f_kpi = isset($_GET['kpi']) ? $_GET['kpi'] : '';
 if ($f_kpi == 'vencidos') {
     $where .= " AND e.nombre IN ('Carga Vencida', 'Prueba Vencida')";
-} elseif ($f_kpi == 'mantenimiento') {
-    $where .= " AND e.nombre IN ('En Reparación', 'En Mantenimiento')";
 } elseif ($f_kpi == 'activos') {
     $where .= " AND e.nombre = 'Activo'";
+} elseif ($f_kpi == 'prox_carga') {
+    $where .= " AND i.mat_tipo_carga_id IS NOT NULL AND i.mat_fecha_carga IS NOT NULL 
+                AND DATEDIFF(DATE_ADD(i.mat_fecha_carga, INTERVAL 1 YEAR), CURDATE()) BETWEEN 0 AND :dias_carga";
+    $params[':dias_carga'] = $conf_carga_dias;
+} elseif ($f_kpi == 'prox_ph') {
+    $where .= " AND i.mat_tipo_carga_id IS NOT NULL AND i.mat_fecha_ph IS NOT NULL 
+                AND DATEDIFF(DATE_ADD(i.mat_fecha_ph, INTERVAL 1 YEAR), CURDATE()) BETWEEN 0 AND :dias_ph";
+    $params[':dias_ph'] = $conf_ph_dias;
 } elseif ($f_kpi == 'vida_util') {
     $where .= " AND i.mat_tipo_carga_id IS NOT NULL 
                 AND i.vida_util_limite IS NOT NULL 
                 AND (i.vida_util_limite - YEAR(CURDATE())) * 12 <= :meses_alerta
                 AND e.nombre NOT IN ('Para Baja', 'Baja')";
-    $params[':meses_alerta'] = $conf_meses;
-}
-
-// Filtro Tipo
-$f_tipo = isset($_GET['tipo_bien']) ? $_GET['tipo_bien'] : '';
-if ($f_tipo == 'Matafuegos') {
-    $where .= " AND i.mat_tipo_carga_id IS NOT NULL";
-} elseif ($f_tipo == 'General') {
-    $where .= " AND i.mat_tipo_carga_id IS NULL";
+    $params[':meses_alerta'] = $conf_vida_util_meses;
 }
 
 
-// --- 3. CONSULTAS ---
+// --- 3. DATOS PARA TARJETAS Y GRÁFICOS ---
+function contar($pdo, $cond, $p = []) { 
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM inventario_cargos i LEFT JOIN inventario_estados e ON i.id_estado_fk=e.id_estado WHERE $cond");
+    $stmt->execute($p);
+    return $stmt->fetchColumn(); 
+}
+
+// KPIs
+$kpi_activos = contar($pdo, "e.nombre = 'Activo'");
+$kpi_prox_carga = contar($pdo, "i.mat_tipo_carga_id IS NOT NULL AND i.mat_fecha_carga IS NOT NULL AND DATEDIFF(DATE_ADD(i.mat_fecha_carga, INTERVAL 1 YEAR), CURDATE()) BETWEEN 0 AND ?", [$conf_carga_dias]);
+$kpi_prox_ph = contar($pdo, "i.mat_tipo_carga_id IS NOT NULL AND i.mat_fecha_ph IS NOT NULL AND DATEDIFF(DATE_ADD(i.mat_fecha_ph, INTERVAL 1 YEAR), CURDATE()) BETWEEN 0 AND ?", [$conf_ph_dias]);
+$kpi_vencidos = contar($pdo, "e.nombre IN ('Carga Vencida', 'Prueba Vencida')");
+$kpi_vidautil = contar($pdo, "i.mat_tipo_carga_id IS NOT NULL AND i.vida_util_limite IS NOT NULL AND (i.vida_util_limite - YEAR(CURDATE())) * 12 <= ? AND e.nombre NOT IN ('Para Baja', 'Baja')", [$conf_vida_util_meses]);
+
+// GRÁFICOS SUPERIORES
+// 1. Total por Tipo de Bien
+$chart_total_tipo = $pdo->query("SELECT IFNULL(tm.tipo_carga, 'General') as label, COUNT(*) as data 
+                                 FROM inventario_cargos i 
+                                 LEFT JOIN inventario_config_matafuegos tm ON i.mat_tipo_carga_id = tm.id_config 
+                                 GROUP BY label ORDER BY data DESC")->fetchAll(PDO::FETCH_ASSOC);
+
+// 2. Historial de Servicios (CORREGIDO: Busca en el historial de trabajos realizados)
+// Intentamos buscar acciones como 'Carga', 'PH', etc. Filtramos 'Edición' o 'Creación' para ver solo mantenimiento.
+$sql_historial = "SELECT accion as label, COUNT(*) as data 
+                  FROM inventario_historial 
+                  WHERE accion NOT IN ('Creación', 'Edición', 'Eliminación', 'Transferencia') 
+                  GROUP BY label ORDER BY data DESC LIMIT 5";
+try {
+    $chart_mant_tipo = $pdo->query($sql_historial)->fetchAll(PDO::FETCH_ASSOC);
+} catch (Exception $e) {
+    // Si falla (por si la tabla historial aun no tiene datos), devuelve array vacío
+    $chart_mant_tipo = [];
+}
+
+// GRÁFICOS INFERIORES
+$chart_ubi = $pdo->query("SELECT servicio_ubicacion as label, COUNT(*) as data FROM inventario_cargos GROUP BY servicio_ubicacion ORDER BY data DESC LIMIT 10")->fetchAll(PDO::FETCH_ASSOC);
+$chart_est = $pdo->query("SELECT e.nombre as label, COUNT(*) as data FROM inventario_cargos i LEFT JOIN inventario_estados e ON i.id_estado_fk=e.id_estado GROUP BY e.nombre")->fetchAll(PDO::FETCH_ASSOC);
+$chart_tip = $pdo->query("SELECT IF(mat_tipo_carga_id IS NOT NULL, 'Matafuegos', 'General') as label, COUNT(*) as data FROM inventario_cargos GROUP BY label")->fetchAll(PDO::FETCH_ASSOC);
+
+
+// --- 4. LISTADO PRINCIPAL ---
 $sql = "SELECT i.*, e.nombre as nombre_estado, e.color_badge 
         FROM inventario_cargos i 
         LEFT JOIN inventario_estados e ON i.id_estado_fk = e.id_estado 
@@ -86,21 +141,6 @@ $sql = "SELECT i.*, e.nombre as nombre_estado, e.color_badge
 $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
 $inventario = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-function contar($pdo, $cond) { return $pdo->query("SELECT COUNT(*) FROM inventario_cargos i LEFT JOIN inventario_estados e ON i.id_estado_fk=e.id_estado WHERE $cond")->fetchColumn(); }
-
-$kpi_activos = contar($pdo, "e.nombre = 'Activo'");
-$kpi_taller  = contar($pdo, "e.nombre IN ('En Reparación', 'En Mantenimiento')");
-$kpi_vencidos = contar($pdo, "e.nombre IN ('Carga Vencida', 'Prueba Vencida')");
-$kpi_vidautil = $pdo->query("SELECT COUNT(*) FROM inventario_cargos i LEFT JOIN inventario_estados e ON i.id_estado_fk=e.id_estado 
-                             WHERE i.mat_tipo_carga_id IS NOT NULL AND i.vida_util_limite IS NOT NULL 
-                             AND (i.vida_util_limite - YEAR(CURDATE())) * 12 <= $conf_meses
-                             AND e.nombre NOT IN ('Para Baja', 'Baja')")->fetchColumn();
-
-// Gráficos
-$chart_ubi = $pdo->query("SELECT servicio_ubicacion as label, COUNT(*) as data FROM inventario_cargos GROUP BY servicio_ubicacion ORDER BY data DESC LIMIT 10")->fetchAll(PDO::FETCH_ASSOC);
-$chart_est = $pdo->query("SELECT e.nombre as label, COUNT(*) as data FROM inventario_cargos i LEFT JOIN inventario_estados e ON i.id_estado_fk=e.id_estado GROUP BY e.nombre")->fetchAll(PDO::FETCH_ASSOC);
-$chart_tip = $pdo->query("SELECT IF(mat_tipo_carga_id IS NOT NULL, 'Matafuegos', 'General') as label, COUNT(*) as data FROM inventario_cargos GROUP BY label")->fetchAll(PDO::FETCH_ASSOC);
 
 $lista_lugares = $pdo->query("SELECT DISTINCT servicio_ubicacion FROM inventario_cargos ORDER BY servicio_ubicacion")->fetchAll(PDO::FETCH_COLUMN);
 $lista_estados = $pdo->query("SELECT DISTINCT nombre FROM inventario_estados ORDER BY nombre")->fetchAll(PDO::FETCH_COLUMN);
@@ -119,25 +159,21 @@ $lista_estados = $pdo->query("SELECT DISTINCT nombre FROM inventario_estados ORD
     <style>
         body { background-color: #f0f2f5; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         
-        .card-kpi {
-            border: none; border-radius: 12px; transition: all 0.3s ease;
+        .card-kpi-small {
+            border: none; border-radius: 10px; transition: transform 0.2s;
             overflow: hidden; position: relative; text-decoration: none; color: white !important;
+            padding: 15px; min-height: 100px; display: flex; flex-direction: column; justify-content: center;
         }
-        .card-kpi:hover { transform: translateY(-7px); box-shadow: 0 14px 28px rgba(0,0,0,0.25); filter: brightness(1.05); }
-        .card-kpi .icon-bg { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); font-size: 4rem; opacity: 0.2; }
-        .card-kpi .h2 { font-weight: 800; font-size: 2.5rem; text-shadow: 1px 1px 2px rgba(0,0,0,0.2); }
-        .card-kpi .label-text { font-weight: 600; text-transform: uppercase; letter-spacing: 1px; font-size: 0.85rem; opacity: 0.9; }
+        .card-kpi-small:hover { transform: translateY(-5px); box-shadow: 0 5px 15px rgba(0,0,0,0.2); filter: brightness(1.05); }
+        .card-kpi-small .icon-bg { position: absolute; right: 10px; bottom: 10px; font-size: 2.5rem; opacity: 0.2; }
+        .card-kpi-small .h3 { font-weight: 800; font-size: 2rem; margin: 0; text-shadow: 1px 1px 2px rgba(0,0,0,0.1); }
+        .card-kpi-small .label-text { font-weight: 600; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.95; }
 
         .chart-container { position: relative; height: 250px; width: 100%; }
         .blink { animation: blinker 1.5s linear infinite; font-weight: bold; }
         @keyframes blinker { 50% { opacity: 0.5; } }
 
-        /* Botones Acción (Círculos) */
-        .btn-icon-action {
-            width: 34px; height: 34px; border-radius: 50%;
-            display: inline-flex; align-items: center; justify-content: center;
-            border: 1px solid transparent; margin: 0 2px; transition: all 0.2s; text-decoration: none;
-        }
+        .btn-icon-action { width: 34px; height: 34px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; border: 1px solid transparent; margin: 0 2px; transition: all 0.2s; text-decoration: none; }
         .btn-icon-action:hover { transform: scale(1.1); }
         .btn-pdf { color: #dc3545; background: #fff; border-color: #dc3545; }
         .btn-pdf:hover { background: #dc3545; color: #fff; }
@@ -147,8 +183,6 @@ $lista_estados = $pdo->query("SELECT DISTINCT nombre FROM inventario_estados ORD
         .btn-service:hover { background: #fd7e14; color: #fff; }
         .btn-del { color: #6c757d; background: #fff; border-color: #6c757d; }
         .btn-del:hover { background: #6c757d; color: #fff; }
-
-        .table-responsive { overflow-x: auto; padding-bottom: 20px; }
     </style>
 </head>
 <body>
@@ -169,53 +203,75 @@ $lista_estados = $pdo->query("SELECT DISTINCT nombre FROM inventario_estados ORD
             </div>
         </div>
 
-        <div class="row g-4 mb-5">
-            <div class="col-12 col-sm-6 col-xl-3">
-                <a href="?kpi=activos" class="card-kpi bg-success shadow h-100 p-4 d-flex flex-column justify-content-center">
+        <div class="row g-4 mb-4">
+            <div class="col-md-6">
+                <div class="card shadow border-0 h-100 rounded-4">
+                    <div class="card-header bg-white border-bottom-0 pt-3 fw-bold text-primary"><i class="fas fa-chart-bar me-2"></i> Cantidad de Bienes por Tipo</div>
+                    <div class="card-body"><div class="chart-container"><canvas id="chartTotalTipo"></canvas></div></div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card shadow border-0 h-100 rounded-4">
+                    <div class="card-header bg-white border-bottom-0 pt-3 fw-bold text-danger"><i class="fas fa-history me-2"></i> Servicios Realizados (Histórico)</div>
+                    <div class="card-body"><div class="chart-container"><canvas id="chartMantTipo"></canvas></div></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row row-cols-1 row-cols-sm-2 row-cols-md-5 g-3 mb-4">
+            <div class="col">
+                <a href="?kpi=activos" class="card-kpi-small bg-success shadow-sm">
                     <div class="label-text">Total Activos</div>
-                    <div class="h2 mb-0"><?php echo $kpi_activos; ?></div>
-                    <i class="fas fa-check-circle icon-bg text-white"></i>
+                    <div class="h3"><?php echo $kpi_activos; ?></div>
+                    <i class="fas fa-check-circle icon-bg"></i>
                 </a>
             </div>
-            <div class="col-12 col-sm-6 col-xl-3">
-                <a href="?kpi=mantenimiento" class="card-kpi bg-warning text-dark shadow h-100 p-4 d-flex flex-column justify-content-center">
-                    <div class="label-text text-dark">En Taller</div>
-                    <div class="h2 mb-0 text-dark"><?php echo $kpi_taller; ?></div>
-                    <i class="fas fa-wrench icon-bg text-dark"></i>
+            <div class="col">
+                <a href="?kpi=prox_carga" class="card-kpi-small bg-warning text-dark shadow-sm" style="background-color: #ffc107 !important;">
+                    <div class="label-text text-dark">Prox. Vencer Carga</div>
+                    <div class="h3 text-dark"><?php echo $kpi_prox_carga; ?></div>
+                    <i class="fas fa-battery-half icon-bg text-dark"></i>
                 </a>
             </div>
-            <div class="col-12 col-sm-6 col-xl-3">
-                <a href="?kpi=vencidos" class="card-kpi bg-danger shadow h-100 p-4 d-flex flex-column justify-content-center">
-                    <div class="label-text">Vencidos</div>
-                    <div class="h2 mb-0"><?php echo $kpi_vencidos; ?></div>
-                    <i class="fas fa-exclamation-triangle icon-bg text-white"></i>
+            <div class="col">
+                <a href="?kpi=prox_ph" class="card-kpi-small bg-info text-white shadow-sm">
+                    <div class="label-text">Prox. Vencer PH</div>
+                    <div class="h3"><?php echo $kpi_prox_ph; ?></div>
+                    <i class="fas fa-flask icon-bg"></i>
                 </a>
             </div>
-            <div class="col-12 col-sm-6 col-xl-3">
-                <a href="?kpi=vida_util" class="card-kpi bg-primary shadow h-100 p-4 d-flex flex-column justify-content-center">
-                    <div class="label-text">Alerta V.Útil (<?php echo $conf_meses; ?>m)</div>
-                    <div class="h2 mb-0"><?php echo $kpi_vidautil; ?></div>
-                    <i class="fas fa-hourglass-half icon-bg text-white"></i>
+            <div class="col">
+                <a href="?kpi=vencidos" class="card-kpi-small bg-danger shadow-sm">
+                    <div class="label-text">Vencidos Total</div>
+                    <div class="h3"><?php echo $kpi_vencidos; ?></div>
+                    <i class="fas fa-exclamation-triangle icon-bg"></i>
+                </a>
+            </div>
+            <div class="col">
+                <a href="?kpi=vida_util" class="card-kpi-small bg-dark shadow-sm">
+                    <div class="label-text">Alerta Vida Útil</div>
+                    <div class="h3"><?php echo $kpi_vidautil; ?></div>
+                    <i class="fas fa-hourglass-end icon-bg"></i>
                 </a>
             </div>
         </div>
 
         <div class="row g-3 mb-4">
             <div class="col-md-4">
-                <div class="card shadow border-0 h-100 rounded-4">
-                    <div class="card-header bg-white border-bottom-0 pt-3 fw-bold small text-muted text-uppercase">Ubicaciones (Top)</div>
+                <div class="card shadow-sm border-0 h-100 rounded-4">
+                    <div class="card-header bg-white border-bottom-0 pt-3 fw-bold small text-muted">UBICACIONES (TOP 10)</div>
                     <div class="card-body"><div class="chart-container"><canvas id="chartUbicacion"></canvas></div></div>
                 </div>
             </div>
             <div class="col-md-4">
-                <div class="card shadow border-0 h-100 rounded-4">
-                    <div class="card-header bg-white border-bottom-0 pt-3 fw-bold small text-muted text-uppercase">Estado del Parque</div>
+                <div class="card shadow-sm border-0 h-100 rounded-4">
+                    <div class="card-header bg-white border-bottom-0 pt-3 fw-bold small text-muted">ESTADO DEL PARQUE</div>
                     <div class="card-body"><div class="chart-container"><canvas id="chartEstado"></canvas></div></div>
                 </div>
             </div>
             <div class="col-md-4">
-                <div class="card shadow border-0 h-100 rounded-4">
-                    <div class="card-header bg-white border-bottom-0 pt-3 fw-bold small text-muted text-uppercase">Tipos de Bienes</div>
+                <div class="card shadow-sm border-0 h-100 rounded-4">
+                    <div class="card-header bg-white border-bottom-0 pt-3 fw-bold small text-muted">CLASE DE BIEN</div>
                     <div class="card-body"><div class="chart-container"><canvas id="chartTipo"></canvas></div></div>
                 </div>
             </div>
@@ -311,12 +367,20 @@ $lista_estados = $pdo->query("SELECT DISTINCT nombre FROM inventario_estados ORD
                                                 $hoy = new DateTime();
                                                 if($i['mat_fecha_carga']){
                                                     $v = (new DateTime($i['mat_fecha_carga']))->modify('+1 year');
-                                                    $cls = ($v < $hoy) ? 'text-danger fw-bold blink' : 'text-success fw-bold';
+                                                    $diff = $hoy->diff($v)->days;
+                                                    $is_expired = $v < $hoy;
+                                                    $is_alert = !$is_expired && $diff <= $conf_carga_dias;
+                                                    
+                                                    $cls = $is_expired ? 'text-danger fw-bold blink' : ($is_alert ? 'text-warning fw-bold' : 'text-success fw-bold');
                                                     echo "<div class='$cls mb-1'><i class='fas fa-battery-full me-1'></i>Carga: ".$v->format('d/m/Y')."</div>";
                                                 }
                                                 if($i['mat_fecha_ph']){
                                                     $v = (new DateTime($i['mat_fecha_ph']))->modify('+1 year'); 
-                                                    $cls = ($v < $hoy) ? 'text-danger fw-bold blink' : 'text-success fw-bold';
+                                                    $diff = $hoy->diff($v)->days;
+                                                    $is_expired = $v < $hoy;
+                                                    $is_alert = !$is_expired && $diff <= $conf_ph_dias;
+
+                                                    $cls = $is_expired ? 'text-danger fw-bold blink' : ($is_alert ? 'text-warning fw-bold' : 'text-success fw-bold');
                                                     echo "<div class='$cls mb-1'><i class='fas fa-flask me-1'></i>PH: ".$v->format('d/m/Y')."</div>";
                                                 }
                                                 if($i['vida_util_limite']){
@@ -372,72 +436,79 @@ $lista_estados = $pdo->query("SELECT DISTINCT nombre FROM inventario_estados ORD
 
     <script>
         $(document).ready(function() {
-            // Inicializar DataTable
             $('#tablaInventario').DataTable({
                 "language": { "url": "//cdn.datatables.net/plug-ins/1.13.4/i18n/es-ES.json" },
-                "pageLength": 25,
-                "order": [],
-                "dom": 'rtp' // Oculta buscador interno
+                "pageLength": 25, "order": [], "dom": 'rtp'
             });
         });
 
-        // Configuración Gráficos (Protegida)
         const commonOptions = { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } };
 
-        // Función segura para click en gráfico
-        function handleChartClick(e, els, dataArray, paramName) {
+        function handleChartClick(e, els, dataArray, paramName, extraParam = '') {
             if(els.length > 0) {
                 const idx = els[0].index;
                 if(dataArray[idx]) {
-                    window.location.href = `?${paramName}=${encodeURIComponent(dataArray[idx].label)}`;
+                    window.location.href = `?${paramName}=${encodeURIComponent(dataArray[idx].label)}${extraParam}`;
                 }
             }
         }
 
-        // Datos PHP a JS
+        // Datos JS
+        const dataTotalTipo = <?php echo json_encode($chart_total_tipo); ?>;
+        const dataMantTipo = <?php echo json_encode($chart_mant_tipo); ?>;
         const dataUbi = <?php echo json_encode($chart_ubi); ?>;
         const dataEst = <?php echo json_encode($chart_est); ?>;
         const dataTip = <?php echo json_encode($chart_tip); ?>;
 
-        // 1. Ubicación
-        const ctxUbi = document.getElementById('chartUbicacion');
-        if(ctxUbi && dataUbi.length > 0) {
-            new Chart(ctxUbi, {
-                type: 'bar', indexAxis: 'y',
+        // 1. Total por Tipo
+        const ctxTotalTipo = document.getElementById('chartTotalTipo');
+        if(ctxTotalTipo && dataTotalTipo.length > 0) {
+            new Chart(ctxTotalTipo, {
+                type: 'bar',
                 data: {
-                    labels: dataUbi.map(d => d.label),
-                    datasets: [{ label: 'Total', data: dataUbi.map(d => d.data), backgroundColor: '#0d6efd', borderRadius: 5 }]
+                    labels: dataTotalTipo.map(d => d.label),
+                    datasets: [{ label: 'Total', data: dataTotalTipo.map(d => d.data), backgroundColor: '#0d6efd', borderRadius: 5 }]
                 },
-                options: { ...commonOptions, onClick: (e, els) => handleChartClick(e, els, dataUbi, 'ubicacion') }
+                options: { ...commonOptions, onClick: (e, els) => handleChartClick(e, els, dataTotalTipo, 'tipo_bien') }
             });
         }
 
-        // 2. Estado
-        const ctxEst = document.getElementById('chartEstado');
-        if(ctxEst && dataEst.length > 0) {
-            new Chart(ctxEst, {
-                type: 'doughnut',
+        // 2. CORREGIDO: Historial de Servicios
+        const ctxMantTipo = document.getElementById('chartMantTipo');
+        if(ctxMantTipo && dataMantTipo.length > 0) {
+            new Chart(ctxMantTipo, {
+                type: 'doughnut', // Gráfico de torta/dona
                 data: {
-                    labels: dataEst.map(d => d.label),
+                    labels: dataMantTipo.map(d => d.label),
                     datasets: [{
-                        data: dataEst.map(d => d.data),
-                        backgroundColor: ['#198754', '#ffc107', '#dc3545', '#0d6efd', '#212529'],
+                        data: dataMantTipo.map(d => d.data),
+                        backgroundColor: ['#20c997', '#ffc107', '#dc3545', '#0d6efd', '#6610f2'],
                         hoverOffset: 4
                     }]
                 },
-                options: { ...commonOptions, onClick: (e, els) => handleChartClick(e, els, dataEst, 'estado') }
+                options: commonOptions // Sin filtro clickeable ya que es histórico, no estado actual
             });
         }
 
-        // 3. Tipo
-        const ctxTip = document.getElementById('chartTipo');
-        if(ctxTip && dataTip.length > 0) {
-            new Chart(ctxTip, {
+        // 3. Originales
+        if(document.getElementById('chartUbicacion')) {
+            new Chart(document.getElementById('chartUbicacion'), {
+                type: 'bar', indexAxis: 'y',
+                data: { labels: dataUbi.map(d => d.label), datasets: [{ label: 'Total', data: dataUbi.map(d => d.data), backgroundColor: '#6c757d', borderRadius: 5 }] },
+                options: { ...commonOptions, onClick: (e, els) => handleChartClick(e, els, dataUbi, 'ubicacion') }
+            });
+        }
+        if(document.getElementById('chartEstado')) {
+            new Chart(document.getElementById('chartEstado'), {
+                type: 'doughnut',
+                data: { labels: dataEst.map(d => d.label), datasets: [{ data: dataEst.map(d => d.data), backgroundColor: ['#198754', '#ffc107', '#dc3545', '#0d6efd', '#212529'], hoverOffset: 4 }] },
+                options: { ...commonOptions, onClick: (e, els) => handleChartClick(e, els, dataEst, 'estado') }
+            });
+        }
+        if(document.getElementById('chartTipo')) {
+            new Chart(document.getElementById('chartTipo'), {
                 type: 'bar',
-                data: {
-                    labels: dataTip.map(d => d.label),
-                    datasets: [{ label: 'Total', data: dataTip.map(d => d.data), backgroundColor: ['#dc3545', '#6c757d'], borderRadius: 5 }]
-                },
+                data: { labels: dataTip.map(d => d.label), datasets: [{ label: 'Total', data: dataTip.map(d => d.data), backgroundColor: ['#dc3545', '#6c757d'], borderRadius: 5 }] },
                 options: { ...commonOptions, onClick: (e, els) => handleChartClick(e, els, dataTip, 'tipo_bien') }
             });
         }
