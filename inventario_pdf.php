@@ -3,130 +3,114 @@
 require('fpdf/fpdf.php');
 include 'conexion.php';
 
-// Validar ID
-if (!isset($_GET['id'])) {
-    die("Error: No se especificó el ID del bien.");
-}
-
+if (!isset($_GET['id'])) die("Error: ID no especificado.");
 $id = $_GET['id'];
 
-// 1. BUSCAR SOLAMENTE EL BIEN ESPECÍFICO (No toda la ubicación)
-$stmt = $pdo->prepare("SELECT * FROM inventario_cargos WHERE id_cargo = ?");
+// Obtener datos completos
+$sql = "SELECT i.*, e.nombre as nombre_estado, m.tipo_carga, c.nombre as nombre_clase
+        FROM inventario_cargos i 
+        LEFT JOIN inventario_estados e ON i.id_estado_fk = e.id_estado
+        LEFT JOIN inventario_config_matafuegos m ON i.mat_tipo_carga_id = m.id_config
+        LEFT JOIN inventario_config_clases c ON i.mat_clase_id = c.id_clase
+        WHERE id_cargo = ?";
+$stmt = $pdo->prepare($sql);
 $stmt->execute([$id]);
 $bien = $stmt->fetch(PDO::FETCH_ASSOC);
 
-if (!$bien) {
-    die("Error: El bien con ID $id no existe.");
-}
+if (!$bien) die("Error: Bien inexistente.");
 
-// 2. TOMAR DATOS ESPECÍFICOS DE ESTE BIEN
-$ubicacion = $bien['servicio_ubicacion'];
-$firma_resp = $bien['firma_responsable'];
-$nombre_resp = $bien['nombre_responsable'];
-$firma_jefe = $bien['firma_jefe'];
-$nombre_jefe = $bien['nombre_jefe_servicio'];
-$firma_rel = $bien['firma_relevador'] ?? ''; // Firma del relevador si existe
-
-// ---------------------------------------------------------
-// 3. GENERACIÓN DEL PDF
-// ---------------------------------------------------------
+// PDF
 class PDF extends FPDF {
-    public $nombre_lugar;
     function Header() {
-        if(file_exists('assets/img/sgalp.png')) {
-            $this->Image('assets/img/sgalp.png', 10, 8, 30);
-        }
+        if(file_exists('assets/img/sgalp.png')) $this->Image('assets/img/sgalp.png', 10, 8, 30);
         $this->SetFont('Arial', 'B', 14);
-        $this->Cell(0, 10, mb_convert_encoding('ACTA DE ENTREGA DE BIEN / CARGO INDIVIDUAL', 'ISO-8859-1', 'UTF-8'), 0, 1, 'C');
-        $this->SetFont('Arial', '', 10);
-        $this->Cell(0, 8, mb_convert_encoding('Ubicación de Destino: ' . $this->nombre_lugar, 'ISO-8859-1', 'UTF-8'), 0, 1, 'C');
-        $this->Ln(5);
-        
-        $this->SetFillColor(230);
-        $this->SetFont('Arial', 'B', 8);
-        $this->Cell(15, 8, 'ID', 1, 0, 'C', true);
-        $this->Cell(25, 8, mb_convert_encoding('Código', 'ISO-8859-1', 'UTF-8'), 1, 0, 'C', true);
-        $this->Cell(80, 8, 'Elemento / Descripción', 1, 0, 'C', true);
-        $this->Cell(25, 8, 'Estado', 1, 0, 'C', true);
-        $this->Cell(45, 8, 'Observaciones', 1, 1, 'C', true);
+        $this->Cell(0, 10, mb_convert_encoding('ACTA DE ENTREGA / CARGO INDIVIDUAL', 'ISO-8859-1', 'UTF-8'), 0, 1, 'C');
+        $this->Ln(10);
     }
     function Footer() {
         $this->SetY(-15);
         $this->SetFont('Arial', 'I', 8);
-        $this->Cell(0, 10, mb_convert_encoding('Pág ' . $this->PageNo() . '/{nb}', 'ISO-8859-1', 'UTF-8'), 0, 0, 'C');
+        $this->Cell(0, 10, 'Pagina '.$this->PageNo().'/{nb}', 0, 0, 'C');
     }
 }
 
 $pdf = new PDF();
 $pdf->AliasNbPages();
-$pdf->nombre_lugar = $ubicacion;
 $pdf->AddPage();
-$pdf->SetFont('Arial', '', 8);
+$pdf->SetFont('Arial', '', 10);
 
-// Imprimir SOLO la fila del bien actual
-$elem = substr($bien['elemento'], 0, 55);
-$obs = substr($bien['observaciones'], 0, 25);
+// TABLA GENERAL
+$pdf->SetFillColor(230);
+$pdf->Cell(35, 8, 'Codigo', 1, 0, 'L', true);
+$pdf->Cell(155, 8, $bien['codigo_inventario'], 1, 1);
+$pdf->Cell(35, 8, 'Elemento', 1, 0, 'L', true);
+$pdf->Cell(155, 8, mb_convert_encoding($bien['elemento'], 'ISO-8859-1', 'UTF-8'), 1, 1);
+$pdf->Cell(35, 8, 'Ubicacion', 1, 0, 'L', true);
+$pdf->Cell(155, 8, mb_convert_encoding($bien['servicio_ubicacion'], 'ISO-8859-1', 'UTF-8'), 1, 1);
+$pdf->Cell(35, 8, 'Estado', 1, 0, 'L', true);
+$pdf->Cell(155, 8, $bien['nombre_estado'] ? $bien['nombre_estado'] : 'Sin Asignar', 1, 1);
+$pdf->Cell(35, 8, 'Observaciones', 1, 0, 'L', true);
+$pdf->Cell(155, 8, mb_convert_encoding($bien['observaciones'], 'ISO-8859-1', 'UTF-8'), 1, 1);
 
-$pdf->Cell(15, 8, $bien['id_cargo'], 1, 0, 'C');
-$pdf->Cell(25, 8, $bien['codigo_inventario'], 1, 0, 'C');
-$pdf->Cell(80, 8, mb_convert_encoding($elem, 'ISO-8859-1', 'UTF-8'), 1, 0, 'L');
-$pdf->Cell(25, 8, mb_convert_encoding($bien['estado'], 'ISO-8859-1', 'UTF-8'), 1, 0, 'C');
-$pdf->Cell(45, 8, mb_convert_encoding($obs, 'ISO-8859-1', 'UTF-8'), 1, 1, 'L');
+// DETALLE MATAFUEGO (Si existe)
+if (!empty($bien['mat_tipo_carga_id'])) {
+    $pdf->Ln(8);
+    $pdf->SetFont('Arial', 'B', 11);
+    $pdf->Cell(0, 8, 'FICHA TECNICA MATAFUEGO', 0, 1, 'L');
+    $pdf->SetFont('Arial', '', 9);
+    
+    // Fila 1
+    $pdf->Cell(35, 7, 'Tipo Carga:', 1, 0, 'L', true);
+    $pdf->Cell(30, 7, mb_convert_encoding($bien['tipo_carga'], 'ISO-8859-1', 'UTF-8'), 1, 0);
+    $pdf->Cell(30, 7, 'Capacidad:', 1, 0, 'L', true);
+    $pdf->Cell(30, 7, $bien['mat_capacidad'].' Kg', 1, 0);
+    $pdf->Cell(30, 7, 'Clase:', 1, 0, 'L', true);
+    $pdf->Cell(35, 7, $bien['nombre_clase'], 1, 1);
 
-// ---------------------------------------------------------
-// 4. SECCIÓN DE FIRMAS (ESTRICTAMENTE LAS DE ESTE BIEN)
-// ---------------------------------------------------------
-$pdf->Ln(25); // Más espacio para que se vea claro
+    // Fila 2
+    $pdf->Cell(35, 7, 'Fabricacion:', 1, 0, 'L', true);
+    $pdf->Cell(30, 7, $bien['fecha_fabricacion'], 1, 0);
+    $pdf->Cell(30, 7, 'Vida Util Limite:', 1, 0, 'L', true);
+    $pdf->Cell(30, 7, $bien['vida_util_limite'], 1, 0);
+    $pdf->Cell(30, 7, 'Complementos:', 1, 0, 'L', true);
+    $pdf->Cell(35, 7, mb_convert_encoding($bien['complementos'], 'ISO-8859-1', 'UTF-8'), 1, 1);
 
-// Definir posiciones
-$y_firmas = $pdf->GetY();
-$w_bloque = 60;
-$x_col1 = 10;
-$x_col2 = 75;
-$x_col3 = 140;
+    // Fila 3
+    $pdf->Cell(35, 7, 'Ultima Carga:', 1, 0, 'L', true);
+    $pdf->Cell(30, 7, $bien['mat_fecha_carga'], 1, 0);
+    $pdf->Cell(30, 7, 'Prueba Hidraulica:', 1, 0, 'L', true);
+    $pdf->Cell(30, 7, $bien['mat_fecha_ph'], 1, 0);
+    $pdf->Cell(30, 7, 'Tecnico:', 1, 0, 'L', true);
+    $pdf->Cell(35, 7, mb_convert_encoding($bien['nombre_tecnico'], 'ISO-8859-1', 'UTF-8'), 1, 1);
 
-// --- 1. RESPONSABLE (Izquierda) ---
-if (!empty($firma_resp) && file_exists($firma_resp)) {
-    $pdf->Image($firma_resp, $x_col1 + 10, $y_firmas - 15, 40, 15);
+    // Adjuntos
+    $pdf->Ln(2);
+    $info = "Adjuntos: ";
+    $info .= ($bien['archivo_remito']) ? "[Remito SI] " : "[Remito NO] ";
+    $info .= ($bien['archivo_comprobante']) ? "[Comprobante SI]" : "[Comprobante NO]";
+    $pdf->Cell(0, 6, $info, 0, 1, 'L');
 }
-$pdf->SetXY($x_col1, $y_firmas);
-$pdf->Cell($w_bloque, 0, '', 'T'); // Línea
-$pdf->Ln(2);
-$pdf->SetX($x_col1);
-$pdf->SetFont('Arial', 'B', 8);
-$pdf->Cell($w_bloque, 4, mb_convert_encoding($nombre_resp, 'ISO-8859-1', 'UTF-8'), 0, 1, 'C');
-$pdf->SetX($x_col1);
-$pdf->SetFont('Arial', '', 7);
-$pdf->Cell($w_bloque, 4, 'RESPONSABLE A CARGO', 0, 0, 'C');
 
-// --- 2. RELEVADOR (Centro) ---
-if (!empty($firma_rel) && file_exists($firma_rel)) {
-    $pdf->Image($firma_rel, $x_col2 + 10, $y_firmas - 15, 40, 15);
-}
-$pdf->SetXY($x_col2, $y_firmas);
-$pdf->Cell($w_bloque, 0, '', 'T');
-$pdf->Ln(2);
-$pdf->SetX($x_col2);
-$pdf->SetFont('Arial', 'B', 8);
-$pdf->Cell($w_bloque, 4, 'LOGISTICA / RELEVADOR', 0, 1, 'C');
-// Si no hay firma, no ponemos nombre falso, dejamos espacio.
+// FIRMAS
+$pdf->Ln(30);
+$y = $pdf->GetY();
+// Responsable
+if($bien['firma_responsable'] && file_exists($bien['firma_responsable'])) 
+    $pdf->Image($bien['firma_responsable'], 20, $y-15, 40, 15);
+$pdf->Line(20, $y, 70, $y);
+$pdf->SetXY(20, $y+2); $pdf->Cell(50, 4, 'Responsable: '.$bien['nombre_responsable'], 0, 0, 'C');
 
-// --- 3. JEFE SERVICIO (Derecha) ---
-if (!empty($firma_jefe) && file_exists($firma_jefe)) {
-    $pdf->Image($firma_jefe, $x_col3 + 10, $y_firmas - 15, 40, 15);
-}
-$pdf->SetXY($x_col3, $y_firmas);
-$pdf->Cell($w_bloque, 0, '', 'T');
-$pdf->Ln(2);
-$pdf->SetX($x_col3);
-$pdf->SetFont('Arial', 'B', 8);
-$pdf->Cell($w_bloque, 4, mb_convert_encoding($nombre_jefe, 'ISO-8859-1', 'UTF-8'), 0, 1, 'C');
-$pdf->SetX($x_col3);
-$pdf->SetFont('Arial', '', 7);
-$pdf->Cell($w_bloque, 4, 'JEFE DE SERVICIO / AVAL', 0, 0, 'C');
+// Relevador
+if($bien['firma_relevador'] && file_exists($bien['firma_relevador'])) 
+    $pdf->Image($bien['firma_relevador'], 80, $y-15, 40, 15);
+$pdf->Line(80, $y, 130, $y);
+$pdf->SetXY(80, $y+2); $pdf->Cell(50, 4, 'Logistica / Relevador', 0, 0, 'C');
 
-// ---------------------------------------------------------
-// 5. SALIDA
-// ---------------------------------------------------------
-$pdf->Output('I', 'Recibo_Bien_'.$id.'.pdf'); // 'I' para mostrar en navegador directamente
+// Jefe
+if($bien['firma_jefe'] && file_exists($bien['firma_jefe'])) 
+    $pdf->Image($bien['firma_jefe'], 140, $y-15, 40, 15);
+$pdf->Line(140, $y, 190, $y);
+$pdf->SetXY(140, $y+2); $pdf->Cell(50, 4, 'Jefe: '.$bien['nombre_jefe_servicio'], 0, 0, 'C');
+
+$pdf->Output();
 ?>

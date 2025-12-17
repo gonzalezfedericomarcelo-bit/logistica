@@ -4,24 +4,44 @@ session_start();
 include 'conexion.php';
 include 'funciones_permisos.php';
 
+// Verificación estricta de sesión
 if (!isset($_SESSION['usuario_id']) || !tiene_permiso('acceso_inventario', $pdo)) {
-    header("Location: dashboard.php"); exit();
+    header("Location: dashboard.php"); 
+    exit();
 }
 
-if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['id'])) {
-    $id = (int)$_POST['id'];
+// Aceptamos GET para que funcione el click directo desde la lista
+if (isset($_GET['id'])) {
+    $id = (int)$_GET['id'];
     
     try {
-        // Opcional: Eliminar archivos de firma asociados si se quiere limpiar basura
-        // Por ahora solo borramos el registro
-        $stmt = $pdo->prepare("DELETE FROM inventario_cargos WHERE id_cargo = ?");
-        $stmt->execute([$id]);
+        // Verificar si existe antes de borrar
+        $check = $pdo->prepare("SELECT id_cargo FROM inventario_cargos WHERE id_cargo = ?");
+        $check->execute([$id]);
         
-        header("Location: inventario_lista.php?msg=eliminado");
+        if ($check->rowCount() > 0) {
+            // Borrar historial asociado primero para mantener limpieza (opcional pero recomendado)
+            $pdo->prepare("DELETE FROM historial_movimientos WHERE id_bien = ?")->execute([$id]);
+            
+            // Borrar el bien
+            $stmt = $pdo->prepare("DELETE FROM inventario_cargos WHERE id_cargo = ?");
+            $stmt->execute([$id]);
+            
+            // Redirección con éxito
+            header("Location: inventario_lista.php?msg=eliminado");
+            exit();
+        } else {
+            // El ID no existe
+            header("Location: inventario_lista.php?err=no_existe");
+            exit();
+        }
     } catch (PDOException $e) {
-        die("Error al eliminar: " . $e->getMessage());
+        // Mostrar error en pantalla si falla SQL
+        die("Error crítico al eliminar: " . $e->getMessage());
     }
 } else {
+    // Si entran sin ID, volver a la lista
     header("Location: inventario_lista.php");
+    exit();
 }
 ?>

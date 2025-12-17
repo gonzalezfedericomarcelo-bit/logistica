@@ -8,78 +8,68 @@ if (!isset($_SESSION['usuario_id']) || !tiene_permiso('acceso_inventario', $pdo)
     header("Location: dashboard.php"); exit();
 }
 
-$id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
-if ($id <= 0) die("ID Inválido");
+$id = $_GET['id'] ?? 0;
+$stmt = $pdo->prepare("SELECT * FROM inventario_cargos WHERE id_cargo = ?");
+$stmt->execute([$id]);
+$bien = $stmt->fetch(PDO::FETCH_ASSOC);
+
+if (!$bien) die("Bien no encontrado");
+
+// Listas
+$lista_destinos = $pdo->query("SELECT id_destino, nombre FROM destinos_internos ORDER BY nombre ASC")->fetchAll(PDO::FETCH_ASSOC);
+$estados_db = $pdo->query("SELECT * FROM inventario_estados")->fetchAll(PDO::FETCH_ASSOC);
+$tipos_matafuegos = $pdo->query("SELECT * FROM inventario_config_matafuegos")->fetchAll(PDO::FETCH_ASSOC);
+$clases_fuego = $pdo->query("SELECT * FROM inventario_config_clases")->fetchAll(PDO::FETCH_ASSOC);
 
 // Procesar Guardado
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    try {
-        // Obtenemos el nombre final de la ubicación
-        // Si seleccionó área, usamos el nombre del área. Si no (o es 'Otro'), usamos lo que venga.
-        $ubicacion_final = $_POST['nombre_area_final']; // Campo oculto llenado por JS o PHP
-
-        // Validación simple
-        if (empty($ubicacion_final)) {
-            $ubicacion_final = "Sin Asignar";
+    // Manejo de Archivos (solo si suben nuevos)
+    function actualizarArchivo($input, $actual) {
+        if (isset($_FILES[$input]) && $_FILES[$input]['error'] === UPLOAD_ERR_OK) {
+            $ext = pathinfo($_FILES[$input]['name'], PATHINFO_EXTENSION);
+            $nombre = 'upd_' . time() . '_' . uniqid() . '.' . $ext;
+            move_uploaded_file($_FILES[$input]['tmp_name'], 'uploads/documentacion/' . $nombre);
+            return $nombre;
         }
-
-        $sql = "UPDATE inventario_cargos SET 
-                elemento = :elem, 
-                codigo_inventario = :cod,
-                servicio_ubicacion = :serv,
-                nombre_responsable = :n_resp,
-                nombre_jefe_servicio = :n_jefe,
-                observaciones = :obs
-                WHERE id_cargo = :id";
-        
-        $stmt = $pdo->prepare($sql);
-        $stmt->execute([
-            ':elem' => $_POST['elemento'],
-            ':cod' => $_POST['codigo_inventario'],
-            ':serv' => $ubicacion_final,
-            ':n_resp' => $_POST['nombre_responsable'],
-            ':n_jefe' => $_POST['nombre_jefe_servicio'],
-            ':obs' => $_POST['observaciones'],
-            ':id' => $id
-        ]);
-        
-        header("Location: inventario_lista.php"); exit();
-    } catch (PDOException $e) {
-        $error = "Error al actualizar: " . $e->getMessage();
+        return $actual;
     }
+    
+    $arch_remito = actualizarArchivo('archivo_remito', $bien['archivo_remito']);
+    $arch_comp = actualizarArchivo('archivo_comprobante', $bien['archivo_comprobante']);
+
+    $sql = "UPDATE inventario_cargos SET 
+            id_estado_fk = :idest, elemento = :elem, codigo_inventario = :cod, servicio_ubicacion = :serv,
+            observaciones = :obs, complementos = :comp, nombre_tecnico = :ntec,
+            archivo_remito = :arem, archivo_comprobante = :acomp,
+            mat_tipo_carga_id = :mtipo, mat_capacidad = :mcap, mat_clase_id = :mclase,
+            mat_fecha_carga = :mvc, mat_fecha_ph = :mvph, fecha_fabricacion = :mfab, vida_util_limite = :mvida,
+            nombre_responsable = :nresp, nombre_jefe_servicio = :njefe
+            WHERE id_cargo = :id";
+    
+    $pdo->prepare($sql)->execute([
+        ':idest' => $_POST['id_estado'],
+        ':elem' => $_POST['elemento'],
+        ':cod' => $_POST['codigo_inventario'],
+        ':serv' => $_POST['servicio_ubicacion'],
+        ':obs' => $_POST['observaciones'],
+        ':comp' => $_POST['complementos'],
+        ':ntec' => $_POST['nombre_tecnico'],
+        ':arem' => $arch_remito,
+        ':acomp' => $arch_comp,
+        ':mtipo' => $_POST['mat_tipo_carga_id'] ?: null,
+        ':mcap' => $_POST['mat_capacidad'],
+        ':mclase' => $_POST['mat_clase_id'] ?: null,
+        ':mvc' => $_POST['mat_fecha_carga'] ?: null,
+        ':mvph' => $_POST['mat_fecha_ph'] ?: null,
+        ':mfab' => $_POST['fecha_fabricacion'] ?: null,
+        ':mvida' => $_POST['vida_util_limite'] ?: null,
+        ':nresp' => $_POST['nombre_responsable'],
+        ':njefe' => $_POST['nombre_jefe_servicio'],
+        ':id' => $id
+    ]);
+    
+    header("Location: inventario_lista.php"); exit();
 }
-
-// Obtener datos actuales del bien
-$stmt = $pdo->prepare("SELECT * FROM inventario_cargos WHERE id_cargo = ?");
-$stmt->execute([$id]);
-$item = $stmt->fetch(PDO::FETCH_ASSOC);
-if (!$item) die("Bien no encontrado");
-
-// --- LÓGICA INTELIGENTE PARA PRE-SELECCIONAR LOS DROPDOWNS ---
-$ubi_actual = $item['servicio_ubicacion'];
-$id_destino_pre = 0;
-$id_area_pre = 0;
-
-// 1. Buscar si el nombre actual coincide con un ÁREA
-$stmt_area = $pdo->prepare("SELECT id_area, id_destino FROM areas WHERE nombre = ? LIMIT 1");
-$stmt_area->execute([$ubi_actual]);
-$res_area = $stmt_area->fetch(PDO::FETCH_ASSOC);
-
-if ($res_area) {
-    $id_area_pre = $res_area['id_area'];
-    $id_destino_pre = $res_area['id_destino'];
-} else {
-    // 2. Si no, buscar si coincide con un DESTINO (caso items viejos o asignados directo al destino)
-    $stmt_dest = $pdo->prepare("SELECT id_destino FROM destinos_internos WHERE nombre = ? LIMIT 1");
-    $stmt_dest->execute([$ubi_actual]);
-    $res_dest = $stmt_dest->fetchColumn();
-    if ($res_dest) {
-        $id_destino_pre = $res_dest;
-    }
-}
-
-// Obtener TODOS los destinos para el primer select
-$destinos = $pdo->query("SELECT * FROM destinos_internos ORDER BY nombre ASC")->fetchAll(PDO::FETCH_ASSOC);
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -87,140 +77,109 @@ $destinos = $pdo->query("SELECT * FROM destinos_internos ORDER BY nombre ASC")->
     <meta charset="UTF-8">
     <title>Editar Bien</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
 </head>
-<body>
+<body class="bg-light">
     <?php include 'navbar.php'; ?>
-    <div class="container mt-5">
-        <div class="card shadow">
-            <div class="card-header bg-warning text-dark">
-                <h4 class="mb-0">Editar Bien #<?php echo $id; ?></h4>
-            </div>
-            <div class="card-body">
-                <?php if(isset($error)) echo "<div class='alert alert-danger'>$error</div>"; ?>
-                
-                <form method="POST" id="formEditar">
-                    <div class="row g-3">
-                        <div class="col-md-8">
-                            <label class="form-label fw-bold">Elemento</label>
-                            <input type="text" name="elemento" class="form-control" value="<?php echo htmlspecialchars($item['elemento']); ?>" required>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label fw-bold">Código</label>
-                            <input type="text" name="codigo_inventario" class="form-control" value="<?php echo htmlspecialchars($item['codigo_inventario']); ?>">
-                        </div>
-                        
-                        <div class="col-12"><hr class="text-muted"></div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold text-primary">1. Destino (Sede/Edificio)</label>
-                            <select id="select_destino" class="form-select" required>
-                                <option value="">-- Seleccione Destino --</option>
-                                <?php foreach($destinos as $d): ?>
-                                    <option value="<?php echo $d['id_destino']; ?>" <?php echo ($d['id_destino'] == $id_destino_pre) ? 'selected' : ''; ?>>
-                                        <?php echo htmlspecialchars($d['nombre']); ?>
+    <div class="container mt-4 mb-5">
+        <form method="POST" enctype="multipart/form-data">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">Editar Bien: <?php echo htmlspecialchars($bien['elemento']); ?></div>
+                <div class="card-body">
+                    
+                    <div class="row g-3 mb-4">
+                         <div class="col-md-6">
+                            <label class="form-label fw-bold">Estado</label>
+                            <select name="id_estado" class="form-select">
+                                <?php foreach($estados_db as $e): ?>
+                                    <option value="<?php echo $e['id_estado']; ?>" <?php echo ($bien['id_estado_fk']==$e['id_estado'])?'selected':''; ?>>
+                                        <?php echo htmlspecialchars($e['nombre']); ?>
                                     </option>
                                 <?php endforeach; ?>
                             </select>
                         </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold text-primary">2. Área (Oficina/Servicio)</label>
-                            <select id="select_area" class="form-select" required>
-                                <option value="">-- Seleccione Destino Primero --</option>
+                    </div>
+
+                    <div class="card bg-light border-danger mb-4">
+                        <div class="card-header bg-danger text-white">Datos Matafuego (Si aplica)</div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-3">
+                                    <label class="form-label small fw-bold">Tipo Carga</label>
+                                    <select name="mat_tipo_carga_id" class="form-select">
+                                        <option value="">-- No es Matafuego --</option>
+                                        <?php foreach($tipos_matafuegos as $tm): ?>
+                                            <option value="<?php echo $tm['id_config']; ?>" <?php echo ($bien['mat_tipo_carga_id']==$tm['id_config'])?'selected':''; ?>>
+                                                <?php echo htmlspecialchars($tm['tipo_carga']); ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label small fw-bold">Capacidad</label>
+                                    <select name="mat_capacidad" class="form-select">
+                                        <?php foreach(['1','2.5','3.5','5','10'] as $c): ?>
+                                            <option value="<?php echo $c; ?>" <?php echo ($bien['mat_capacidad']==$c)?'selected':''; ?>><?php echo $c; ?> Kg</option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+                                
+                                <div class="col-md-2">
+                                    <label class="small fw-bold">Clase</label>
+                                    <select name="mat_clase_id" class="form-select">
+                                        <option value="">--</option>
+                                        <?php foreach($clases_fuego as $cf): ?>
+                                            <option value="<?php echo $cf['id_clase']; ?>" <?php echo ($bien['mat_clase_id']==$cf['id_clase'])?'selected':''; ?>>
+                                                <?php echo htmlspecialchars($cf['nombre']); ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+
+                                <div class="col-md-2"><label class="small fw-bold">Año Fab.</label><input type="number" name="fecha_fabricacion" class="form-control" value="<?php echo $bien['fecha_fabricacion']; ?>"></div>
+                                <div class="col-md-3"><label class="small fw-bold">Vida Util Limite (Año)</label><input type="number" name="vida_util_limite" class="form-control" value="<?php echo $bien['vida_util_limite']; ?>"></div>
+                                
+                                <div class="col-md-3"><label class="small fw-bold">Ultima Carga</label><input type="date" name="mat_fecha_carga" class="form-control" value="<?php echo $bien['mat_fecha_carga']; ?>"></div>
+                                <div class="col-md-3"><label class="small fw-bold">Prueba Hidraulica</label><input type="date" name="mat_fecha_ph" class="form-control" value="<?php echo $bien['mat_fecha_ph']; ?>"></div>
+                                <div class="col-md-6"><label class="small fw-bold">Complementos</label><input type="text" name="complementos" class="form-control" value="<?php echo $bien['complementos']; ?>"></div>
+
+                                <div class="col-12"><hr></div>
+                                <div class="col-md-6">
+                                    <label class="small fw-bold">Remito (Actual: <?php echo $bien['archivo_remito']?'SI':'NO'; ?>)</label>
+                                    <input type="file" name="archivo_remito" class="form-control">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="small fw-bold">Comprobante (Actual: <?php echo $bien['archivo_comprobante']?'SI':'NO'; ?>)</label>
+                                    <input type="file" name="archivo_comprobante" class="form-control">
+                                </div>
+                                <div class="col-12"><label class="small fw-bold">Técnico</label><input type="text" name="nombre_tecnico" class="form-control" value="<?php echo $bien['nombre_tecnico']; ?>"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row g-3">
+                        <div class="col-md-8"><label class="fw-bold">Elemento</label><input type="text" name="elemento" class="form-control" value="<?php echo $bien['elemento']; ?>" required></div>
+                        <div class="col-md-4"><label class="fw-bold">Código</label><input type="text" name="codigo_inventario" class="form-control" value="<?php echo $bien['codigo_inventario']; ?>"></div>
+                        <div class="col-md-12"><label class="fw-bold">Ubicación</label>
+                            <select name="servicio_ubicacion" id="select_area" class="form-select">
+                                <option value="<?php echo $bien['servicio_ubicacion']; ?>" selected><?php echo $bien['servicio_ubicacion']; ?></option>
                             </select>
                         </div>
-                        <input type="hidden" name="nombre_area_final" id="nombre_area_final" value="<?php echo htmlspecialchars($item['servicio_ubicacion']); ?>">
-                        <div class="col-12"><hr class="text-muted"></div>
-
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold">Responsable</label>
-                            <input type="text" name="nombre_responsable" class="form-control" value="<?php echo htmlspecialchars($item['nombre_responsable']); ?>">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold">Jefe Servicio</label>
-                            <input type="text" name="nombre_jefe_servicio" class="form-control" value="<?php echo htmlspecialchars($item['nombre_jefe_servicio']); ?>">
-                        </div>
-
-                        <div class="col-12">
-                            <label class="form-label">Observaciones</label>
-                            <textarea name="observaciones" class="form-control" rows="3"><?php echo htmlspecialchars($item['observaciones']); ?></textarea>
-                        </div>
+                        <div class="col-md-12"><label class="fw-bold">Observaciones</label><textarea name="observaciones" class="form-control"><?php echo $bien['observaciones']; ?></textarea></div>
+                        <div class="col-md-6"><label class="fw-bold">Responsable</label><input type="text" name="nombre_responsable" class="form-control" value="<?php echo $bien['nombre_responsable']; ?>"></div>
+                        <div class="col-md-6"><label class="fw-bold">Jefe</label><input type="text" name="nombre_jefe_servicio" class="form-control" value="<?php echo $bien['nombre_jefe_servicio']; ?>"></div>
                     </div>
-
-                    <div class="mt-4 text-end">
-                        <a href="inventario_lista.php" class="btn btn-secondary">Cancelar</a>
-                        <button type="submit" class="btn btn-primary">Guardar Cambios</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-
-    <script>
-    $(document).ready(function() {
-        const preSelectedDestino = "<?php echo $id_destino_pre; ?>";
-        const preSelectedArea = "<?php echo $id_area_pre; ?>";
-
-        // Función para cargar áreas
-        function cargarAreas(idDestino, idAreaSeleccionada = null) {
-            if (!idDestino) {
-                $('#select_area').html('<option value="">-- Seleccione Destino Primero --</option>');
-                return;
-            }
-
-            $.ajax({
-                url: 'ajax_obtener_areas.php',
-                type: 'GET',
-                data: { id_destino: idDestino },
-                dataType: 'json',
-                success: function(areas) {
-                    let options = '<option value="">-- Seleccione Área --</option>';
-                    areas.forEach(function(area) {
-                        const selected = (idAreaSeleccionada && area.id_area == idAreaSeleccionada) ? 'selected' : '';
-                        options += `<option value="${area.nombre}" ${selected}>${area.nombre}</option>`; // Usamos el nombre como valor
-                    });
-                    $('#select_area').html(options);
                     
-                    // Si no hay áreas, permitir que el destino sea la ubicación
-                    if (areas.length === 0) {
-                        const nombreDestino = $("#select_destino option:selected").text().trim();
-                        $('#nombre_area_final').val(nombreDestino);
-                         $('#select_area').html('<option value="' + nombreDestino + '" selected>Solo Destino General</option>');
-                    } else {
-                         // Actualizar el input hidden cuando cambia el área
-                         actualizarInputOculto();
-                    }
-                }
-            });
-        }
-
-        // Carga inicial
-        if (preSelectedDestino) {
-            cargarAreas(preSelectedDestino, preSelectedArea);
-        }
-
-        // Cambio de Destino
-        $('#select_destino').change(function() {
-            cargarAreas($(this).val());
-        });
-
-        // Cambio de Área (Actualizar input oculto para enviar al POST)
-        $('#select_area').change(function() {
-            actualizarInputOculto();
-        });
-
-        function actualizarInputOculto() {
-            const area = $('#select_area').val();
-            if (area) {
-                $('#nombre_area_final').val(area);
-            } else {
-                // Si no selecciona área, toma el nombre del destino
-                const destinoTxt = $("#select_destino option:selected").text().trim();
-                if($("#select_destino").val()) $('#nombre_area_final').val(destinoTxt);
-            }
-        }
-    });
-    </script>
-
-    <?php include 'footer.php'; ?>
+                    <button type="submit" class="btn btn-primary mt-4">Guardar Cambios</button>
+                    <a href="inventario_lista.php" class="btn btn-secondary mt-4">Cancelar</a>
+                </div>
+            </div>
+        </form>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script>$(document).ready(function() { $('#select_area').select2({ theme: 'bootstrap-5' }); });</script>
 </body>
 </html>
