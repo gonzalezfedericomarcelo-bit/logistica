@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1:3306
--- Tiempo de generación: 15-12-2025 a las 22:58:04
+-- Tiempo de generación: 17-12-2025 a las 12:24:33
 -- Versión del servidor: 11.8.3-MariaDB-log
 -- Versión de PHP: 7.2.34
 
@@ -69,7 +69,8 @@ INSERT INTO `actualizaciones_tarea` (`id_actualizacion`, `id_tarea`, `id_usuario
 (144, 54, 13, 'esta tarea queda en reserva hasta gestionar visita a quilmes.', 1, '2025-12-01 11:38:51'),
 (145, 186, 13, 'ADJUNTO LISTADO DE ELEMENTOS INFORMATICOS DE LA OFICINA: MODELO-N/S-IOSFA-USUARIO A CARGO.', 0, '2025-12-01 12:34:29'),
 (147, 62, 7, 'SOLICITUD DE MODIFICACIÓN: sobre los internos hacer un informe, que tenga como mínimo existencia y estado de equipos de telefónicos y verificar si se encuentra en servicio la línea interna, para posteriormente realizar un plan de trabajo con el técnico y adquisición. según prioridad', 0, '2025-12-05 14:57:27'),
-(148, 221, 13, 'Se realizo el relevamiento de las camaras y se hizo un listado.', 0, '2025-12-10 16:55:37');
+(148, 221, 13, 'Se realizo el relevamiento de las camaras y se hizo un listado.', 0, '2025-12-10 16:55:37'),
+(149, 58, 13, 'Carla se encarga de atender los llamados de los afiliados o pacientesw de la obra social, tiene 2 lineas (49812773) - (49813265) esas dos lineas llaman al conmutador que por interferencias o por mal mantenimiento casi siempre rebotan o suenan mal las llamadas,\r\nLa soluciohn al proble del conmutador es o que aprueben un presuspuesto o comunicarse con Telefonia Argentina para poder hacer el cambio de linea a fibra optica', 1, '2025-12-16 12:43:04');
 
 -- --------------------------------------------------------
 
@@ -171,7 +172,8 @@ INSERT INTO `adjuntos_tarea` (`id_adjunto`, `id_tarea`, `id_actualizacion`, `nom
 (185, 216, NULL, 'VID-20251201-WA0026.mp4', 'final_692ef011e16f60.94475464.mp4', NULL, NULL, NULL, 'pendiente', 'final', 13, '2025-12-02 13:56:33'),
 (186, 215, NULL, 'IMG-20251201-WA0030.jpg', 'final_692ef084c60075.75865039.jpg', NULL, NULL, NULL, 'pendiente', 'final', 13, '2025-12-02 13:58:28'),
 (187, 219, NULL, 'STOCK 1° SEMESTRE 2024 Ins Med.xlsx', 'final_69302577548cc1.03979849.xlsx', NULL, NULL, NULL, 'pendiente', 'final', 11, '2025-12-03 11:56:39'),
-(188, 221, 148, 'LISTADO CAMARAS.xlsx', 'update_20251210_6939a609aced68.79437524.xlsx', NULL, NULL, NULL, 'pendiente', 'actualizacion', 13, '2025-12-10 16:55:37');
+(188, 221, 148, 'LISTADO CAMARAS.xlsx', 'update_20251210_6939a609aced68.79437524.xlsx', NULL, NULL, NULL, 'pendiente', 'actualizacion', 13, '2025-12-10 16:55:37'),
+(189, 221, NULL, 'LISTADO CAMARAS.xlsx', 'final_69417c4a259d61.90947849.xlsx', NULL, NULL, NULL, 'pendiente', 'final', 13, '2025-12-16 15:35:38');
 
 -- --------------------------------------------------------
 
@@ -812,7 +814,20 @@ INSERT INTO `asistencia_detalles` (`id_detalle`, `id_parte`, `id_usuario`, `pres
 (981, 80, 24, 1, 'presente', ''),
 (982, 80, 13, 1, 'presente', ''),
 (983, 80, 18, 1, 'presente', ''),
-(984, 80, 11, 0, 'ausente', 'Autorizado');
+(984, 80, 11, 0, 'ausente', 'Autorizado'),
+(985, 81, 6, 1, 'presente', ''),
+(986, 81, 22, 0, 'ausente', 'Autorizado'),
+(987, 81, 15, 0, 'ausente', 'Autorizado'),
+(988, 81, 8, 1, 'presente', ''),
+(989, 81, 9, 1, 'presente', ''),
+(990, 81, 23, 1, 'presente', ''),
+(991, 81, 17, 1, 'presente', ''),
+(992, 81, 10, 1, 'presente', ''),
+(993, 81, 21, 1, 'presente', ''),
+(994, 81, 24, 0, 'ausente', 'Autorizado'),
+(995, 81, 13, 1, 'presente', ''),
+(996, 81, 18, 1, 'presente', ''),
+(997, 81, 11, 1, 'presente', '');
 
 -- --------------------------------------------------------
 
@@ -867,7 +882,8 @@ INSERT INTO `asistencia_partes` (`id_parte`, `fecha`, `id_creador`, `observacion
 (77, '2025-12-10', 15, 'PARTES DE NOVEDADES POLICLÍNICA \'GRAL DON OMAR ACTIS\'', NULL, '2025-12-10 15:56:18', 'aprobado'),
 (78, '2025-12-11', 15, 'PARTES DE NOVEDADES POLICLÍNICA \'GRAL DON OMAR ACTIS\'', NULL, '2025-12-11 17:30:24', 'aprobado'),
 (79, '2025-12-12', 6, 'PARTES DE NOVEDADES POLICLÍNICA \'GRAL DON OMAR ACTIS\'', NULL, '2025-12-12 18:10:54', 'aprobado'),
-(80, '2025-12-15', 6, 'PARTES DE NOVEDADES POLICLÍNICA \'GRAL DON OMAR ACTIS\'', NULL, '2025-12-15 14:22:45', 'aprobado');
+(80, '2025-12-15', 6, 'PARTES DE NOVEDADES POLICLÍNICA \'GRAL DON OMAR ACTIS\'', NULL, '2025-12-15 14:22:45', 'aprobado'),
+(81, '2025-12-16', 6, 'PARTES DE NOVEDADES POLICLÍNICA \'GRAL DON OMAR ACTIS\'', NULL, '2025-12-16 17:44:57', 'aprobado');
 
 -- --------------------------------------------------------
 
@@ -1068,7 +1084,7 @@ INSERT INTO `chat` (`id_chat`, `id_usuario`, `mensaje`, `fecha`, `tipo_mensaje`,
 (28, 10, '<p>Se lo paso en formato pdf tambien</p>', '2025-12-10 12:04:48', 'archivo', '1765368288_MODELO_DE_SOLICITUD_ELEMENTOS.pdf', 'MODELO DE SOLICITUD ELEMENTOS.pdf', 15, 1),
 (29, 15, '', '2025-12-10 12:06:44', 'audio', 'voice_1765368404_15.webm', 'Nota de voz', 10, 1),
 (30, 11, '📎 Archivo adjunto', '2025-12-10 13:00:21', 'archivo', '1765371621_STOCK_1___SEMESTRE_2024_Ins_Med.xlsx', 'STOCK 1° SEMESTRE 2024 Ins Med.xlsx', 15, 1),
-(31, 15, '<p>gracias</p><p><br></p>', '2025-12-10 13:00:29', 'texto', NULL, NULL, 11, 0);
+(31, 15, '<p>gracias</p><p><br></p>', '2025-12-10 13:00:29', 'texto', NULL, NULL, 11, 1);
 
 -- --------------------------------------------------------
 
@@ -1208,7 +1224,8 @@ CREATE TABLE `inventario_cargos` (
 --
 
 INSERT INTO `inventario_cargos` (`id_cargo`, `id_usuario_relevador`, `fecha_creacion`, `elemento`, `codigo_inventario`, `servicio_ubicacion`, `observaciones`, `nombre_responsable`, `nombre_jefe_servicio`, `firma_responsable`, `firma_relevador`, `firma_jefe`) VALUES
-(1, 15, '2025-12-15 19:00:21', 'PC', '43242', 'lOGISTICA', 'BIEN', 'RESP 1', 'JEFE 1', 'uploads/firmas/resp_1765836021_694084f527c56.png', 'uploads/firmas/rel_1765836021_694084f527e01.png', 'uploads/firmas/jefe_1765836021_694084f527e6a.png');
+(1, 15, '2025-12-15 19:00:21', 'PC', '43242', 'INFORMATICA Ap Log', 'BIEN', 'SG GONZALEZ', 'SM I MARCELO CAÑETE', 'uploads/firmas/resp_1765836021_694084f527c56.png', 'uploads/firmas/rel_1765836021_694084f527e01.png', 'uploads/firmas/jefe_1765836021_694084f527e6a.png'),
+(2, 15, '2025-12-15 22:23:49', 'CAMARA MARCA2 MODELO2 DASDSAD', '1683', 'INFORMATICA Ap Log', '', 'Federico Gonzalez', 'Cañete', 'uploads/firmas/resp_1765848229_6940b4a5802c3.png', 'uploads/firmas/rel_1765848229_6940b4a58048b.png', 'uploads/firmas/jefe_1765848229_6940b4a580398.png');
 
 -- --------------------------------------------------------
 
@@ -1396,10 +1413,10 @@ INSERT INTO `notificaciones` (`id_notificacion`, `id_usuario_destino`, `id_tarea
 (155, 17, NULL, 'tarea_asignada', 'Alejandro Batista te ha asignado una nueva tarea: Inodoro no corta', 'tarea_ver.php?id=214', 0, '2025-12-01 15:55:29', NULL, NULL),
 (156, 7, NULL, 'tarea_iniciada', 'El técnico Ariel Benso ha **INICIADO** la tarea #214: Inodoro no corta.', 'https://federicogonzalez.net/logistica/tarea_ver.php?id=214', 1, '2025-12-01 15:58:31', NULL, NULL),
 (157, 6, NULL, 'pedido_nuevo', 'Nuevo pedido (63/25: Pinatdo de fachada) del área GENERAL requiere aprobación.', 'encargado_pedidos_lista.php?highlight_pedido=218', 1, '2025-12-01 16:01:08', NULL, NULL),
-(158, 13, NULL, 'tarea_asignada', 'Marcelo Cañete te ha asignado una nueva tarea: Pinatdo de fachada', 'tarea_ver.php?id=215', 0, '2025-12-01 16:02:00', NULL, NULL),
+(158, 13, NULL, 'tarea_asignada', 'Marcelo Cañete te ha asignado una nueva tarea: Pinatdo de fachada', 'tarea_ver.php?id=215', 1, '2025-12-01 16:02:00', NULL, NULL),
 (159, 7, NULL, 'tarea_terminada', 'El técnico Ariel Benso ha finalizado la tarea #214: Inodoro no corta. Requiere su verificación.', 'https://federicogonzalez.net/logistica/tarea_ver.php?id=214#acciones', 1, '2025-12-01 16:02:05', NULL, NULL),
 (160, 6, NULL, 'pedido_nuevo', 'Nuevo pedido (64/25: Rejilla tapada en techo) del área GENERAL requiere aprobación.', 'encargado_pedidos_lista.php?highlight_pedido=219', 1, '2025-12-01 16:08:47', NULL, NULL),
-(161, 13, NULL, 'tarea_asignada', 'Marcelo Cañete te ha asignado una nueva tarea: Rejilla tapada en techo', 'tarea_ver.php?id=216', 0, '2025-12-01 16:45:54', NULL, NULL),
+(161, 13, NULL, 'tarea_asignada', 'Marcelo Cañete te ha asignado una nueva tarea: Rejilla tapada en techo', 'tarea_ver.php?id=216', 1, '2025-12-01 16:45:54', NULL, NULL),
 (162, 6, NULL, 'pedido_nuevo', 'Nuevo pedido (65/25: Agujero en pabellón médico) del área APOYO LOGISTICO requiere aprobación.', 'encargado_pedidos_lista.php?highlight_pedido=220', 1, '2025-12-02 12:42:55', NULL, NULL),
 (163, 17, NULL, 'tarea_asignada', 'Marcelo Cañete te ha asignado una nueva tarea: Agujero en pabellón médico', 'tarea_ver.php?id=217', 0, '2025-12-02 12:44:34', NULL, NULL),
 (164, 6, NULL, 'pedido_nuevo', 'Nuevo pedido (66/25: Colocar cerradura) del área SECRETARIA requiere aprobación.', 'encargado_pedidos_lista.php?highlight_pedido=221', 1, '2025-12-02 12:50:06', NULL, NULL),
@@ -1415,8 +1432,8 @@ INSERT INTO `notificaciones` (`id_notificacion`, `id_usuario_destino`, `id_tarea
 (174, 6, NULL, 'tarea_terminada', 'El técnico Sebastian Lazzari ha finalizado la tarea #216: Rejilla tapada en techo. Requiere su verificación.', 'https://federicogonzalez.net/logistica/tarea_ver.php?id=216#acciones', 1, '2025-12-02 13:56:33', NULL, NULL),
 (175, 6, NULL, 'tarea_iniciada', 'El técnico Sebastian Lazzari ha **INICIADO** la tarea #215: Pinatdo de fachada.', 'https://federicogonzalez.net/logistica/tarea_ver.php?id=215', 1, '2025-12-02 13:57:10', NULL, NULL),
 (176, 6, NULL, 'tarea_terminada', 'El técnico Sebastian Lazzari ha finalizado la tarea #215: Pinatdo de fachada. Requiere su verificación.', 'https://federicogonzalez.net/logistica/tarea_ver.php?id=215#acciones', 1, '2025-12-02 13:58:28', NULL, NULL),
-(177, 13, NULL, 'tarea_verificada', 'El Gestor **Marcelo Cañete** ha **APROBADO** la tarea #215: Pinatdo de fachada.', 'https://federicogonzalez.net/logistica/tarea_ver.php?id=215&show_modal=aprobada', 0, '2025-12-02 14:03:02', NULL, NULL),
-(178, 13, NULL, 'tarea_verificada', 'El Gestor **Marcelo Cañete** ha **APROBADO** la tarea #216: Rejilla tapada en techo.', 'https://federicogonzalez.net/logistica/tarea_ver.php?id=216&show_modal=aprobada', 0, '2025-12-02 14:03:28', NULL, NULL),
+(177, 13, NULL, 'tarea_verificada', 'El Gestor **Marcelo Cañete** ha **APROBADO** la tarea #215: Pinatdo de fachada.', 'https://federicogonzalez.net/logistica/tarea_ver.php?id=215&show_modal=aprobada', 1, '2025-12-02 14:03:02', NULL, NULL),
+(178, 13, NULL, 'tarea_verificada', 'El Gestor **Marcelo Cañete** ha **APROBADO** la tarea #216: Rejilla tapada en techo.', 'https://federicogonzalez.net/logistica/tarea_ver.php?id=216&show_modal=aprobada', 1, '2025-12-02 14:03:28', NULL, NULL),
 (179, 6, NULL, 'tarea_terminada', 'El técnico Federico González ha finalizado la tarea #210: Problema para iniciar sesión. Requiere su verificación.', 'https://federicogonzalez.net/logistica/tarea_ver.php?id=210#acciones', 1, '2025-12-02 17:15:37', NULL, NULL),
 (180, 6, NULL, 'tarea_iniciada', 'El técnico Federico González ha **INICIADO** la tarea #212: Impresora.', 'https://federicogonzalez.net/logistica/tarea_ver.php?id=212', 1, '2025-12-02 17:17:50', NULL, NULL),
 (181, 11, NULL, 'tarea_asignada', 'Federico González te ha asignado una nueva tarea: Listado de stock de insumos médicos', 'tarea_ver.php?id=219', 1, '2025-12-03 11:11:24', NULL, NULL),
@@ -1465,8 +1482,8 @@ INSERT INTO `notificaciones` (`id_notificacion`, `id_usuario_destino`, `id_tarea
 (224, 6, NULL, 'chat', '💬 De Federico González: #210', 'chat.php?chat_id=15&msg_id=25', 1, '2025-12-05 14:04:39', NULL, NULL),
 (225, 6, NULL, 'chat', '💬 De Federico González: #T210 ', 'chat.php?chat_id=15&msg_id=26', 1, '2025-12-05 14:04:48', NULL, NULL),
 (226, 17, NULL, 'tarea_verificada', 'El Gestor **Alejandro Batista** ha **APROBADO** la tarea #214: Inodoro no corta.', 'https://federicogonzalez.net/logistica/tarea_ver.php?id=214&show_modal=aprobada', 0, '2025-12-05 14:48:02', NULL, NULL),
-(227, 13, NULL, 'tarea_modificacion', 'El Gestor **Alejandro Batista** ha **SOLICITADO MODIFICACIÓN** en la tarea #62: REORGANIZACION AREA TELEFONICA.', 'https://federicogonzalez.net/logistica/tarea_ver.php?id=62&show_modal=modificacion', 0, '2025-12-05 14:57:27', NULL, NULL),
-(228, 13, NULL, 'tarea_verificada', 'El Gestor **Alejandro Batista** ha **APROBADO** la tarea #186: RELEVAMIENTO CARGO INFORMATICO LOGISTICA.', 'https://federicogonzalez.net/logistica/tarea_ver.php?id=186&show_modal=aprobada', 0, '2025-12-05 15:17:07', NULL, NULL),
+(227, 13, NULL, 'tarea_modificacion', 'El Gestor **Alejandro Batista** ha **SOLICITADO MODIFICACIÓN** en la tarea #62: REORGANIZACION AREA TELEFONICA.', 'https://federicogonzalez.net/logistica/tarea_ver.php?id=62&show_modal=modificacion', 1, '2025-12-05 14:57:27', NULL, NULL),
+(228, 13, NULL, 'tarea_verificada', 'El Gestor **Alejandro Batista** ha **APROBADO** la tarea #186: RELEVAMIENTO CARGO INFORMATICO LOGISTICA.', 'https://federicogonzalez.net/logistica/tarea_ver.php?id=186&show_modal=aprobada', 1, '2025-12-05 15:17:07', NULL, NULL),
 (229, 15, NULL, 'tarea_verificada', 'El Gestor **Alejandro Batista** ha **APROBADO** la tarea #210: Problema para iniciar sesión.', 'https://federicogonzalez.net/logistica/tarea_ver.php?id=210&show_modal=aprobada', 1, '2025-12-05 15:17:35', NULL, NULL),
 (230, 6, NULL, 'tarea_iniciada', 'El técnico Federico González ha **INICIADO** la tarea #211: Ticketeadora y mail.', 'https://federicogonzalez.net/logistica/tarea_ver.php?id=211', 1, '2025-12-09 11:12:57', NULL, NULL),
 (231, 6, NULL, 'tarea_terminada', 'El técnico Federico González ha finalizado la tarea #211: Ticketeadora y mail. Requiere su verificación.', 'https://federicogonzalez.net/logistica/tarea_ver.php?id=211#acciones', 1, '2025-12-09 11:19:21', NULL, NULL),
@@ -1476,13 +1493,13 @@ INSERT INTO `notificaciones` (`id_notificacion`, `id_usuario_destino`, `id_tarea
 (235, 6, NULL, 'pedido_nuevo', 'Nuevo pedido (69/25: Relavmeinto de Camaras) del área INFORMATICA Ap Log requiere aprobación.', 'encargado_pedidos_lista.php?highlight_pedido=224', 1, '2025-12-09 15:03:20', NULL, NULL),
 (236, 7, NULL, 'pedido_nuevo', 'Nuevo pedido (69/25: Relavmeinto de Camaras) del área INFORMATICA Ap Log requiere aprobación.', 'encargado_pedidos_lista.php?highlight_pedido=224', 1, '2025-12-09 15:03:20', NULL, NULL),
 (237, 15, NULL, 'tarea_asignada', 'Alejandro Batista te ha asignado una nueva tarea: Relavmeinto de Camaras', 'tarea_ver.php?id=221', 1, '2025-12-09 15:11:56', NULL, NULL),
-(238, 13, NULL, 'tarea_reasignada_nueva', 'Se te ha reasignado la tarea #221: Relavamiento de Camaras.', 'https://federicogonzalez.net/logistica/tarea_ver.php?id=221&reasignada_a=13&task_title=Relavamiento+de+Camaras&task_desc=SOLICITUD+ORIGINAL+%28Pedido+%2369%2F25%29%3A%0D%0A--------------------------------------------------%0D%0ARealizar+relevamineto+de+Camaras+de+Seguridad+de+la+Policlini...&task_state=Asignada&task_prio=Media&task_cat=Inform%C3%A1tica', 0, '2025-12-09 15:16:05', NULL, NULL),
+(238, 13, NULL, 'tarea_reasignada_nueva', 'Se te ha reasignado la tarea #221: Relavamiento de Camaras.', 'https://federicogonzalez.net/logistica/tarea_ver.php?id=221&reasignada_a=13&task_title=Relavamiento+de+Camaras&task_desc=SOLICITUD+ORIGINAL+%28Pedido+%2369%2F25%29%3A%0D%0A--------------------------------------------------%0D%0ARealizar+relevamineto+de+Camaras+de+Seguridad+de+la+Policlini...&task_state=Asignada&task_prio=Media&task_cat=Inform%C3%A1tica', 1, '2025-12-09 15:16:05', NULL, NULL),
 (239, 15, NULL, 'tarea_reasignada_anterior', 'La tarea #221: \'Relavamiento de Camaras\' ha sido REASIGNADA a Sebastian Lazzari.', 'https://federicogonzalez.net/logistica/tarea_ver.php?id=221&new_assignee_name=Sebastian+Lazzari&task_title=Relavamiento+de+Camaras&task_desc=SOLICITUD+ORIGINAL+%28Pedido+%2369%2F25%29%3A%0D%0A--------------------------------------------------%0D%0ARealizar+relevamineto+de+Camaras+de+Seguridad+de+la+Policlini...&task_state=Asignada&task_prio=Media&task_cat=Inform%C3%A1tica', 1, '2025-12-09 15:16:05', NULL, NULL),
 (240, 15, NULL, 'chat', '📎 Archivo de Luana Villa', 'chat.php?chat_id=10&msg_id=27', 1, '2025-12-10 12:03:57', NULL, NULL),
 (241, 15, NULL, 'chat', '📎 Archivo de Luana Villa', 'chat.php?chat_id=10&msg_id=28', 1, '2025-12-10 12:04:48', NULL, NULL),
 (242, 10, NULL, 'chat', '🎤 Audio de Federico González', 'chat.php?chat_id=15&msg_id=29', 1, '2025-12-10 12:06:44', NULL, NULL),
 (243, 15, NULL, 'chat', '📎 Archivo de Constanza Pihuala', 'chat.php?chat_id=11&msg_id=30', 1, '2025-12-10 13:00:21', NULL, NULL),
-(244, 11, NULL, 'chat', '💬 De Federico González: gracias', 'chat.php?chat_id=15&msg_id=31', 0, '2025-12-10 13:00:29', NULL, NULL),
+(244, 11, NULL, 'chat', '💬 De Federico González: gracias', 'chat.php?chat_id=15&msg_id=31', 1, '2025-12-10 13:00:29', NULL, NULL),
 (245, 2, NULL, 'tarea_verificada', '⚠️ Parte pendiente de revisión (2025-12-10) enviado por Federico González.', 'asistencia_listado_general.php?resaltar=77', 1, '2025-12-10 15:56:18', NULL, NULL),
 (246, 6, NULL, 'tarea_verificada', '⚠️ Parte pendiente de revisión (2025-12-10) enviado por Federico González.', 'asistencia_listado_general.php?resaltar=77', 1, '2025-12-10 15:56:18', NULL, NULL),
 (247, 7, NULL, 'tarea_verificada', '⚠️ Parte pendiente de revisión (2025-12-10) enviado por Federico González.', 'asistencia_listado_general.php?resaltar=77', 0, '2025-12-10 15:56:18', NULL, NULL),
@@ -1520,8 +1537,8 @@ INSERT INTO `notificaciones` (`id_notificacion`, `id_usuario_destino`, `id_tarea
 (278, 6, NULL, 'pedido_nuevo', 'Nuevo pedido (75/25: Oficinas Delegación) del área Delegacion Actis requiere aprobación.', 'encargado_pedidos_lista.php?highlight_pedido=230', 1, '2025-12-15 13:36:10', NULL, NULL),
 (279, 7, NULL, 'pedido_nuevo', 'Nuevo pedido (75/25: Oficinas Delegación) del área Delegacion Actis requiere aprobación.', 'encargado_pedidos_lista.php?highlight_pedido=230', 0, '2025-12-15 13:36:10', NULL, NULL),
 (280, 8, NULL, 'tarea_asignada', 'Marcelo Cañete te ha asignado una nueva tarea: Oficinas Delegación', 'tarea_ver.php?id=226', 0, '2025-12-15 14:19:43', NULL, NULL),
-(281, 13, NULL, 'tarea_asignada', 'Marcelo Cañete te ha asignado una nueva tarea: Escaner', 'tarea_ver.php?id=227', 0, '2025-12-15 14:20:35', NULL, NULL),
-(282, 13, NULL, 'tarea_reasignada_nueva', 'Se te ha asignado la tarea #226: Oficinas Delegación.', 'https://federicogonzalez.net/logistica/tarea_ver.php?id=226&reasignada_a=13&task_title=Oficinas+Delegaci%C3%B3n&task_desc=SOLICITUD+ORIGINAL+%28Pedido+%2375%2F25%29%3A%0D%0A--------------------------------------------------%0D%0AConfiguraci%C3%B3n+de+cero+de+escaner+para+las+oficinas+de+delgac...&task_state=Asignada&task_prio=Alta&task_cat=Mantenimiento+General', 0, '2025-12-15 18:23:33', NULL, NULL),
+(281, 13, NULL, 'tarea_asignada', 'Marcelo Cañete te ha asignado una nueva tarea: Escaner', 'tarea_ver.php?id=227', 1, '2025-12-15 14:20:35', NULL, NULL),
+(282, 13, NULL, 'tarea_reasignada_nueva', 'Se te ha asignado la tarea #226: Oficinas Delegación.', 'https://federicogonzalez.net/logistica/tarea_ver.php?id=226&reasignada_a=13&task_title=Oficinas+Delegaci%C3%B3n&task_desc=SOLICITUD+ORIGINAL+%28Pedido+%2375%2F25%29%3A%0D%0A--------------------------------------------------%0D%0AConfiguraci%C3%B3n+de+cero+de+escaner+para+las+oficinas+de+delgac...&task_state=Asignada&task_prio=Alta&task_cat=Mantenimiento+General', 1, '2025-12-15 18:23:33', NULL, NULL),
 (283, 2, NULL, 'info_sistema', '🌹 El cumpleañero Federico González ACEPTÓ la rosa de regalo.', '#', 1, '2025-12-15 20:10:21', NULL, NULL),
 (284, 2, NULL, 'info_sistema', '🌹 El cumpleañero Administrador ACEPTÓ la rosa de regalo.', '#', 1, '2025-12-15 20:13:43', NULL, NULL),
 (285, 2, NULL, 'info_sistema', '🎉 El usuario Administrador agradeció el saludo de cumpleaños.', '#', 1, '2025-12-15 20:13:46', NULL, NULL),
@@ -1543,9 +1560,18 @@ INSERT INTO `notificaciones` (`id_notificacion`, `id_usuario_destino`, `id_tarea
 (301, 2, NULL, 'info_sistema', '🎉 El usuario Federico González agradeció el saludo de cumpleaños.', '#', 1, '2025-12-15 18:26:26', NULL, NULL),
 (302, 2, NULL, 'info_sistema', '🎉 El usuario Federico González agradeció el saludo de cumpleaños.', '#', 1, '2025-12-15 18:31:53', NULL, NULL),
 (303, 2, NULL, 'info_sistema', '🎉 Federico González agradeció el saludo de cumpleaños.', 'admin_usuarios.php?id_buscar=15', 1, '2025-12-15 18:34:55', NULL, NULL),
-(304, 2, NULL, 'info_sistema', '🥀 Federico González NO aceptó la rosa de regalo.', 'admin_usuarios.php?id_buscar=15', 0, '2025-12-15 18:41:02', NULL, NULL),
+(304, 2, NULL, 'info_sistema', '🥀 Federico González NO aceptó la rosa de regalo.', 'admin_usuarios.php?id_buscar=15', 1, '2025-12-15 18:41:02', NULL, NULL),
 (305, 2, NULL, 'info_sistema', '🥀 Federico González NO aceptó la rosa de regalo.', 'admin_usuarios.php?id_buscar=15', 1, '2025-12-15 18:41:03', NULL, NULL),
-(306, 2, NULL, 'info_sistema', '🎉 Federico González agradeció el saludo de cumpleaños.', 'admin_usuarios.php?id_buscar=15', 1, '2025-12-15 18:41:06', NULL, NULL);
+(306, 2, NULL, 'info_sistema', '🎉 Federico González agradeció el saludo de cumpleaños.', 'admin_usuarios.php?id_buscar=15', 1, '2025-12-15 18:41:06', NULL, NULL),
+(307, 2, NULL, 'info_sistema', '🎉 Federico González agradeció el saludo de cumpleaños.', 'admin_usuarios.php?id_buscar=15', 1, '2025-12-16 05:11:32', NULL, NULL),
+(308, 2, NULL, 'info_sistema', '🌹 Constanza Pihuala ACEPTÓ la rosa de regalo.', 'admin_usuarios.php?id_buscar=11', 1, '2025-12-16 08:36:56', NULL, NULL),
+(309, 2, NULL, 'info_sistema', '🎉 Constanza Pihuala agradeció el saludo de cumpleaños.', 'admin_usuarios.php?id_buscar=11', 1, '2025-12-16 08:37:01', NULL, NULL),
+(310, 2, NULL, 'info_sistema', '🎉 Constanza Pihuala agradeció el saludo de cumpleaños.', 'admin_usuarios.php?id_buscar=11', 1, '2025-12-16 08:37:01', NULL, NULL),
+(311, 6, NULL, 'pedido_nuevo', 'Nuevo pedido (76/25: Arreglos Hall Inventario) del área INVENTARIO requiere aprobación.', 'encargado_pedidos_lista.php?highlight_pedido=231', 0, '2025-12-16 10:27:40', NULL, NULL),
+(312, 7, NULL, 'pedido_nuevo', 'Nuevo pedido (76/25: Arreglos Hall Inventario) del área INVENTARIO requiere aprobación.', 'encargado_pedidos_lista.php?highlight_pedido=231', 0, '2025-12-16 10:27:40', NULL, NULL),
+(313, 7, NULL, 'tarea_terminada', 'El técnico Sebastian Lazzari ha finalizado la tarea #221: Relavamiento de Camaras. Requiere su verificación.', 'https://federicogonzalez.net/logistica/tarea_ver.php?id=221#acciones', 0, '2025-12-16 12:35:38', NULL, NULL),
+(314, 7, NULL, 'tarea_reanudad', 'El técnico Sebastian Lazzari ha **REANUDADO** la tarea #58: CONMUTADOR (estaba \'En Reserva\').', 'https://federicogonzalez.net/logistica/tarea_ver.php?id=58', 0, '2025-12-16 12:37:33', NULL, NULL),
+(315, 7, NULL, 'tarea_actualizacion', 'Sebastian Lazzari agregó una novedad a la tarea #58: CONMUTADOR. Marcó la opción \'En Reserva\'.', 'https://federicogonzalez.net/logistica/tarea_ver.php?id=58&highlight_update=149#actualizaciones', 0, '2025-12-16 12:43:04', NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -1673,7 +1699,8 @@ INSERT INTO `pedidos_trabajo` (`id_pedido`, `numero_orden`, `titulo_pedido`, `id
 (227, '72/25', 'Destapacion de rejilla', 10, 'BAÑOS PUBLICOS PB', NULL, 84, 1, 'Apoyo Logistico', NULL, 10, 'importante', NULL, 'La rejilla del piso del Baño Publico de hombres se inundaba al abrir las canillas del Baño publico femenino,', '2025-12-11 14:25:16', 'aprobado', 224, 'uploads/firmas_pedidos/solic_ApoyoLogistico_1765463116.png'),
 (228, '73/25', 'Destapar bacha', 10, 'ODONTOLOGIA', NULL, 25, 1, 'Dr Mabel Carnovalli', '1138821917', 10, 'importante', NULL, 'La bacha del sector de esterilización de odonto estaba tapada', '2025-12-12 14:03:07', 'aprobado', 225, 'uploads/firmas_pedidos/solic_DrMabelCarnovalli_1765548187.png'),
 (229, '74/25', 'Escaner', 10, 'AUXILIAR COMPRAS', NULL, 38, 1, 'Andrea Gechuvind', NULL, 10, 'rutina', NULL, 'No figuraba dirección de escaner y no podia escanear.', '2025-12-15 13:30:53', 'aprobado', 227, 'uploads/firmas_pedidos/solic_AndreaGechuvind_1765805453.png'),
-(230, '75/25', 'Oficinas Delegación', 10, 'Delegacion Actis', NULL, 88, 1, 'TC ROBERTO RUZZANTE', NULL, 10, 'importante', NULL, 'Configuración de cero de escaner para las oficinas de delgacion y relevamineto de persicopios.', '2025-12-15 13:36:10', 'aprobado', 226, 'uploads/firmas_pedidos/solic_TCROBERTORUZZANTE_1765805770.png');
+(230, '75/25', 'Oficinas Delegación', 10, 'Delegacion Actis', NULL, 88, 1, 'TC ROBERTO RUZZANTE', NULL, 10, 'importante', NULL, 'Configuración de cero de escaner para las oficinas de delgacion y relevamineto de persicopios.', '2025-12-15 13:36:10', 'aprobado', 226, 'uploads/firmas_pedidos/solic_TCROBERTORUZZANTE_1765805770.png'),
+(231, '76/25', 'Arreglos Hall Inventario', 10, 'INVENTARIO', NULL, 39, 1, 'Alejandra González', '111413502', 10, 'rutina', NULL, 'Colocación barral para cortinas en el hall de Inventarios y ver si se puede habilitar la bacha del hall.', '2025-12-16 10:27:40', 'pendiente_encargado', NULL, 'uploads/firmas_pedidos/solic_AlejandraGonzlez_1765891660.png');
 
 -- --------------------------------------------------------
 
@@ -2072,7 +2099,7 @@ INSERT INTO `tareas` (`id_tarea`, `id_pedido_origen`, `titulo`, `descripcion`, `
 (218, 221, 'Colocar cerradura', 'SOLICITUD ORIGINAL (Pedido #66/25):\r\n--------------------------------------------------\r\nColocación de cerradura en cocina en compras', 14, 6, 17, 'media', 'verificada', '2025-12-02 13:26:03', '2025-12-03', NULL, 0, 0, 'Se coloca cerradura nueva en cocina de primer piso dirección', NULL, '2025-12-03 15:23:25', NULL, NULL),
 (219, 222, 'Listado de stock de insumos médicos', 'Enviarme en digital el archivo del listado de insumos médicos.', 3, 15, 11, 'alta', 'verificada', '2025-12-03 11:11:24', NULL, NULL, 0, 1, 'Envio listado de insumos medicos 2025', NULL, '2025-12-03 11:57:01', NULL, NULL),
 (220, 223, 'Techo nuevo', 'SOLICITUD ORIGINAL (Pedido #68/25):\r\n--------------------------------------------------\r\nSe requiere reparacion del techo de la entrada del CM, n se despego material y las maderas que sostienen estan todas podridas. Se puede caer en cualquier momento.', 1, 6, 8, 'urgente', 'asignada', '2025-12-04 10:42:27', NULL, NULL, 0, 0, NULL, NULL, NULL, NULL, NULL),
-(221, 224, 'Relavamiento de Camaras', 'SOLICITUD ORIGINAL (Pedido #69/25):\r\n--------------------------------------------------\r\nRealizar relevamineto de Camaras de Seguridad de la Policlinica Actis y posteriormente realizar el listado actualizado correspondiente', 4, 7, 13, 'media', 'en_proceso', '2025-12-09 15:11:56', '2025-12-17', NULL, 0, 1, NULL, NULL, NULL, NULL, NULL),
+(221, 224, 'Relavamiento de Camaras', 'SOLICITUD ORIGINAL (Pedido #69/25):\r\n--------------------------------------------------\r\nRealizar relevamineto de Camaras de Seguridad de la Policlinica Actis y posteriormente realizar el listado actualizado correspondiente', 4, 7, 13, 'media', 'finalizada_tecnico', '2025-12-09 15:11:56', '2025-12-17', NULL, 0, 1, 'Este es el detalle de las cámaras que tenemos en la oficina del SG GONZALEZ 2025:\r\nMás adelante paso el listado completo de los sensores de movimiento y las sirenas que hay en la policlinica', NULL, '2025-12-16 12:35:38', NULL, NULL),
 (222, 225, 'Boton trabado', 'SOLICITUD ORIGINAL (Pedido #70/25):\r\n--------------------------------------------------\r\nBoton de la mochila de pared del inodoro del baño de hombres estaba trabado.', 8, 6, 18, 'alta', 'verificada', '2025-12-11 14:16:29', NULL, NULL, 0, 0, 'Se saca la tapa de pared del inodoro y se destraba sin novedad', NULL, '2025-12-15 12:03:51', NULL, NULL),
 (223, 226, 'Destapar desague', 'SOLICITUD ORIGINAL (Pedido #71/25):\r\n--------------------------------------------------\r\nEl techo de Psiquiatria estaba todo inundado porque el desague estaba tapado.', 15, 6, 18, 'urgente', 'verificada', '2025-12-11 14:23:02', NULL, NULL, 0, 0, 'Se saca todos los restos de barro y hojas que tapan la canaleta y se destapa lo inundado sin novedad', NULL, '2025-12-15 12:03:30', NULL, NULL),
 (224, 227, 'Destapacion de rejilla', 'SOLICITUD ORIGINAL (Pedido #72/25):\r\n--------------------------------------------------\r\nLa rejilla del piso del Baño Publico de hombres se inundaba al abrir las canillas del Baño publico femenino,', 15, 6, 17, 'alta', 'verificada', '2025-12-11 14:25:48', NULL, NULL, 0, 0, 'Se sopapea y se logra destapar el desagüe del baño sin novedad', NULL, '2025-12-15 12:02:47', NULL, NULL),
@@ -2218,9 +2245,9 @@ INSERT INTO `usuarios` (`id_usuario`, `nombre_completo`, `grado`, `usuario`, `pa
 (8, 'Ezequiel Paz', 'SG', 'epaz', '$2y$10$pZHakqGgyFJPaZSNlDcfbuMyW0jHoVuvmOi14pDf9L8X.J8XfRlSO', 'epaz@gmail.com', '11 6848-4970', 'masculino', 'empleado', 'default.png', 'firma_8_1762353970.png', '2025-11-02 22:39:21', 1, 0, 0, NULL, 0),
 (9, 'Renzo Balladares', 'CI', 'rballadares', '$2y$10$geznNX0wiWro/xRXhqKba.fyXJQYTsdfOmjK5RudfgP14p4okG.wW', 'renzo.balladares@iosfa.gob.ar', '11 6664-2706', 'masculino', 'empleado', 'default.png', NULL, '2025-11-02 22:39:21', 1, 0, 0, NULL, 0),
 (10, 'Luana Villa', 'VS', 'lvilla', '$2y$10$yMbR3zlsAchEfYwUxgdNH.aZ1GAgVr26Rb.w9kn1SKctNbcGkwCUq', 'luana.villa@iosfa.gob.ar', '11 3932-4067', 'femenino', 'auxiliar', 'avatar_10_1763638904.png', 'firma_10_1762175583.png', '2025-11-02 22:39:21', 1, 0, 0, '2021-06-14', 0),
-(11, 'Constanza Pihuala', 'VS', 'cpihuala', '$2y$10$9vCBZlqr/7gM4i7H4XKNF.Qv.DVSkuc0stum.Ib7FKy2Ghm8TeUlW', 'constanza.pihuela@iosfa.gob.ar', '11 2670-1182', 'femenino', 'auxiliar', 'avatar_11_1763639136.png', 'firma_11_1762345413.png', '2025-11-02 22:39:21', 1, 0, 0, '2002-12-15', 0),
+(11, 'Constanza Pihuala', 'VS', 'cpihuala', '$2y$10$9vCBZlqr/7gM4i7H4XKNF.Qv.DVSkuc0stum.Ib7FKy2Ghm8TeUlW', 'constanza.pihuela@iosfa.gob.ar', '11 2670-1182', 'femenino', 'auxiliar', 'avatar_11_1763639136.png', 'firma_11_1762345413.png', '2025-11-02 22:39:21', 1, 0, 0, '2002-12-15', 2025),
 (13, 'Sebastian Lazzari', 'VS', 'slazzari', '$2y$10$aOLzGIurui9PcT.LDWNmUuGcGSDBRPSMx8KtV973jxz8FEUzltkQi', 'sebastian.lazzari@iosfa.gob.ar', '11 3197-6540', 'masculino', 'auxiliar', 'avatar_13_1764589808.png', NULL, '2025-11-02 22:39:21', 1, 0, 0, '2004-10-18', 0),
-(15, 'Federico González', 'SG', 'fgonzalez', '$2y$10$kmhmW5Z8xY7dPzYYN9uLHe7worrWpYmZENdfiDD3ejmCgrYuDkgVy', 'gonzalezfedericomarcelo@gmail.com', '', 'masculino', 'enc_suplente', 'avatar_15_1764868292.png', 'firma_15_1762519277.png', '2025-11-02 22:39:21', 1, 0, 0, '2025-12-15', 0),
+(15, 'Federico González', 'SG', 'fgonzalez', '$2y$10$kmhmW5Z8xY7dPzYYN9uLHe7worrWpYmZENdfiDD3ejmCgrYuDkgVy', 'gonzalezfedericomarcelo@gmail.com', '', 'masculino', 'enc_suplente', 'avatar_15_1764868292.png', 'firma_15_1762519277.png', '2025-11-02 22:39:21', 1, 0, 0, '2025-12-15', 2025),
 (17, 'Ariel Benso', 'VS', 'abenso', '$2y$10$fY4QxyNxhQDc.8iXtcsX5uvI0Iq9PYXkH/CJz4kNdMmM13VdZbJdu', 'airel.benzo@iosfa.gob.ar', '11 2496-3156', 'masculino', 'empleado', 'avatar_17_1764775672.png', 'firma_17_1764775616.png', '2025-11-02 22:39:21', 1, 0, 0, '2002-05-08', 0),
 (18, 'Rocco Bonfiglioli', 'VS', 'rbonfiglioli', '$2y$10$h2g5KIbYnnwocuEH32wsdO.yKW0nqLL3APARV1Uf0l/Tnh6/LCB9i', 'rocco.bonfiglioli@iosfa.gob.ar', '11 3930-6011', 'masculino', 'empleado', 'perfil_18_1762442251.png', 'firma_18_1762442071.png', '2025-11-02 22:39:21', 1, 0, 0, '2005-12-25', 0),
 (19, 'Juan Pablo Hernandez', 'AC', 'jphernandez', '$2y$10$0QRuOwFpRVdyYMwzOJgTJeLcc.iJFAMkVEZ6L4VnVVrV7HPKx1F3e', 'juan.hernandez@iosfa.gob.ar', '1125999143', 'masculino', 'empleado', 'default.png', NULL, '2025-11-02 22:39:21', 1, 0, 0, NULL, 0),
@@ -2499,7 +2526,7 @@ ALTER TABLE `usuarios`
 -- AUTO_INCREMENT de la tabla `actualizaciones_tarea`
 --
 ALTER TABLE `actualizaciones_tarea`
-  MODIFY `id_actualizacion` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=149;
+  MODIFY `id_actualizacion` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=150;
 
 --
 -- AUTO_INCREMENT de la tabla `adjuntos`
@@ -2517,7 +2544,7 @@ ALTER TABLE `adjuntos_actualizacion`
 -- AUTO_INCREMENT de la tabla `adjuntos_tarea`
 --
 ALTER TABLE `adjuntos_tarea`
-  MODIFY `id_adjunto` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=189;
+  MODIFY `id_adjunto` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=190;
 
 --
 -- AUTO_INCREMENT de la tabla `areas`
@@ -2553,13 +2580,13 @@ ALTER TABLE `ascensor_visitas_tecnicas`
 -- AUTO_INCREMENT de la tabla `asistencia_detalles`
 --
 ALTER TABLE `asistencia_detalles`
-  MODIFY `id_detalle` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=985;
+  MODIFY `id_detalle` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=998;
 
 --
 -- AUTO_INCREMENT de la tabla `asistencia_partes`
 --
 ALTER TABLE `asistencia_partes`
-  MODIFY `id_parte` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=81;
+  MODIFY `id_parte` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=82;
 
 --
 -- AUTO_INCREMENT de la tabla `avisos`
@@ -2625,7 +2652,7 @@ ALTER TABLE `empresas_mantenimiento`
 -- AUTO_INCREMENT de la tabla `inventario_cargos`
 --
 ALTER TABLE `inventario_cargos`
-  MODIFY `id_cargo` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id_cargo` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT de la tabla `mensajes`
@@ -2637,13 +2664,13 @@ ALTER TABLE `mensajes`
 -- AUTO_INCREMENT de la tabla `notificaciones`
 --
 ALTER TABLE `notificaciones`
-  MODIFY `id_notificacion` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=307;
+  MODIFY `id_notificacion` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=316;
 
 --
 -- AUTO_INCREMENT de la tabla `pedidos_trabajo`
 --
 ALTER TABLE `pedidos_trabajo`
-  MODIFY `id_pedido` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=231;
+  MODIFY `id_pedido` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=232;
 
 --
 -- AUTO_INCREMENT de la tabla `tareas`
