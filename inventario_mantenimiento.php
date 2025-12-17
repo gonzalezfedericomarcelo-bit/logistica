@@ -11,16 +11,25 @@ if (!isset($_SESSION['usuario_id']) || !tiene_permiso('acceso_inventario', $pdo)
 $bien = null;
 $mensaje = '';
 
-// BUSCADOR
-if (isset($_GET['buscar_codigo'])) {
+// --- NUEVA LÓGICA DE BÚSQUEDA ---
+if (isset($_GET['id'])) {
+    // 1. Prioridad: Buscar por ID directo (desde el botón del listado)
+    $stmt = $pdo->prepare("SELECT i.*, e.nombre as estado_actual 
+                           FROM inventario_cargos i 
+                           LEFT JOIN inventario_estados e ON i.id_estado_fk = e.id_estado
+                           WHERE i.id_cargo = ? AND i.mat_tipo_carga_id IS NOT NULL LIMIT 1");
+    $stmt->execute([$_GET['id']]);
+    $bien = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$bien) $mensaje = "Bien no encontrado o no es un matafuego.";
+
+} elseif (isset($_GET['buscar_codigo'])) {
+    // 2. Búsqueda manual por texto
     $q = trim($_GET['buscar_codigo']);
-    // Busca por Código Interno O por Número Grabado de Fábrica
     $stmt = $pdo->prepare("SELECT i.*, e.nombre as estado_actual 
                            FROM inventario_cargos i 
                            LEFT JOIN inventario_estados e ON i.id_estado_fk = e.id_estado
                            WHERE (i.codigo_inventario = ? OR i.mat_numero_grabado = ? OR i.elemento LIKE ?) 
-                           AND i.mat_tipo_carga_id IS NOT NULL 
-                           LIMIT 1");
+                           AND i.mat_tipo_carga_id IS NOT NULL LIMIT 1");
     $stmt->execute([$q, $q, "%$q%"]);
     $bien = $stmt->fetch(PDO::FETCH_ASSOC);
     if (!$bien) $mensaje = "No se encontró ningún MATAFUEGO con ese código o numeración.";
@@ -31,7 +40,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['id_cargo'])) {
     
     $id = $_POST['id_cargo'];
     
-    // Subir Archivos
     function subirAdjunto($input) {
         if (isset($_FILES[$input]) && $_FILES[$input]['error'] === UPLOAD_ERR_OK) {
             $ext = pathinfo($_FILES[$input]['name'], PATHINFO_EXTENSION);
@@ -46,11 +54,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['id_cargo'])) {
     $remito = subirAdjunto('archivo_remito');
     $comp = subirAdjunto('archivo_comprobante');
 
-    // Preparar Fechas: Si están vacías, enviamos NULL para no romper la BD
     $fecha_carga = !empty($_POST['mat_fecha_carga']) ? $_POST['mat_fecha_carga'] : null;
     $fecha_ph = !empty($_POST['mat_fecha_ph']) ? $_POST['mat_fecha_ph'] : null;
 
-    // Actualizar Fechas, Técnico y Estado
+    // Lógica para detectar qué se hizo
+    $acciones = [];
+    if($fecha_carga) $acciones[] = "Carga";
+    if($fecha_ph) $acciones[] = "PH";
+    $tipo_mov = empty($acciones) ? "Mantenimiento" : implode(" y ", $acciones);
+
     $sql = "UPDATE inventario_cargos SET 
             mat_fecha_carga = :mvc, 
             mat_fecha_ph = :mvph, 
@@ -70,9 +82,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['id_cargo'])) {
         ':id' => $id
     ]);
 
-    // Registrar Historial
-    $pdo->prepare("INSERT INTO historial_movimientos (id_bien, tipo_movimiento, usuario_registro, observacion_movimiento, fecha_movimiento) VALUES (?, 'Mantenimiento', ?, 'Carga de servicio técnico externo', NOW())")
-        ->execute([$id, $_SESSION['usuario_id']]);
+    // Registrar Historial con el detalle exacto (Carga, PH, etc)
+    $pdo->prepare("INSERT INTO historial_movimientos (id_bien, tipo_movimiento, usuario_registro, observacion_movimiento, fecha_movimiento) VALUES (?, ?, ?, 'Servicio técnico externo realizado', NOW())")
+        ->execute([$id, $tipo_mov, $_SESSION['usuario_id']]);
 
     $mensaje = "✅ Mantenimiento registrado correctamente. El bien volvió a estado ACTIVO.";
     $bien = null; 
@@ -98,10 +110,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['id_cargo'])) {
                         <p class="text-muted">Buscar matafuego por <b>Código Interno</b> o <b>N° Grabado</b></p>
                         
                         <form method="GET" class="d-flex gap-2 justify-content-center mt-4">
-                            <input type="text" name="buscar_codigo" class="form-control form-control-lg w-50" placeholder="Ingrese Código..." required autofocus>
+                            <input type="text" name="buscar_codigo" class="form-control form-control-lg w-50" placeholder="Ingrese Código..." autofocus>
                             <button class="btn btn-primary btn-lg"><i class="fas fa-search"></i> Buscar</button>
                         </form>
                         
+                        <div class="mt-2 text-muted small">
+                            <a href="inventario_lista.php" class="text-decoration-none"><i class="fas fa-arrow-left"></i> Volver al listado</a>
+                        </div>
+
                         <?php if($mensaje): ?>
                             <div class="alert alert-info mt-3 fw-bold"><?php echo $mensaje; ?></div>
                         <?php endif; ?>

@@ -4,7 +4,9 @@ session_start();
 include 'conexion.php';
 include 'funciones_permisos.php'; // Incluir para mantener consistencia
 
-if (!isset($_SESSION['usuario_id'])) die("Acceso denegado");
+if (!isset($_SESSION['usuario_id']) || !tiene_permiso('inventario_baja', $pdo)) {
+    header("Location: inventario_lista.php"); exit();
+}
 
 $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 $bien = null;

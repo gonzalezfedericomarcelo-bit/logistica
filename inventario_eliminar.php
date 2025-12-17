@@ -5,11 +5,9 @@ include 'conexion.php';
 include 'funciones_permisos.php';
 
 // Verificación estricta de sesión
-if (!isset($_SESSION['usuario_id']) || !tiene_permiso('acceso_inventario', $pdo)) {
-    header("Location: dashboard.php"); 
-    exit();
+if (!isset($_SESSION['usuario_id']) || !tiene_permiso('inventario_eliminar', $pdo)) {
+    header("Location: inventario_lista.php"); exit();
 }
-
 // Aceptamos GET para que funcione el click directo desde la lista
 if (isset($_GET['id'])) {
     $id = (int)$_GET['id'];

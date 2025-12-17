@@ -2,7 +2,9 @@
 // Archivo: inventario_guardar.php
 session_start();
 include 'conexion.php';
-
+if (!isset($_SESSION['usuario_id']) || !tiene_permiso('inventario_nuevo', $pdo)) {
+    header("Location: inventario_lista.php"); exit();
+}
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     
     // Directorios

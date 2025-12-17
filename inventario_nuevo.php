@@ -4,8 +4,8 @@ session_start();
 include 'conexion.php';
 include 'funciones_permisos.php'; 
 
-if (!isset($_SESSION['usuario_id']) || !tiene_permiso('acceso_inventario', $pdo)) {
-    header("Location: dashboard.php"); exit();
+if (!isset($_SESSION['usuario_id']) || !tiene_permiso('inventario_nuevo', $pdo)) {
+    header("Location: inventario_lista.php"); exit();
 }
 
 $lista_destinos = $pdo->query("SELECT id_destino, nombre FROM destinos_internos ORDER BY nombre ASC")->fetchAll(PDO::FETCH_ASSOC);

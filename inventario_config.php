@@ -49,7 +49,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     if (isset($_POST['borrar_clase'])) {
         $pdo->prepare("DELETE FROM inventario_config_clases WHERE id_clase = ?")->execute([$_POST['id']]);
     }
-
+    // 4. MOTIVOS DE TRANSFERENCIA
+    if (isset($_POST['nuevo_motivo'])) {
+        $pdo->prepare("INSERT INTO inventario_config_motivos (motivo) VALUES (?)")->execute([$_POST['motivo']]);
+    }
+    if (isset($_POST['borrar_motivo'])) {
+        $pdo->prepare("DELETE FROM inventario_config_motivos WHERE id_motivo = ?")->execute([$_POST['id']]);
+    }
     // 4. CONFIGURACIÓN GENERAL (ALERTAS)
     if (isset($_POST['guardar_general'])) {
         $configs = [
@@ -173,7 +179,37 @@ $conf_ph_dias = $conf_data['alerta_vencimiento_ph_dias'] ?? 30;
                     </div>
                 </div>
             </div>
-
+            <div class="col-md-4">
+                <div class="card shadow-sm h-100">
+                    <div class="card-header bg-info text-white">Motivos Transferencia</div>
+                    <div class="card-body">
+                        <?php $motivos = $pdo->query("SELECT * FROM inventario_config_motivos")->fetchAll(); ?>
+                        <table class="table table-sm align-middle table-hover">
+                            <thead><tr><th>Motivo</th><th class="text-end"></th></tr></thead>
+                            <tbody>
+                                <?php foreach($motivos as $m): ?>
+                                <tr>
+                                    <td><?php echo htmlspecialchars($m['motivo']); ?></td>
+                                    <td class="text-end">
+                                        <form method="POST" style="display:inline;" onsubmit="return confirm('¿Borrar?');">
+                                            <input type="hidden" name="borrar_motivo" value="1">
+                                            <input type="hidden" name="id" value="<?php echo $m['id_motivo']; ?>">
+                                            <button class="btn btn-sm btn-danger py-0"><i class="fas fa-trash"></i></button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                        <hr>
+                        <form method="POST" class="d-flex gap-2">
+                            <input type="hidden" name="nuevo_motivo" value="1">
+                            <input type="text" name="motivo" class="form-control form-control-sm" placeholder="Ej: Cambio de Servicio" required>
+                            <button class="btn btn-sm btn-success"><i class="fas fa-plus"></i></button>
+                        </form>
+                    </div>
+                </div>
+            </div>                        
             <div class="col-md-4">
                 <div class="card shadow-sm h-100">
                     <div class="card-header bg-danger text-white">Tipos Carga (Vida Útil)</div>

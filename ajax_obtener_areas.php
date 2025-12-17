@@ -1,21 +1,22 @@
 <?php
 // Archivo: ajax_obtener_areas.php
-require 'conexion.php';
+include 'conexion.php';
 
-// Verificamos que venga el ID
+// Validar que recibimos el ID del destino padre
 if (isset($_GET['id_destino'])) {
-    $id_destino = (int)$_GET['id_destino'];
+    $id = $_GET['id_destino'];
     
+    // Buscamos en la tabla 'areas' las que pertenezcan a este destino
+    // IMPORTANTE: Asumo que tu tabla se llama 'areas' y la FK es 'id_destino'
+    // Si tu tabla tiene otro nombre (ej: 'destinos_areas'), avísame.
     try {
-        // Buscar áreas que pertenezcan a ese destino
-        $stmt = $pdo->prepare("SELECT id_area, nombre FROM areas WHERE id_destino = :id ORDER BY nombre ASC");
-        $stmt->execute([':id' => $id_destino]);
+        $stmt = $pdo->prepare("SELECT * FROM areas WHERE id_destino = ? ORDER BY nombre ASC");
+        $stmt->execute([$id]);
         $areas = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
-        // Devolver JSON
-        header('Content-Type: application/json');
+        // Devolvemos JSON limpio
         echo json_encode($areas);
-    } catch (PDOException $e) {
+    } catch (Exception $e) {
         echo json_encode([]);
     }
 }
