@@ -31,6 +31,7 @@ $json_tipos = json_encode($tipos_matafuegos);
         .signature-pad-container { border: 2px dashed #ced4da; border-radius: 5px; background-color: #fff; height: 180px; position: relative; }
         .type-card { cursor: pointer; transition: all 0.2s; border: 2px solid transparent; }
         .type-card:hover, .type-card.active { border-color: #0d6efd; background-color: #e7f1ff; }
+        .type-icon { font-size: 2rem; margin-bottom: 10px; color: #6c757d; }
     </style>
 </head>
 <body>
@@ -58,7 +59,7 @@ $json_tipos = json_encode($tipos_matafuegos);
                             </div>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label fw-bold">Estado Inicial</label>
+                            <label class="form-label fw-bold">Estado del Bien</label>
                             <select name="id_estado" class="form-select fw-bold" required>
                                 <?php foreach($estados_db as $e): ?>
                                     <option value="<?php echo $e['id_estado']; ?>"><?php echo htmlspecialchars($e['nombre']); ?></option>
@@ -69,7 +70,7 @@ $json_tipos = json_encode($tipos_matafuegos);
 
                     <div id="campos_matafuegos" class="card bg-light border-danger mb-4 d-none bloque-especifico">
                         <div class="card-header bg-danger text-white fw-bold">
-                            <i class="fas fa-fire-extinguisher me-2"></i> Datos Técnicos del Matafuego
+                            <i class="fas fa-fire-extinguisher me-2"></i> Detalle Matafuegos
                         </div>
                         <div class="card-body">
                             <div class="row g-3">
@@ -85,7 +86,7 @@ $json_tipos = json_encode($tipos_matafuegos);
                                     </select>
                                 </div>
                                 <div class="col-md-2">
-                                    <label class="form-label small fw-bold">Capacidad</label>
+                                    <label class="form-label small fw-bold">Capacidad (Kg)</label>
                                     <select name="mat_capacidad" id="mat_capacidad" class="form-select" onchange="actualizarResumen()">
                                         <option value="1">1 Kg</option>
                                         <option value="2.5">2.5 Kg</option>
@@ -99,13 +100,17 @@ $json_tipos = json_encode($tipos_matafuegos);
                                     <select name="mat_clase_id" id="mat_clase" class="form-select" onchange="actualizarResumen()">
                                         <option value="">--</option>
                                         <?php foreach($clases_fuego as $cf): ?>
-                                            <option value="<?php echo $cf['id_clase']; ?>"><?php echo htmlspecialchars($cf['nombre']); ?></option>
+                                            <option value="<?php echo $cf['id_clase']; ?>">
+                                                <?php echo htmlspecialchars($cf['nombre']); ?>
+                                            </option>
                                         <?php endforeach; ?>
                                     </select>
                                 </div>
+                                
                                 <div class="col-md-5">
-                                    <label class="form-label small fw-bold">N° Matafuego (Grabado)</label>
-                                    <input type="text" name="codigo_inventario_mat" id="mat_numero" class="form-control" oninput="actualizarResumen()">
+                                    <label class="form-label small fw-bold text-danger">N° Matafuego (Grabado en equipo)</label>
+                                    <input type="text" name="mat_numero_grabado" id="mat_numero" class="form-control border-danger" placeholder="Ej: 123456" oninput="actualizarResumen()">
+                                    <small class="text-muted" style="font-size:0.75rem">Diferente al código interno.</small>
                                 </div>
 
                                 <div class="col-md-3">
@@ -113,8 +118,8 @@ $json_tipos = json_encode($tipos_matafuegos);
                                     <input type="number" name="fecha_fabricacion" id="mat_fab" class="form-control" placeholder="Ej: 2024" oninput="calcularVidaUtil()">
                                 </div>
                                 <div class="col-md-3">
-                                    <label class="form-label small fw-bold text-success">Vida Útil (Auto)</label>
-                                    <input type="text" id="mat_vida_util_display" class="form-control bg-success-subtle fw-bold" readonly>
+                                    <label class="form-label small fw-bold text-success">Vida Útil (Calculada)</label>
+                                    <input type="text" id="mat_vida_util_display" class="form-control bg-success-subtle fw-bold" readonly placeholder="Automático">
                                     <input type="hidden" name="vida_util_limite" id="mat_vida_util_val">
                                 </div>
                                 <div class="col-md-3">
@@ -125,9 +130,10 @@ $json_tipos = json_encode($tipos_matafuegos);
                                     <label class="form-label small fw-bold">Prueba Hidráulica</label>
                                     <input type="date" name="mat_fecha_ph" id="mat_fecha_ph" class="form-control" onchange="actualizarResumen()">
                                 </div>
+
                                 <div class="col-12">
-                                    <label class="form-label small fw-bold">Complementos</label>
-                                    <input type="text" name="complementos" class="form-control" placeholder="Ej: Soporte pared">
+                                    <label class="form-label small fw-bold">Complementos (Opcional)</label>
+                                    <input type="text" name="complementos" class="form-control" placeholder="Ej: Carro transporte, Soporte pared...">
                                 </div>
                             </div>
                         </div>
@@ -136,12 +142,15 @@ $json_tipos = json_encode($tipos_matafuegos);
                     <div class="row g-3 mb-4">
                         <div class="col-md-8">
                             <label class="form-label fw-bold">Descripción Final</label>
-                            <input type="text" name="elemento" id="input_elemento" class="form-control fw-bold" required>
+                            <input type="text" name="elemento" id="input_elemento" class="form-control fw-bold" placeholder="Descripción del bien..." required>
                         </div>
+                        
                         <div class="col-md-4">
-                            <label class="form-label fw-bold">Código Interno</label>
-                            <input type="text" name="codigo_inventario" id="input_codigo" class="form-control">
+                            <label class="form-label fw-bold text-primary">Código Interno (Institucional)</label>
+                            <input type="text" name="codigo_inventario" id="input_codigo" class="form-control border-primary" placeholder="Ej: PAT-001">
+                            <small class="text-muted" style="font-size:0.75rem">Código asignado por logística.</small>
                         </div>
+                        
                         <div class="col-md-6">
                             <label class="form-label fw-bold small">1° Destino</label>
                             <select id="select_destino" class="form-select form-select-sm" required>
@@ -157,23 +166,24 @@ $json_tipos = json_encode($tipos_matafuegos);
                                 <option value="">-- Primero Destino --</option>
                             </select>
                         </div>
+                        
                         <div class="col-12">
                             <label class="form-label fw-bold">Observaciones</label>
-                            <textarea name="observaciones" id="input_observaciones" class="form-control" rows="2"></textarea>
+                            <textarea name="observaciones" id="input_observaciones" class="form-control" rows="2" placeholder="Opcional"></textarea>
                         </div>
                     </div>
 
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label class="form-label fw-bold">Responsable</label>
-                            <input type="text" name="nombre_responsable" class="form-control mb-2" required>
+                            <label class="form-label fw-bold">Responsable (Usuario Final)</label>
+                            <input type="text" name="nombre_responsable" class="form-control mb-2" placeholder="Nombre y Apellido" required>
                             <div class="signature-pad-container"><canvas id="sigResponsable"></canvas></div>
                             <div class="mt-1"><button type="button" class="btn btn-sm btn-outline-secondary" onclick="clearPad('Responsable')">Limpiar</button></div>
                             <input type="hidden" name="base64_responsable" id="base64_responsable">
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label class="form-label fw-bold">Jefe Servicio</label>
-                            <input type="text" name="nombre_jefe_servicio" class="form-control mb-2" required>
+                            <label class="form-label fw-bold">Jefe de Servicio (Aval)</label>
+                            <input type="text" name="nombre_jefe_servicio" class="form-control mb-2" placeholder="Nombre y Apellido" required>
                             <div class="signature-pad-container"><canvas id="sigJefe"></canvas></div>
                             <div class="mt-1"><button type="button" class="btn btn-sm btn-outline-secondary" onclick="clearPad('Jefe')">Limpiar</button></div>
                             <input type="hidden" name="base64_jefe" id="base64_jefe">
@@ -208,6 +218,7 @@ $json_tipos = json_encode($tipos_matafuegos);
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     
     <script>
+        // Configuración Select2
         $(document).ready(function() {
             $('#select_destino').select2({ theme: 'bootstrap-5', placeholder: 'Buscar Destino...' });
             $('#select_area').select2({ theme: 'bootstrap-5', placeholder: 'Seleccione Área...' });
@@ -231,6 +242,7 @@ $json_tipos = json_encode($tipos_matafuegos);
             });
         });
 
+        // Lógica Tipos y Cálculo Matafuegos
         let tipoActual = 'general';
         const tiposMatafuegos = <?php echo $json_tipos; ?>;
 
@@ -244,6 +256,7 @@ $json_tipos = json_encode($tipos_matafuegos);
                 document.getElementById('displayTipo').value = 'Matafuegos';
                 document.getElementById('labelTipoSeleccionado').innerText = 'Matafuegos';
                 document.getElementById('input_elemento').readOnly = true; 
+                document.getElementById('input_elemento').placeholder = 'Automático...';
             } else {
                 document.getElementById('displayTipo').value = 'General';
                 document.getElementById('labelTipoSeleccionado').innerText = 'General';
@@ -254,6 +267,7 @@ $json_tipos = json_encode($tipos_matafuegos);
 
         function calcularVidaUtil() {
             if(tipoActual !== 'matafuegos') return;
+            
             const sel = document.getElementById('mat_tipo_id');
             const op = sel.options[sel.selectedIndex];
             const vidaAnios = op.getAttribute('data-vida');
@@ -263,6 +277,9 @@ $json_tipos = json_encode($tipos_matafuegos);
                 const finVida = fab + parseInt(vidaAnios);
                 document.getElementById('mat_vida_util_display').value = finVida;
                 document.getElementById('mat_vida_util_val').value = finVida;
+            } else {
+                document.getElementById('mat_vida_util_display').value = '';
+                document.getElementById('mat_vida_util_val').value = '';
             }
             actualizarResumen();
         }
@@ -271,17 +288,22 @@ $json_tipos = json_encode($tipos_matafuegos);
             if(tipoActual === 'matafuegos') {
                 const selTipo = document.getElementById('mat_tipo_id');
                 const tipoTxt = selTipo.selectedIndex > 0 ? selTipo.options[selTipo.selectedIndex].text : '';
+                
                 const selClase = document.getElementById('mat_clase');
-                const claseTxt = selClase.selectedIndex > 0 ? selClase.options[selClase.selectedIndex].text : '';
+                const claseTxt = selClase.selectedIndex > 0 ? selClase.options[selClase.selectedIndex].text.trim() : '';
+
                 const cap = document.getElementById('mat_capacidad').value;
-                const num = document.getElementById('mat_numero').value;
+                const num = document.getElementById('mat_numero').value; // N° Grabado
                 const vtoCarga = document.getElementById('mat_fecha_carga').value;
                 const vtoPh = document.getElementById('mat_fecha_ph').value;
                 
+                // Descripción automática
                 let desc = `MATAFUEGO ${tipoTxt} ${cap}KG (${claseTxt})`;
                 document.getElementById('input_elemento').value = desc.toUpperCase();
-                document.getElementById('input_codigo').value = num.toUpperCase();
+                
+                // NOTA: No pisamos el código interno con el grabado. Son separados.
 
+                // Observaciones automáticas de vencimientos
                 let obs = [];
                 if(vtoCarga) obs.push(`Carga: ${vtoCarga}`);
                 if(vtoPh) obs.push(`PH: ${vtoPh}`);
@@ -289,11 +311,13 @@ $json_tipos = json_encode($tipos_matafuegos);
             }
         }
 
+        // Firmas (Simplificado para el ejemplo)
         const padResp = new SignaturePad(document.getElementById('sigResponsable'));
         const padJefe = new SignaturePad(document.getElementById('sigJefe'));
         
         function clearPad(quien) { 
-            if(quien==='Responsable') padResp.clear(); else padJefe.clear(); 
+            if(quien==='Responsable') padResp.clear(); 
+            else padJefe.clear(); 
         }
 
         document.getElementById('formInventario').addEventListener('submit', function(e) {
@@ -304,6 +328,7 @@ $json_tipos = json_encode($tipos_matafuegos);
             document.getElementById('base64_jefe').value = padJefe.toDataURL();
         });
         
+        // Ajustar canvas
         function resizeCanvas() {
             const ratio = Math.max(window.devicePixelRatio || 1, 1);
             document.querySelectorAll('canvas').forEach(c => {

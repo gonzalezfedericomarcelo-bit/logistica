@@ -1,5 +1,5 @@
 <?php
-// Archivo: inventario_mantenimiento.php (NUEVO MODULO SERVICIO)
+// Archivo: inventario_mantenimiento.php
 session_start();
 include 'conexion.php';
 include 'funciones_permisos.php';
@@ -14,13 +14,16 @@ $mensaje = '';
 // BUSCADOR
 if (isset($_GET['buscar_codigo'])) {
     $q = trim($_GET['buscar_codigo']);
+    // Busca por Código Interno O por Número Grabado de Fábrica
     $stmt = $pdo->prepare("SELECT i.*, e.nombre as estado_actual 
                            FROM inventario_cargos i 
                            LEFT JOIN inventario_estados e ON i.id_estado_fk = e.id_estado
-                           WHERE (i.codigo_inventario = ? OR i.elemento LIKE ?) AND i.mat_tipo_carga_id IS NOT NULL LIMIT 1");
-    $stmt->execute([$q, "%$q%"]);
+                           WHERE (i.codigo_inventario = ? OR i.mat_numero_grabado = ? OR i.elemento LIKE ?) 
+                           AND i.mat_tipo_carga_id IS NOT NULL 
+                           LIMIT 1");
+    $stmt->execute([$q, $q, "%$q%"]);
     $bien = $stmt->fetch(PDO::FETCH_ASSOC);
-    if (!$bien) $mensaje = "No se encontró ningún MATAUEGO con ese código.";
+    if (!$bien) $mensaje = "No se encontró ningún MATAFUEGO con ese código o numeración.";
 }
 
 // PROCESAR GUARDADO SERVICIO
@@ -37,18 +40,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['id_cargo'])) {
             move_uploaded_file($_FILES[$input]['tmp_name'], 'uploads/documentacion/' . $nombre);
             return $nombre;
         }
-        return null; // Si no sube nada, devuelve null
+        return null; 
     }
 
     $remito = subirAdjunto('archivo_remito');
     $comp = subirAdjunto('archivo_comprobante');
 
-    // Construir SQL dinámico (solo actualiza archivo si se subió uno nuevo)
+    // Actualizar Fechas, Técnico y Estado
     $sql = "UPDATE inventario_cargos SET 
             mat_fecha_carga = :mvc, 
             mat_fecha_ph = :mvph, 
             nombre_tecnico = :ntec,
-            id_estado_fk = (SELECT id_estado FROM inventario_estados WHERE nombre = 'Activo' LIMIT 1)"; // Al mantenerlo, vuelve a Activo
+            id_estado_fk = (SELECT id_estado FROM inventario_estados WHERE nombre = 'Activo' LIMIT 1)"; 
     
     if($remito) $sql .= ", archivo_remito = '$remito'";
     if($comp) $sql .= ", archivo_comprobante = '$comp'";
@@ -68,7 +71,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['id_cargo'])) {
         ->execute([$id, $_SESSION['usuario_id']]);
 
     $mensaje = "✅ Mantenimiento registrado correctamente. El bien volvió a estado ACTIVO.";
-    $bien = null; // Limpiar para nueva búsqueda
+    $bien = null; 
 }
 ?>
 <!DOCTYPE html>
@@ -88,10 +91,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['id_cargo'])) {
                 <div class="card shadow-sm border-0 mb-4">
                     <div class="card-body p-4 text-center">
                         <h3 class="fw-bold text-primary"><i class="fas fa-tools"></i> Orden de Trabajo / Servicio</h3>
-                        <p class="text-muted">Buscar matafuego para registrar mantenimiento externo</p>
+                        <p class="text-muted">Buscar matafuego por <b>Código Interno</b> o <b>N° Grabado</b></p>
                         
                         <form method="GET" class="d-flex gap-2 justify-content-center mt-4">
-                            <input type="text" name="buscar_codigo" class="form-control form-control-lg w-50" placeholder="Ingrese N° Matafuego o Código..." required autofocus>
+                            <input type="text" name="buscar_codigo" class="form-control form-control-lg w-50" placeholder="Ingrese Código..." required autofocus>
                             <button class="btn btn-primary btn-lg"><i class="fas fa-search"></i> Buscar</button>
                         </form>
                         
@@ -105,21 +108,25 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['id_cargo'])) {
                 <div class="card shadow border-0 border-top border-4 border-success">
                     <div class="card-header bg-white py-3">
                         <h5 class="mb-0"><i class="fas fa-fire-extinguisher text-danger me-2"></i> <?php echo htmlspecialchars($bien['elemento']); ?></h5>
-                        <span class="badge bg-secondary"><?php echo htmlspecialchars($bien['codigo_inventario']); ?></span>
-                        <span class="badge bg-dark"><?php echo htmlspecialchars($bien['estado_actual']); ?></span>
+                        <div class="mt-2">
+                            <span class="badge bg-primary">Interno: <?php echo htmlspecialchars($bien['codigo_inventario']); ?></span>
+                            <span class="badge bg-danger">Grabado: <?php echo htmlspecialchars($bien['mat_numero_grabado']); ?></span>
+                            <span class="badge bg-dark">Estado: <?php echo htmlspecialchars($bien['estado_actual']); ?></span>
+                        </div>
                     </div>
                     <div class="card-body p-4">
                         <form method="POST" enctype="multipart/form-data">
                             <input type="hidden" name="id_cargo" value="<?php echo $bien['id_cargo']; ?>">
                             
                             <h6 class="fw-bold text-decoration-underline mb-3">1. Actualizar Vencimientos</h6>
+                            <div class="alert alert-warning small"><i class="fas fa-info-circle"></i> Ingrese la fecha en que se realizó el trabajo. El sistema calculará el vencimiento automáticamente.</div>
                             <div class="row g-3 mb-4">
                                 <div class="col-md-6">
-                                    <label class="form-label fw-bold">Nueva Fecha Carga</label>
+                                    <label class="form-label fw-bold">Fecha Realización Carga</label>
                                     <input type="date" name="mat_fecha_carga" class="form-control border-success" required value="<?php echo $bien['mat_fecha_carga']; ?>">
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label fw-bold">Nueva Fecha P. Hidráulica</label>
+                                    <label class="form-label fw-bold">Fecha Realización PH</label>
                                     <input type="date" name="mat_fecha_ph" class="form-control border-success" required value="<?php echo $bien['mat_fecha_ph']; ?>">
                                 </div>
                             </div>

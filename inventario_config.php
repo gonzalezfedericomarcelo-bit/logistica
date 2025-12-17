@@ -50,6 +50,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $pdo->prepare("DELETE FROM inventario_config_clases WHERE id_clase = ?")->execute([$_POST['id']]);
     }
 
+    // 4. CONFIGURACIÓN GENERAL (NUEVO - ALERTAS)
+    if (isset($_POST['guardar_general'])) {
+        // Usamos ON DUPLICATE KEY UPDATE por seguridad, aunque el script db ya lo insertó
+        $sql = "INSERT INTO inventario_config_general (clave, valor, descripcion) VALUES ('alerta_vida_util_meses', ?, 'Meses alerta') 
+                ON DUPLICATE KEY UPDATE valor = VALUES(valor)";
+        $pdo->prepare($sql)->execute([$_POST['alerta_vida_util']]);
+    }
+
     header("Location: inventario_config.php"); exit();
 }
 
@@ -57,6 +65,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 $estados = $pdo->query("SELECT * FROM inventario_estados")->fetchAll();
 $tipos_mat = $pdo->query("SELECT * FROM inventario_config_matafuegos")->fetchAll();
 $clases_fuego = $pdo->query("SELECT * FROM inventario_config_clases")->fetchAll();
+
+// Cargar config alerta (si no existe, default 12)
+$conf_vida_stmt = $pdo->prepare("SELECT valor FROM inventario_config_general WHERE clave='alerta_vida_util_meses'");
+$conf_vida_stmt->execute();
+$conf_vida_util = $conf_vida_stmt->fetchColumn() ?: 12;
+
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -71,6 +85,27 @@ $clases_fuego = $pdo->query("SELECT * FROM inventario_config_clases")->fetchAll(
     <div class="container mt-4 mb-5">
         <h3 class="mb-4"><i class="fas fa-cogs"></i> Configuración de Inventario</h3>
         
+        <div class="card shadow-sm mb-4 border-primary">
+            <div class="card-header bg-primary text-white"><i class="fas fa-bell me-2"></i> Configuración de Alertas</div>
+            <div class="card-body">
+                <form method="POST" class="row align-items-end">
+                    <input type="hidden" name="guardar_general" value="1">
+                    <div class="col-md-8">
+                        <label class="form-label fw-bold">Alerta Fin Vida Útil (Meses antes)</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fas fa-hourglass-half"></i></span>
+                            <input type="number" name="alerta_vida_util" class="form-control" value="<?php echo htmlspecialchars($conf_vida_util); ?>" required min="1">
+                            <span class="input-group-text">Meses</span>
+                        </div>
+                        <small class="text-muted">El sistema mostrará una tarjeta de alerta cuando falten estos meses para el vencimiento de vida útil.</small>
+                    </div>
+                    <div class="col-md-4">
+                        <button class="btn btn-primary w-100 fw-bold">Guardar Configuración</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
         <div class="row g-4">
             
             <div class="col-md-4">

@@ -23,11 +23,13 @@ $clases_fuego = $pdo->query("SELECT * FROM inventario_config_clases")->fetchAll(
 
 // Procesar Guardado
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    // Manejo de Archivos (solo si suben nuevos)
+    
+    // Manejo de Archivos
     function actualizarArchivo($input, $actual) {
         if (isset($_FILES[$input]) && $_FILES[$input]['error'] === UPLOAD_ERR_OK) {
             $ext = pathinfo($_FILES[$input]['name'], PATHINFO_EXTENSION);
             $nombre = 'upd_' . time() . '_' . uniqid() . '.' . $ext;
+            if(!file_exists('uploads/documentacion')) mkdir('uploads/documentacion', 0777, true);
             move_uploaded_file($_FILES[$input]['tmp_name'], 'uploads/documentacion/' . $nombre);
             return $nombre;
         }
@@ -37,34 +39,37 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $arch_remito = actualizarArchivo('archivo_remito', $bien['archivo_remito']);
     $arch_comp = actualizarArchivo('archivo_comprobante', $bien['archivo_comprobante']);
 
+    // SQL Update
     $sql = "UPDATE inventario_cargos SET 
             id_estado_fk = :idest, elemento = :elem, codigo_inventario = :cod, servicio_ubicacion = :serv,
             observaciones = :obs, complementos = :comp, nombre_tecnico = :ntec,
             archivo_remito = :arem, archivo_comprobante = :acomp,
-            mat_tipo_carga_id = :mtipo, mat_capacidad = :mcap, mat_clase_id = :mclase,
+            mat_tipo_carga_id = :mtipo, mat_capacidad = :mcap, mat_clase_id = :mclase, mat_numero_grabado = :mgrab,
             mat_fecha_carga = :mvc, mat_fecha_ph = :mvph, fecha_fabricacion = :mfab, vida_util_limite = :mvida,
             nombre_responsable = :nresp, nombre_jefe_servicio = :njefe
             WHERE id_cargo = :id";
     
+    // Corrección crítica: Usar '?? null' para evitar error si el campo no existe en el form
     $pdo->prepare($sql)->execute([
-        ':idest' => $_POST['id_estado'],
-        ':elem' => $_POST['elemento'],
-        ':cod' => $_POST['codigo_inventario'],
-        ':serv' => $_POST['servicio_ubicacion'],
-        ':obs' => $_POST['observaciones'],
-        ':comp' => $_POST['complementos'],
-        ':ntec' => $_POST['nombre_tecnico'],
+        ':idest' => $_POST['id_estado'] ?? null,
+        ':elem' => $_POST['elemento'] ?? '',
+        ':cod' => $_POST['codigo_inventario'] ?? '',
+        ':serv' => $_POST['servicio_ubicacion'] ?? '',
+        ':obs' => $_POST['observaciones'] ?? '',
+        ':comp' => $_POST['complementos'] ?? '',
+        ':ntec' => $_POST['nombre_tecnico'] ?? '',
         ':arem' => $arch_remito,
         ':acomp' => $arch_comp,
         ':mtipo' => $_POST['mat_tipo_carga_id'] ?: null,
-        ':mcap' => $_POST['mat_capacidad'],
+        ':mcap' => $_POST['mat_capacidad'] ?? null,
         ':mclase' => $_POST['mat_clase_id'] ?: null,
-        ':mvc' => $_POST['mat_fecha_carga'] ?: null,
-        ':mvph' => $_POST['mat_fecha_ph'] ?: null,
-        ':mfab' => $_POST['fecha_fabricacion'] ?: null,
-        ':mvida' => $_POST['vida_util_limite'] ?: null,
-        ':nresp' => $_POST['nombre_responsable'],
-        ':njefe' => $_POST['nombre_jefe_servicio'],
+        ':mgrab' => $_POST['mat_numero_grabado'] ?? null,
+        ':mvc' => !empty($_POST['mat_fecha_carga']) ? $_POST['mat_fecha_carga'] : null,
+        ':mvph' => !empty($_POST['mat_fecha_ph']) ? $_POST['mat_fecha_ph'] : null,
+        ':mfab' => !empty($_POST['fecha_fabricacion']) ? $_POST['fecha_fabricacion'] : null,
+        ':mvida' => !empty($_POST['vida_util_limite']) ? $_POST['vida_util_limite'] : null,
+        ':nresp' => $_POST['nombre_responsable'] ?? '',
+        ':njefe' => $_POST['nombre_jefe_servicio'] ?? '',
         ':id' => $id
     ]);
     
@@ -84,14 +89,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <?php include 'navbar.php'; ?>
     <div class="container mt-4 mb-5">
         <form method="POST" enctype="multipart/form-data">
-            <div class="card shadow">
-                <div class="card-header bg-primary text-white">Editar Bien: <?php echo htmlspecialchars($bien['elemento']); ?></div>
-                <div class="card-body">
+            <div class="card shadow border-0">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h5 class="m-0"><i class="fas fa-edit me-2"></i> Editar Bien: <?php echo htmlspecialchars($bien['elemento']); ?></h5>
+                    <a href="inventario_lista.php" class="btn btn-sm btn-light fw-bold text-primary">Volver</a>
+                </div>
+                <div class="card-body p-4">
                     
                     <div class="row g-3 mb-4">
                          <div class="col-md-6">
-                            <label class="form-label fw-bold">Estado</label>
-                            <select name="id_estado" class="form-select">
+                            <label class="fw-bold">Estado Actual</label>
+                            <select name="id_estado" class="form-select fw-bold border-2 border-primary">
                                 <?php foreach($estados_db as $e): ?>
                                     <option value="<?php echo $e['id_estado']; ?>" <?php echo ($bien['id_estado_fk']==$e['id_estado'])?'selected':''; ?>>
                                         <?php echo htmlspecialchars($e['nombre']); ?>
@@ -101,14 +109,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         </div>
                     </div>
 
+                    <?php if($bien['mat_tipo_carga_id']): ?>
                     <div class="card bg-light border-danger mb-4">
-                        <div class="card-header bg-danger text-white">Datos Matafuego (Si aplica)</div>
+                        <div class="card-header bg-danger text-white fw-bold">Datos Matafuego</div>
                         <div class="card-body">
                             <div class="row g-3">
                                 <div class="col-md-3">
-                                    <label class="form-label small fw-bold">Tipo Carga</label>
+                                    <label class="small fw-bold">Tipo Carga</label>
                                     <select name="mat_tipo_carga_id" class="form-select">
-                                        <option value="">-- No es Matafuego --</option>
                                         <?php foreach($tipos_matafuegos as $tm): ?>
                                             <option value="<?php echo $tm['id_config']; ?>" <?php echo ($bien['mat_tipo_carga_id']==$tm['id_config'])?'selected':''; ?>>
                                                 <?php echo htmlspecialchars($tm['tipo_carga']); ?>
@@ -117,7 +125,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                     </select>
                                 </div>
                                 <div class="col-md-2">
-                                    <label class="form-label small fw-bold">Capacidad</label>
+                                    <label class="small fw-bold">Capacidad</label>
                                     <select name="mat_capacidad" class="form-select">
                                         <?php foreach(['1','2.5','3.5','5','10'] as $c): ?>
                                             <option value="<?php echo $c; ?>" <?php echo ($bien['mat_capacidad']==$c)?'selected':''; ?>><?php echo $c; ?> Kg</option>
@@ -128,7 +136,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                 <div class="col-md-2">
                                     <label class="small fw-bold">Clase</label>
                                     <select name="mat_clase_id" class="form-select">
-                                        <option value="">--</option>
                                         <?php foreach($clases_fuego as $cf): ?>
                                             <option value="<?php echo $cf['id_clase']; ?>" <?php echo ($bien['mat_clase_id']==$cf['id_clase'])?'selected':''; ?>>
                                                 <?php echo htmlspecialchars($cf['nombre']); ?>
@@ -137,13 +144,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                     </select>
                                 </div>
 
-                                <div class="col-md-2"><label class="small fw-bold">Año Fab.</label><input type="number" name="fecha_fabricacion" class="form-control" value="<?php echo $bien['fecha_fabricacion']; ?>"></div>
+                                <div class="col-md-5">
+                                    <label class="small fw-bold text-danger">N° Grabado (Fábrica)</label>
+                                    <input type="text" name="mat_numero_grabado" class="form-control" value="<?php echo htmlspecialchars($bien['mat_numero_grabado']); ?>">
+                                </div>
+
+                                <div class="col-md-3"><label class="small fw-bold">Año Fab.</label><input type="number" name="fecha_fabricacion" class="form-control" value="<?php echo $bien['fecha_fabricacion']; ?>"></div>
                                 <div class="col-md-3"><label class="small fw-bold">Vida Util Limite (Año)</label><input type="number" name="vida_util_limite" class="form-control" value="<?php echo $bien['vida_util_limite']; ?>"></div>
                                 
                                 <div class="col-md-3"><label class="small fw-bold">Ultima Carga</label><input type="date" name="mat_fecha_carga" class="form-control" value="<?php echo $bien['mat_fecha_carga']; ?>"></div>
                                 <div class="col-md-3"><label class="small fw-bold">Prueba Hidraulica</label><input type="date" name="mat_fecha_ph" class="form-control" value="<?php echo $bien['mat_fecha_ph']; ?>"></div>
-                                <div class="col-md-6"><label class="small fw-bold">Complementos</label><input type="text" name="complementos" class="form-control" value="<?php echo $bien['complementos']; ?>"></div>
-
+                                <div class="col-md-12"><label class="small fw-bold">Complementos</label><input type="text" name="complementos" class="form-control" value="<?php echo htmlspecialchars($bien['complementos']); ?>"></div>
+                                
                                 <div class="col-12"><hr></div>
                                 <div class="col-md-6">
                                     <label class="small fw-bold">Remito (Actual: <?php echo $bien['archivo_remito']?'SI':'NO'; ?>)</label>
@@ -153,26 +165,39 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                     <label class="small fw-bold">Comprobante (Actual: <?php echo $bien['archivo_comprobante']?'SI':'NO'; ?>)</label>
                                     <input type="file" name="archivo_comprobante" class="form-control">
                                 </div>
-                                <div class="col-12"><label class="small fw-bold">Técnico</label><input type="text" name="nombre_tecnico" class="form-control" value="<?php echo $bien['nombre_tecnico']; ?>"></div>
+                                <div class="col-12"><label class="small fw-bold">Nombre Técnico</label><input type="text" name="nombre_tecnico" class="form-control" value="<?php echo htmlspecialchars($bien['nombre_tecnico']); ?>"></div>
                             </div>
                         </div>
                     </div>
+                    <?php endif; ?>
 
                     <div class="row g-3">
-                        <div class="col-md-8"><label class="fw-bold">Elemento</label><input type="text" name="elemento" class="form-control" value="<?php echo $bien['elemento']; ?>" required></div>
-                        <div class="col-md-4"><label class="fw-bold">Código</label><input type="text" name="codigo_inventario" class="form-control" value="<?php echo $bien['codigo_inventario']; ?>"></div>
-                        <div class="col-md-12"><label class="fw-bold">Ubicación</label>
+                        <div class="col-md-8"><label class="fw-bold">Descripción / Elemento</label><input type="text" name="elemento" class="form-control fw-bold" value="<?php echo htmlspecialchars($bien['elemento']); ?>" required></div>
+                        <div class="col-md-4"><label class="fw-bold text-primary">Código Interno</label><input type="text" name="codigo_inventario" class="form-control" value="<?php echo htmlspecialchars($bien['codigo_inventario']); ?>"></div>
+                        
+                        <div class="col-md-12">
+                            <label class="fw-bold">Ubicación</label>
                             <select name="servicio_ubicacion" id="select_area" class="form-select">
                                 <option value="<?php echo $bien['servicio_ubicacion']; ?>" selected><?php echo $bien['servicio_ubicacion']; ?></option>
+                                <?php foreach($lista_destinos as $d): ?>
+                                    <option value="<?php echo $d['nombre']; ?>"><?php echo htmlspecialchars($d['nombre']); ?></option>
+                                <?php endforeach; ?>
                             </select>
                         </div>
-                        <div class="col-md-12"><label class="fw-bold">Observaciones</label><textarea name="observaciones" class="form-control"><?php echo $bien['observaciones']; ?></textarea></div>
-                        <div class="col-md-6"><label class="fw-bold">Responsable</label><input type="text" name="nombre_responsable" class="form-control" value="<?php echo $bien['nombre_responsable']; ?>"></div>
-                        <div class="col-md-6"><label class="fw-bold">Jefe</label><input type="text" name="nombre_jefe_servicio" class="form-control" value="<?php echo $bien['nombre_jefe_servicio']; ?>"></div>
+                        
+                        <div class="col-md-12"><label class="fw-bold">Observaciones</label><textarea name="observaciones" class="form-control" rows="3"><?php echo htmlspecialchars($bien['observaciones']); ?></textarea></div>
+                        
+                        <div class="col-12 mt-4 border-top pt-3">
+                            <div class="row">
+                                <div class="col-md-6"><label class="fw-bold text-muted small text-uppercase">Responsable</label><input type="text" name="nombre_responsable" class="form-control" value="<?php echo htmlspecialchars($bien['nombre_responsable']); ?>"></div>
+                                <div class="col-md-6"><label class="fw-bold text-muted small text-uppercase">Jefe Servicio</label><input type="text" name="nombre_jefe_servicio" class="form-control" value="<?php echo htmlspecialchars($bien['nombre_jefe_servicio']); ?>"></div>
+                            </div>
+                        </div>
                     </div>
                     
-                    <button type="submit" class="btn btn-primary mt-4">Guardar Cambios</button>
-                    <a href="inventario_lista.php" class="btn btn-secondary mt-4">Cancelar</a>
+                    <div class="d-grid gap-2 mt-5">
+                        <button type="submit" class="btn btn-primary btn-lg fw-bold shadow">GUARDAR CAMBIOS</button>
+                    </div>
                 </div>
             </div>
         </form>
@@ -180,6 +205,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-    <script>$(document).ready(function() { $('#select_area').select2({ theme: 'bootstrap-5' }); });</script>
+    <script>$(document).ready(function() { $('#select_area').select2({ theme: 'bootstrap-5', tags: true }); });</script>
 </body>
 </html>

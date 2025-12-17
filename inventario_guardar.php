@@ -33,12 +33,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $sql = "INSERT INTO inventario_cargos (
             id_usuario_relevador, id_estado_fk, elemento, codigo_inventario, servicio_ubicacion, 
             observaciones, complementos, 
-            mat_tipo_carga_id, mat_capacidad, mat_clase_id, mat_fecha_carga, mat_fecha_ph, fecha_fabricacion, vida_util_limite,
+            mat_tipo_carga_id, mat_capacidad, mat_clase_id, mat_numero_grabado, mat_fecha_carga, mat_fecha_ph, fecha_fabricacion, vida_util_limite,
             nombre_responsable, nombre_jefe_servicio, firma_responsable, firma_relevador, firma_jefe, fecha_creacion
         ) VALUES (
             :id_rel, :id_est, :elem, :cod, :serv, 
             :obs, :comp, 
-            :mtipo, :mcap, :mclase, :mvc, :mvph, :mfab, :mvida,
+            :mtipo, :mcap, :mclase, :mgrabado, :mvc, :mvph, :mfab, :mvida,
             :nresp, :njefe, :fresp, :frel, :fjefe, NOW()
         )";
 
@@ -54,6 +54,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             ':mtipo' => $_POST['mat_tipo_carga_id'] ?? null,
             ':mcap' => $_POST['mat_capacidad'] ?? null,
             ':mclase' => $_POST['mat_clase_id'] ?? null,
+            ':mgrabado' => $_POST['mat_numero_grabado'] ?? null,
             ':mvc' => !empty($_POST['mat_fecha_carga']) ? $_POST['mat_fecha_carga'] : null,
             ':mvph' => !empty($_POST['mat_fecha_ph']) ? $_POST['mat_fecha_ph'] : null,
             ':mfab' => !empty($_POST['fecha_fabricacion']) ? $_POST['fecha_fabricacion'] : null,
