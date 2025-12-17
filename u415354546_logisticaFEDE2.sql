@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1:3306
--- Tiempo de generación: 17-12-2025 a las 15:53:02
+-- Tiempo de generación: 17-12-2025 a las 17:11:00
 -- Versión del servidor: 11.8.3-MariaDB-log
 -- Versión de PHP: 7.2.34
 
@@ -828,7 +828,20 @@ INSERT INTO `asistencia_detalles` (`id_detalle`, `id_parte`, `id_usuario`, `pres
 (994, 81, 24, 0, 'ausente', 'Autorizado'),
 (995, 81, 13, 1, 'presente', ''),
 (996, 81, 18, 1, 'presente', ''),
-(997, 81, 11, 1, 'presente', '');
+(997, 81, 11, 1, 'presente', ''),
+(1011, 83, 6, 0, 'ausente', 'Autorizado'),
+(1012, 83, 22, 1, 'presente', ''),
+(1013, 83, 15, 1, 'presente', ''),
+(1014, 83, 8, 1, 'presente', ''),
+(1015, 83, 9, 0, 'ausente', 'Comisión cocoantar desde el 05nov25 (cav 2025/2026)'),
+(1016, 83, 23, 0, 'ausente', 'Autorizada por estudio'),
+(1017, 83, 17, 1, 'presente', ''),
+(1018, 83, 10, 1, 'presente', ''),
+(1019, 83, 21, 1, 'presente', ''),
+(1020, 83, 24, 1, 'presente', ''),
+(1021, 83, 13, 1, 'presente', ''),
+(1022, 83, 18, 1, 'presente', ''),
+(1023, 83, 11, 1, 'presente', '');
 
 -- --------------------------------------------------------
 
@@ -884,7 +897,8 @@ INSERT INTO `asistencia_partes` (`id_parte`, `fecha`, `id_creador`, `observacion
 (78, '2025-12-11', 15, 'PARTES DE NOVEDADES POLICLÍNICA \'GRAL DON OMAR ACTIS\'', NULL, '2025-12-11 17:30:24', 'aprobado'),
 (79, '2025-12-12', 6, 'PARTES DE NOVEDADES POLICLÍNICA \'GRAL DON OMAR ACTIS\'', NULL, '2025-12-12 18:10:54', 'aprobado'),
 (80, '2025-12-15', 6, 'PARTES DE NOVEDADES POLICLÍNICA \'GRAL DON OMAR ACTIS\'', NULL, '2025-12-15 14:22:45', 'aprobado'),
-(81, '2025-12-16', 6, 'PARTES DE NOVEDADES POLICLÍNICA \'GRAL DON OMAR ACTIS\'', NULL, '2025-12-16 17:44:57', 'aprobado');
+(81, '2025-12-16', 6, 'PARTES DE NOVEDADES POLICLÍNICA \'GRAL DON OMAR ACTIS\'', NULL, '2025-12-16 17:44:57', 'aprobado'),
+(83, '2025-12-17', 15, 'PARTES DE NOVEDADES POLICLÍNICA \'GRAL DON OMAR ACTIS\'', NULL, '2025-12-17 16:35:41', 'aprobado');
 
 -- --------------------------------------------------------
 
@@ -1253,16 +1267,17 @@ CREATE TABLE `inventario_cargos` (
   `mat_clase` varchar(50) DEFAULT NULL,
   `mat_fecha_carga` date DEFAULT NULL,
   `mat_fecha_ph` date DEFAULT NULL,
-  `mat_clase_id` int(11) DEFAULT NULL
+  `mat_clase_id` int(11) DEFAULT NULL,
+  `mat_numero_grabado` varchar(100) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
 
 --
 -- Volcado de datos para la tabla `inventario_cargos`
 --
 
-INSERT INTO `inventario_cargos` (`id_cargo`, `id_usuario_relevador`, `fecha_creacion`, `elemento`, `codigo_inventario`, `servicio_ubicacion`, `observaciones`, `nombre_responsable`, `nombre_jefe_servicio`, `firma_responsable`, `firma_relevador`, `firma_jefe`, `id_estado_fk`, `complementos`, `archivo_remito`, `archivo_comprobante`, `nombre_tecnico`, `fecha_fabricacion`, `vida_util_limite`, `mat_tipo_carga_id`, `mat_capacidad`, `mat_clase`, `mat_fecha_carga`, `mat_fecha_ph`, `mat_clase_id`) VALUES
-(5, 2, '2025-12-17 12:17:39', 'MATAFUEGO POLVO QUÍMICO (ABC) 5KG (ABC)', '405480', 'ASCENSORES', 'Carga: 2022-10-01 / PH: 2025-10-01', 'Juan Pepito', 'CR Arturo Pinguli', 'uploads/firmas/resp_1765984659_6942c993ba84e.png', 'uploads/firmas/rel_17659846596942c993baaa9.png', 'uploads/firmas/jefe_1765984659_6942c993ba979.png', 1, 'Carro', NULL, NULL, NULL, 2010, 2030, 1, '5', NULL, '2022-10-01', '2025-10-01', 1),
-(6, 13, '2025-12-17 12:29:18', 'MATAFUEGO CO2 (BC) 5KG (BC)', 'ab3654', 'LAVADERO', '', 'PAULA', 'CAÑETE', 'uploads/firmas/resp_1765985358_6942cc4e7794b.png', NULL, 'uploads/firmas/jefe_1765985358_6942cc4e77a64.png', 1, 'carro', NULL, NULL, '', 2000, 2005, 2, '5', NULL, '1990-01-01', '2024-01-01', 2);
+INSERT INTO `inventario_cargos` (`id_cargo`, `id_usuario_relevador`, `fecha_creacion`, `elemento`, `codigo_inventario`, `servicio_ubicacion`, `observaciones`, `nombre_responsable`, `nombre_jefe_servicio`, `firma_responsable`, `firma_relevador`, `firma_jefe`, `id_estado_fk`, `complementos`, `archivo_remito`, `archivo_comprobante`, `nombre_tecnico`, `fecha_fabricacion`, `vida_util_limite`, `mat_tipo_carga_id`, `mat_capacidad`, `mat_clase`, `mat_fecha_carga`, `mat_fecha_ph`, `mat_clase_id`, `mat_numero_grabado`) VALUES
+(5, 2, '2025-12-17 12:17:39', 'MATAFUEGO POLVO QUÍMICO (ABC) 5KG (ABC)', '405480', 'ASCENSORES', 'Carga: 2022-10-01 / PH: 2025-10-01', 'Juan Pepito', 'CR Arturo Pinguli', 'uploads/firmas/resp_1765984659_6942c993ba84e.png', 'uploads/firmas/rel_17659846596942c993baaa9.png', 'uploads/firmas/jefe_1765984659_6942c993ba979.png', 3, 'Carro', NULL, NULL, NULL, 2010, 2030, 1, '5', NULL, '2022-10-01', '2025-10-01', 1, ''),
+(6, 13, '2025-12-17 12:29:18', 'MATAFUEGO CO2 (BC) 5KG (BC)', 'ab3654', 'LAVADERO', '', 'PAULA', 'CAÑETE', 'uploads/firmas/resp_1765985358_6942cc4e7794b.png', NULL, 'uploads/firmas/jefe_1765985358_6942cc4e77a64.png', 11, 'carro', NULL, NULL, '', 2000, 2005, 2, '5', NULL, '1990-01-01', '2024-01-01', 2, '12345');
 
 -- --------------------------------------------------------
 
@@ -1286,6 +1301,25 @@ INSERT INTO `inventario_config_clases` (`id_clase`, `nombre`) VALUES
 (4, 'D'),
 (5, 'K'),
 (6, 'AB');
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `inventario_config_general`
+--
+
+CREATE TABLE `inventario_config_general` (
+  `clave` varchar(50) NOT NULL,
+  `valor` varchar(255) NOT NULL,
+  `descripcion` varchar(255) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+
+--
+-- Volcado de datos para la tabla `inventario_config_general`
+--
+
+INSERT INTO `inventario_config_general` (`clave`, `valor`, `descripcion`) VALUES
+('alerta_vida_util_meses', '12', 'Meses de anticipación para alerta de Vida Útil');
 
 -- --------------------------------------------------------
 
@@ -1331,8 +1365,11 @@ INSERT INTO `inventario_estados` (`id_estado`, `nombre`, `color_badge`) VALUES
 (3, 'Carga Vencida', 'bg-secondary'),
 (4, 'P. Hid. Vencida', 'bg-dark'),
 (5, 'Fuera de servicio', 'bg-danger'),
-(6, 'Prueba Vencida', 'bg-dark'),
-(7, 'En Mantenimiento', 'bg-warning');
+(7, 'En Mantenimiento', 'bg-warning'),
+(8, 'Vida Útil Vencida', 'bg-secondary'),
+(9, 'En Reparación', 'bg-warning'),
+(10, 'Para Baja', 'bg-dark'),
+(11, 'Prueba Vencida', 'bg-danger');
 
 -- --------------------------------------------------------
 
@@ -1688,7 +1725,11 @@ INSERT INTO `notificaciones` (`id_notificacion`, `id_usuario_destino`, `id_tarea
 (322, 6, NULL, 'pedido_nuevo', 'Nuevo pedido (77/25: arreglo fuelle inodoro) del área COMPRAS requiere aprobación.', 'encargado_pedidos_lista.php?highlight_pedido=232', 0, '2025-12-17 12:10:01', NULL, NULL),
 (323, 17, NULL, 'tarea_asignada', 'Alejandro Batista te ha asignado una nueva tarea: arreglo fuelle inodoro', 'tarea_ver.php?id=228', 0, '2025-12-17 12:15:40', NULL, NULL),
 (324, 18, NULL, 'tarea_asignada', 'Alejandro Batista te ha asignado una nueva tarea: Arreglos Hall Inventario', 'tarea_ver.php?id=229', 0, '2025-12-17 12:17:15', NULL, NULL),
-(325, 13, NULL, 'tarea_verificada', 'El Gestor **Alejandro Batista** ha **APROBADO** la tarea #221: Relavamiento de Camaras.', 'https://federicogonzalez.net/logistica/tarea_ver.php?id=221&show_modal=aprobada', 0, '2025-12-17 12:19:36', NULL, NULL);
+(325, 13, NULL, 'tarea_verificada', 'El Gestor **Alejandro Batista** ha **APROBADO** la tarea #221: Relavamiento de Camaras.', 'https://federicogonzalez.net/logistica/tarea_ver.php?id=221&show_modal=aprobada', 0, '2025-12-17 12:19:36', NULL, NULL),
+(326, 2, NULL, 'tarea_verificada', '⚠️ Parte pendiente de revisión (2025-12-17) enviado por Federico González.', 'asistencia_listado_general.php?resaltar=83', 1, '2025-12-17 13:35:41', NULL, NULL),
+(327, 6, NULL, 'tarea_verificada', '⚠️ Parte pendiente de revisión (2025-12-17) enviado por Federico González.', 'asistencia_listado_general.php?resaltar=83', 1, '2025-12-17 13:35:41', NULL, NULL),
+(328, 7, NULL, 'tarea_verificada', '⚠️ Parte pendiente de revisión (2025-12-17) enviado por Federico González.', 'asistencia_listado_general.php?resaltar=83', 0, '2025-12-17 13:35:41', NULL, NULL),
+(329, 15, NULL, 'tarea_verificada', 'Tu parte de novedades ha sido APROBADO.', 'asistencia_pdf.php?id=83', 1, '2025-12-17 13:54:16', NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -2562,6 +2603,12 @@ ALTER TABLE `inventario_config_clases`
   ADD PRIMARY KEY (`id_clase`);
 
 --
+-- Indices de la tabla `inventario_config_general`
+--
+ALTER TABLE `inventario_config_general`
+  ADD PRIMARY KEY (`clave`);
+
+--
 -- Indices de la tabla `inventario_config_matafuegos`
 --
 ALTER TABLE `inventario_config_matafuegos`
@@ -2726,13 +2773,13 @@ ALTER TABLE `ascensor_visitas_tecnicas`
 -- AUTO_INCREMENT de la tabla `asistencia_detalles`
 --
 ALTER TABLE `asistencia_detalles`
-  MODIFY `id_detalle` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=998;
+  MODIFY `id_detalle` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1024;
 
 --
 -- AUTO_INCREMENT de la tabla `asistencia_partes`
 --
 ALTER TABLE `asistencia_partes`
-  MODIFY `id_parte` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=82;
+  MODIFY `id_parte` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=84;
 
 --
 -- AUTO_INCREMENT de la tabla `avisos`
@@ -2822,7 +2869,7 @@ ALTER TABLE `inventario_config_matafuegos`
 -- AUTO_INCREMENT de la tabla `inventario_estados`
 --
 ALTER TABLE `inventario_estados`
-  MODIFY `id_estado` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+  MODIFY `id_estado` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
 
 --
 -- AUTO_INCREMENT de la tabla `mensajes`
@@ -2834,7 +2881,7 @@ ALTER TABLE `mensajes`
 -- AUTO_INCREMENT de la tabla `notificaciones`
 --
 ALTER TABLE `notificaciones`
-  MODIFY `id_notificacion` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=326;
+  MODIFY `id_notificacion` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=330;
 
 --
 -- AUTO_INCREMENT de la tabla `pedidos_trabajo`
