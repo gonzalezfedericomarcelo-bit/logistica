@@ -86,9 +86,9 @@ try {
     // --- INICIO MODIFICACIÓN GEMINI (v2) ---
     // Permite al 'admin' Y al 'encargado' actualizar cualquier tarea.
     // Los demás (empleado, auxiliar) solo pueden actualizar si están asignados.
-    if ($tarea_info['id_asignado'] != $id_usuario_actual && !in_array($rol_usuario_actual, ['admin', 'encargado'])) { 
-        throw new Exception("No tiene permisos para actualizar esta tarea."); 
-    }
+    if ($tarea_info['id_asignado'] != $id_usuario_actual && !tiene_permiso('tareas_gestionar', $pdo)) { 
+    throw new Exception("No tiene permisos para actualizar esta tarea."); 
+}
     // --- FIN MODIFICACIÓN GEMINI (v2) ---
 
     if (in_array($tarea_info['estado'], ['finalizada_tecnico', 'verificada', 'cancelada', 'asignada'])) {

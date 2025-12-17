@@ -1,5 +1,5 @@
 <?php
-// Archivo: asistencia_listado_general.php (CON ELIMINACIÓN SEGURA)
+// Archivo: asistencia_listado_general.php (CORREGIDO: Botón Editar Oculto sin permiso)
 session_start();
 include 'conexion.php';
 include_once 'funciones_permisos.php';
@@ -59,6 +59,19 @@ $meses_disponibles = $pdo->query("SELECT DISTINCT DATE_FORMAT(fecha, '%Y-%m') as
 <body>
     <div class="container mt-4 mb-5">
         
+        <?php if(isset($_GET['msg']) && $_GET['msg'] == 'aprobado_ok'): ?>
+            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                <i class="fas fa-check-circle me-2"></i> El parte ha sido aprobado correctamente.
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        <?php endif; ?>
+        <?php if(isset($_GET['msg']) && $_GET['msg'] == 'actualizado'): ?>
+            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                <i class="fas fa-check-circle me-2"></i> El parte y la bitácora han sido actualizados.
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        <?php endif; ?>
+
         <div class="card shadow">
             <div class="card-header bg-dark text-white">
                 <h5 class="mb-0"><i class="fas fa-history me-2"></i> HISTORIAL DE PARTES</h5>
@@ -83,6 +96,7 @@ $meses_disponibles = $pdo->query("SELECT DISTINCT DATE_FORMAT(fecha, '%Y-%m') as
                         <thead class="bg-primary text-white">
                             <tr>
                                 <th>Fecha</th>
+                                <th>Grado</th>
                                 <th>Creador</th>
                                 <th>Estado</th>
                                 <th class="text-end">Acciones</th>
@@ -96,18 +110,30 @@ $meses_disponibles = $pdo->query("SELECT DISTINCT DATE_FORMAT(fecha, '%Y-%m') as
                             ?>
                             <tr>
                                 <td class="fw-bold"><?php echo $fecha_fmt; ?></td>
+                                <td class="fw-bold text-secondary"><?php echo htmlspecialchars($p['grado_creador']); ?></td>
                                 <td><?php echo htmlspecialchars($p['creador']); ?></td>
                                 <td><span class="badge bg-<?php echo $estado_color; ?>"><i class="fas fa-<?php echo $estado_icono; ?> me-1"></i> <?php echo strtoupper($p['estado']); ?></span></td>
                                 <td class="text-end">
-                                    <a href="asistencia_actualizar.php?id=<?php echo $p['id_parte']; ?>" class="btn btn-sm btn-warning text-dark fw-bold" title="Agregar Novedades/Editar">
-                                        <i class="fas fa-edit"></i>
-                                    </a>
+                                    <?php if (tiene_permiso('tomar_asistencia', $pdo)): ?>
+                                        <a href="asistencia_actualizar.php?id=<?php echo $p['id_parte']; ?>" class="btn btn-sm btn-warning text-dark fw-bold" title="Agregar Novedades/Editar">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                    <?php endif; ?>
 
-                                    <a href="asistencia_pdf.php?id=<?php echo $p['id_parte']; ?>" target="_blank" class="btn btn-sm btn-secondary fw-bold" title="Ver PDF">
+                                    <?php if ($p['estado'] == 'pendiente' && tiene_permiso('asistencia_aprobar', $pdo)): ?>
+                                        <a href="asistencia_aprobar.php?id=<?php echo $p['id_parte']; ?>" 
+                                           class="btn btn-sm btn-success fw-bold ms-1" 
+                                           title="Aprobar Parte"
+                                           onclick="return confirm('¿Está seguro de aprobar este parte diario?');">
+                                            <i class="fas fa-check"></i>
+                                        </a>
+                                    <?php endif; ?>
+
+                                    <a href="asistencia_pdf.php?id=<?php echo $p['id_parte']; ?>" target="_blank" class="btn btn-sm btn-secondary fw-bold ms-1" title="Ver PDF">
                                         <i class="fas fa-file-pdf"></i>
                                     </a>
                                     
-                                    <?php if (tiene_permiso('admin_usuarios', $pdo)): // Usamos un permiso alto ?>
+                                    <?php if (tiene_permiso('asistencia_eliminar', $pdo)): ?>
                                         <button class="btn btn-sm btn-danger fw-bold ms-1" onclick="iniciarEliminacion(<?php echo $p['id_parte']; ?>, '<?php echo $fecha_fmt; ?>')">
                                             <i class="fas fa-trash"></i>
                                         </button>

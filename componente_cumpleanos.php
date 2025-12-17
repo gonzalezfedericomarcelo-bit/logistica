@@ -495,7 +495,7 @@ if (isset($_SESSION['usuario_id']) && !isset($_SESSION['cumple_pospuesto'])) {
 
                     // --- MEGA FIESTA EXAGERADA (20 SEGUNDOS) ---
                     function lanzarFiesta() {
-                        var duration = 20 * 1000; 
+                        var duration = 10 * 1000; 
                         var animationEnd = Date.now() + duration;
                         var defaults = { startVelocity: 30, spread: 360, ticks: 100, zIndex: 2200 }; 
 

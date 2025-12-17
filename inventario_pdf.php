@@ -1,77 +1,45 @@
 <?php
-// Archivo: inventario_pdf.php (EN LA RAÍZ)
+// Archivo: inventario_pdf.php
 require('fpdf/fpdf.php');
 include 'conexion.php';
 
-$ubicacion_nombre = "";
-
-// ---------------------------------------------------------
-// 1. LÓGICA INTELIGENTE PARA DETECTAR LA UBICACIÓN
-// ---------------------------------------------------------
-if (isset($_GET['id'])) {
-    $id_recibido = $_GET['id'];
-    
-    // PASO A: Intentar ver si el ID es de un DESTINO (Tabla destinos_internos)
-    $stmt = $pdo->prepare("SELECT nombre FROM destinos_internos WHERE id_destino = ?");
-    $stmt->execute([$id_recibido]);
-    $resultado_destino = $stmt->fetchColumn();
-    
-    if ($resultado_destino) {
-        $ubicacion_nombre = $resultado_destino;
-    } else {
-        // PASO B: Si no es destino, seguro es un ID DE CARGO (Tabla inventario_cargos)
-        // Buscamos a qué ubicación pertenece ese bien (ID 203)
-        $stmt2 = $pdo->prepare("SELECT servicio_ubicacion FROM inventario_cargos WHERE id_cargo = ?");
-        $stmt2->execute([$id_recibido]);
-        $resultado_bien = $stmt2->fetchColumn();
-        
-        if ($resultado_bien) {
-            $ubicacion_nombre = $resultado_bien;
-        } else {
-            die("<h2>Error: No se encontró nada con el ID $id_recibido</h2><p>Ni destino, ni bien inventariado.</p>");
-        }
-    }
-
-} elseif (isset($_GET['ubicacion'])) {
-    // Si viene texto directo (?ubicacion=Farmacia)
-    $ubicacion_nombre = $_GET['ubicacion'];
-} else {
-    die("<h2>Error: Falta información.</h2><p>El enlace debe tener ?id=NUMERO o ?ubicacion=NOMBRE</p>");
+// Validar ID
+if (!isset($_GET['id'])) {
+    die("Error: No se especificó el ID del bien.");
 }
 
-// ---------------------------------------------------------
-// 2. BUSCAR TODOS LOS BIENES DE ESA UBICACIÓN
-// ---------------------------------------------------------
-$sql = "SELECT * FROM inventario_cargos WHERE servicio_ubicacion = :ub ORDER BY elemento ASC";
-$stmt = $pdo->prepare($sql);
-$stmt->execute([':ub' => $ubicacion_nombre]);
-$bienes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+$id = $_GET['id'];
 
-if (count($bienes) == 0) {
-    die("<h1>Inventario Vacío</h1><p>La ubicación <strong>$ubicacion_nombre</strong> no tiene bienes cargados todavía.</p>");
+// 1. BUSCAR SOLAMENTE EL BIEN ESPECÍFICO (No toda la ubicación)
+$stmt = $pdo->prepare("SELECT * FROM inventario_cargos WHERE id_cargo = ?");
+$stmt->execute([$id]);
+$bien = $stmt->fetch(PDO::FETCH_ASSOC);
+
+if (!$bien) {
+    die("Error: El bien con ID $id no existe.");
 }
 
-// 3. DATOS DE LAS FIRMAS (Tomamos del primer bien, ya que se firma por lote)
-$p = $bienes[0];
-$firma_resp = $p['firma_responsable'] ?? ''; 
-$nombre_resp = $p['nombre_responsable'] ?? 'A Designar';
-$firma_jefe = $p['firma_jefe'] ?? '';
-$nombre_jefe = $p['nombre_jefe_servicio'] ?? 'A Designar';
+// 2. TOMAR DATOS ESPECÍFICOS DE ESTE BIEN
+$ubicacion = $bien['servicio_ubicacion'];
+$firma_resp = $bien['firma_responsable'];
+$nombre_resp = $bien['nombre_responsable'];
+$firma_jefe = $bien['firma_jefe'];
+$nombre_jefe = $bien['nombre_jefe_servicio'];
+$firma_rel = $bien['firma_relevador'] ?? ''; // Firma del relevador si existe
 
 // ---------------------------------------------------------
-// 4. GENERACIÓN DEL PDF
+// 3. GENERACIÓN DEL PDF
 // ---------------------------------------------------------
 class PDF extends FPDF {
     public $nombre_lugar;
     function Header() {
-        // Logo (Ruta relativa desde la raíz)
         if(file_exists('assets/img/sgalp.png')) {
             $this->Image('assets/img/sgalp.png', 10, 8, 30);
         }
         $this->SetFont('Arial', 'B', 14);
-        $this->Cell(0, 10, mb_convert_encoding('PLANILLA DE CARGO PATRIMONIAL', 'ISO-8859-1', 'UTF-8'), 0, 1, 'C');
+        $this->Cell(0, 10, mb_convert_encoding('ACTA DE ENTREGA DE BIEN / CARGO INDIVIDUAL', 'ISO-8859-1', 'UTF-8'), 0, 1, 'C');
         $this->SetFont('Arial', '', 10);
-        $this->Cell(0, 8, mb_convert_encoding('Ubicación: ' . $this->nombre_lugar, 'ISO-8859-1', 'UTF-8'), 0, 1, 'C');
+        $this->Cell(0, 8, mb_convert_encoding('Ubicación de Destino: ' . $this->nombre_lugar, 'ISO-8859-1', 'UTF-8'), 0, 1, 'C');
         $this->Ln(5);
         
         $this->SetFillColor(230);
@@ -91,84 +59,74 @@ class PDF extends FPDF {
 
 $pdf = new PDF();
 $pdf->AliasNbPages();
-$pdf->nombre_lugar = $ubicacion_nombre;
+$pdf->nombre_lugar = $ubicacion;
 $pdf->AddPage();
 $pdf->SetFont('Arial', '', 8);
 
-foreach ($bienes as $b) {
-    // Recorte de textos largos
-    $elem = substr($b['elemento'], 0, 55);
-    $obs = substr($b['observaciones'], 0, 25);
-    
-    $pdf->Cell(15, 8, $b['id_cargo'], 1, 0, 'C');
-    $pdf->Cell(25, 8, $b['codigo_inventario'], 1, 0, 'C');
-    $pdf->Cell(80, 8, mb_convert_encoding($elem, 'ISO-8859-1', 'UTF-8'), 1, 0, 'L');
-    $pdf->Cell(25, 8, mb_convert_encoding($b['estado'], 'ISO-8859-1', 'UTF-8'), 1, 0, 'C');
-    $pdf->Cell(45, 8, mb_convert_encoding($obs, 'ISO-8859-1', 'UTF-8'), 1, 1, 'L');
-}
+// Imprimir SOLO la fila del bien actual
+$elem = substr($bien['elemento'], 0, 55);
+$obs = substr($bien['observaciones'], 0, 25);
+
+$pdf->Cell(15, 8, $bien['id_cargo'], 1, 0, 'C');
+$pdf->Cell(25, 8, $bien['codigo_inventario'], 1, 0, 'C');
+$pdf->Cell(80, 8, mb_convert_encoding($elem, 'ISO-8859-1', 'UTF-8'), 1, 0, 'L');
+$pdf->Cell(25, 8, mb_convert_encoding($bien['estado'], 'ISO-8859-1', 'UTF-8'), 1, 0, 'C');
+$pdf->Cell(45, 8, mb_convert_encoding($obs, 'ISO-8859-1', 'UTF-8'), 1, 1, 'L');
 
 // ---------------------------------------------------------
-// 5. SECCIÓN DE FIRMAS
+// 4. SECCIÓN DE FIRMAS (ESTRICTAMENTE LAS DE ESTE BIEN)
 // ---------------------------------------------------------
-$pdf->Ln(15);
-// Si queda poco espacio, saltamos de hoja
-if ($pdf->GetY() > 230) $pdf->AddPage();
+$pdf->Ln(25); // Más espacio para que se vea claro
+
+// Definir posiciones
 $y_firmas = $pdf->GetY();
+$w_bloque = 60;
+$x_col1 = 10;
+$x_col2 = 75;
+$x_col3 = 140;
 
-// --- Firma Responsable (Izquierda) ---
-$pdf->SetXY(20, $y_firmas);
+// --- 1. RESPONSABLE (Izquierda) ---
 if (!empty($firma_resp) && file_exists($firma_resp)) {
-    // La imagen está en uploads/firmas/... (desde la raíz)
-    $pdf->Image($firma_resp, 30, $y_firmas, 40, 15);
-    $pdf->SetXY(20, $y_firmas + 15);
-} else {
-    $pdf->SetXY(20, $y_firmas + 15);
+    $pdf->Image($firma_resp, $x_col1 + 10, $y_firmas - 15, 40, 15);
 }
-$pdf->Cell(60, 0, '', 'T'); // Línea
+$pdf->SetXY($x_col1, $y_firmas);
+$pdf->Cell($w_bloque, 0, '', 'T'); // Línea
 $pdf->Ln(2);
-$pdf->SetX(20);
-$pdf->Cell(60, 4, mb_convert_encoding($nombre_resp, 'ISO-8859-1', 'UTF-8'), 0, 1, 'C');
-$pdf->SetX(20);
-$pdf->SetFont('Arial', 'B', 7);
-$pdf->Cell(60, 4, 'RESPONSABLE A CARGO', 0, 0, 'C');
+$pdf->SetX($x_col1);
+$pdf->SetFont('Arial', 'B', 8);
+$pdf->Cell($w_bloque, 4, mb_convert_encoding($nombre_resp, 'ISO-8859-1', 'UTF-8'), 0, 1, 'C');
+$pdf->SetX($x_col1);
+$pdf->SetFont('Arial', '', 7);
+$pdf->Cell($w_bloque, 4, 'RESPONSABLE A CARGO', 0, 0, 'C');
 
+// --- 2. RELEVADOR (Centro) ---
+if (!empty($firma_rel) && file_exists($firma_rel)) {
+    $pdf->Image($firma_rel, $x_col2 + 10, $y_firmas - 15, 40, 15);
+}
+$pdf->SetXY($x_col2, $y_firmas);
+$pdf->Cell($w_bloque, 0, '', 'T');
+$pdf->Ln(2);
+$pdf->SetX($x_col2);
+$pdf->SetFont('Arial', 'B', 8);
+$pdf->Cell($w_bloque, 4, 'LOGISTICA / RELEVADOR', 0, 1, 'C');
+// Si no hay firma, no ponemos nombre falso, dejamos espacio.
 
-// --- Firma Jefe (Derecha) ---
-$pdf->SetFont('Arial', '', 8);
-$pdf->SetXY(120, $y_firmas);
+// --- 3. JEFE SERVICIO (Derecha) ---
 if (!empty($firma_jefe) && file_exists($firma_jefe)) {
-    $pdf->Image($firma_jefe, 130, $y_firmas, 40, 15);
-    $pdf->SetXY(120, $y_firmas + 15);
-} else {
-    $pdf->SetXY(120, $y_firmas + 15);
+    $pdf->Image($firma_jefe, $x_col3 + 10, $y_firmas - 15, 40, 15);
 }
-$pdf->Cell(60, 0, '', 'T'); // Línea
+$pdf->SetXY($x_col3, $y_firmas);
+$pdf->Cell($w_bloque, 0, '', 'T');
 $pdf->Ln(2);
-$pdf->SetX(120);
-$pdf->Cell(60, 4, mb_convert_encoding($nombre_jefe, 'ISO-8859-1', 'UTF-8'), 0, 1, 'C');
-$pdf->SetX(120);
-$pdf->SetFont('Arial', 'B', 7);
-$pdf->Cell(60, 4, 'JEFE DE SERVICIO / AVAL', 0, 0, 'C');
+$pdf->SetX($x_col3);
+$pdf->SetFont('Arial', 'B', 8);
+$pdf->Cell($w_bloque, 4, mb_convert_encoding($nombre_jefe, 'ISO-8859-1', 'UTF-8'), 0, 1, 'C');
+$pdf->SetX($x_col3);
+$pdf->SetFont('Arial', '', 7);
+$pdf->Cell($w_bloque, 4, 'JEFE DE SERVICIO / AVAL', 0, 0, 'C');
 
 // ---------------------------------------------------------
-// 6. GUARDAR Y MOSTRAR
+// 5. SALIDA
 // ---------------------------------------------------------
-// Limpieza de nombre de archivo
-$nombre_limpio = preg_replace('/[^a-zA-Z0-9]/', '_', $ubicacion_nombre);
-$nombre_archivo = "Inventario_" . $nombre_limpio . ".pdf";
-
-// Carpeta destino (Asegurarse que exista)
-$carpeta_destino = 'pdfs_publicos/inventario/';
-if (!file_exists($carpeta_destino)) {
-    mkdir($carpeta_destino, 0777, true);
-}
-
-$ruta_completa = $carpeta_destino . $nombre_archivo;
-
-// 'F' guarda el archivo en el servidor
-$pdf->Output('F', $ruta_completa);
-
-// Redirigir al usuario al archivo generado
-header("Location: " . $ruta_completa);
-exit;
+$pdf->Output('I', 'Recibo_Bien_'.$id.'.pdf'); // 'I' para mostrar en navegador directamente
 ?>

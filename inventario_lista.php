@@ -4,8 +4,10 @@ session_start();
 include 'conexion.php';
 include 'funciones_permisos.php';
 
+// Verificación de sesión y permisos
 if (!isset($_SESSION['usuario_id']) || !tiene_permiso('acceso_inventario', $pdo)) {
-    header("Location: dashboard.php"); exit();
+    header("Location: dashboard.php"); 
+    exit();
 }
 
 // --- 1. FILTROS ---
@@ -56,30 +58,62 @@ if (isset($_GET['filtro_fecha']) && $_GET['filtro_fecha'] == 'mes_actual') {
     $params[':mes_act'] = date('Y-m');
 }
 
-// --- 2. CONSULTAS ---
-$sql = "SELECT * FROM inventario_cargos WHERE $where ORDER BY fecha_creacion DESC LIMIT 1000";
-$stmt = $pdo->prepare($sql);
-$stmt->execute($params);
-$inventario = $stmt->fetchAll(PDO::FETCH_ASSOC);
-$total_filtrado = count($inventario);
+// --- 2. CONSULTAS SEGURAS (Evita Error 500) ---
 
-$lista_ubicaciones = $pdo->query("SELECT DISTINCT servicio_ubicacion FROM inventario_cargos ORDER BY servicio_ubicacion")->fetchAll(PDO::FETCH_COLUMN);
+// Consulta Principal
+$inventario = [];
+$total_filtrado = 0;
+try {
+    $sql = "SELECT * FROM inventario_cargos WHERE $where ORDER BY fecha_creacion DESC LIMIT 1000";
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
+    $inventario = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $total_filtrado = count($inventario);
+} catch (Exception $e) {
+    // Si falla la tabla principal, no rompemos todo, simplemente queda vacía
+    error_log("Error cargando inventario: " . $e->getMessage());
+}
+
+// Helper para consultas simples seguras
+function consultaSegura($pdo, $sql, $metodo = 'fetchAll', $modo = PDO::FETCH_ASSOC) {
+    try {
+        $stmt = $pdo->query($sql);
+        if ($stmt) {
+            if ($metodo == 'fetchColumn') return $stmt->fetchColumn();
+            return $stmt->fetchAll($modo);
+        }
+    } catch (Exception $e) {
+        return ($metodo == 'fetchAll') ? [] : 0;
+    }
+    return ($metodo == 'fetchAll') ? [] : 0;
+}
+
+// Lista de Ubicaciones
+$lista_ubicaciones = consultaSegura($pdo, "SELECT DISTINCT servicio_ubicacion FROM inventario_cargos ORDER BY servicio_ubicacion", 'fetchAll', PDO::FETCH_COLUMN);
 
 // KPIs
-$total_activos = $pdo->query("SELECT COUNT(*) FROM inventario_cargos WHERE estado = 'Activo'")->fetchColumn();
-$total_bajas = $pdo->query("SELECT COUNT(*) FROM inventario_cargos WHERE estado = 'Baja'")->fetchColumn();
-$altas_mes = $pdo->query("SELECT COUNT(*) FROM inventario_cargos WHERE DATE_FORMAT(fecha_creacion, '%Y-%m') = '" . date('Y-m') . "'")->fetchColumn();
+$total_activos = consultaSegura($pdo, "SELECT COUNT(*) FROM inventario_cargos WHERE estado = 'Activo'", 'fetchColumn');
+$total_bajas = consultaSegura($pdo, "SELECT COUNT(*) FROM inventario_cargos WHERE estado = 'Baja'", 'fetchColumn');
+$altas_mes = consultaSegura($pdo, "SELECT COUNT(*) FROM inventario_cargos WHERE DATE_FORMAT(fecha_creacion, '%Y-%m') = '" . date('Y-m') . "'", 'fetchColumn');
 
 // Datos Gráficos
-$data_serv = $pdo->query("SELECT servicio_ubicacion, COUNT(*) as c FROM inventario_cargos GROUP BY servicio_ubicacion ORDER BY c DESC LIMIT 8")->fetchAll(PDO::FETCH_ASSOC);
-$data_est = $pdo->query("SELECT estado, COUNT(*) as c FROM inventario_cargos GROUP BY estado")->fetchAll(PDO::FETCH_ASSOC);
-$data_tipo = $pdo->query("SELECT SUBSTRING_INDEX(elemento, ' ', 1) as tipo, COUNT(*) as c FROM inventario_cargos GROUP BY tipo ORDER BY c DESC LIMIT 8")->fetchAll(PDO::FETCH_ASSOC);
+$data_serv = consultaSegura($pdo, "SELECT servicio_ubicacion, COUNT(*) as c FROM inventario_cargos GROUP BY servicio_ubicacion ORDER BY c DESC LIMIT 8");
+$data_est = consultaSegura($pdo, "SELECT estado, COUNT(*) as c FROM inventario_cargos GROUP BY estado");
+$data_tipo = consultaSegura($pdo, "SELECT SUBSTRING_INDEX(elemento, ' ', 1) as tipo, COUNT(*) as c FROM inventario_cargos GROUP BY tipo ORDER BY c DESC LIMIT 8");
+
+// Asegurar arrays si fallaron las consultas
+if (!$lista_ubicaciones) $lista_ubicaciones = [];
+if (!$data_serv) $data_serv = [];
+if (!$data_est) $data_est = [];
+if (!$data_tipo) $data_tipo = [];
+
 ?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1"> <title>Inventario | Logística</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1"> 
+    <title>Inventario | Logística</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css">
@@ -116,7 +150,7 @@ $data_tipo = $pdo->query("SELECT SUBSTRING_INDEX(elemento, ' ', 1) as tipo, COUN
                     <div class="card-body d-flex justify-content-between align-items-center">
                         <div>
                             <div class="text-primary small fw-bold text-uppercase">Activos</div>
-                            <div class="h2 fw-bold mb-0"><?php echo $total_activos; ?></div>
+                            <div class="h2 fw-bold mb-0"><?php echo $total_activos ? $total_activos : 0; ?></div>
                         </div>
                         <i class="fas fa-check-circle fs-1 text-primary opacity-25"></i>
                     </div>
@@ -127,7 +161,7 @@ $data_tipo = $pdo->query("SELECT SUBSTRING_INDEX(elemento, ' ', 1) as tipo, COUN
                     <div class="card-body d-flex justify-content-between align-items-center">
                         <div>
                             <div class="text-success small fw-bold text-uppercase">Altas Mes</div>
-                            <div class="h2 fw-bold mb-0"><?php echo $altas_mes; ?></div>
+                            <div class="h2 fw-bold mb-0"><?php echo $altas_mes ? $altas_mes : 0; ?></div>
                         </div>
                         <i class="fas fa-calendar-plus fs-1 text-success opacity-25"></i>
                     </div>
@@ -138,7 +172,7 @@ $data_tipo = $pdo->query("SELECT SUBSTRING_INDEX(elemento, ' ', 1) as tipo, COUN
                     <div class="card-body d-flex justify-content-between align-items-center">
                         <div>
                             <div class="text-danger small fw-bold text-uppercase">Bajas</div>
-                            <div class="h2 fw-bold mb-0"><?php echo $total_bajas; ?></div>
+                            <div class="h2 fw-bold mb-0"><?php echo $total_bajas ? $total_bajas : 0; ?></div>
                         </div>
                         <i class="fas fa-trash-alt fs-1 text-danger opacity-25"></i>
                     </div>
@@ -226,30 +260,34 @@ $data_tipo = $pdo->query("SELECT SUBSTRING_INDEX(elemento, ' ', 1) as tipo, COUN
                             </tr>
                         </thead>
                         <tbody>
-                            <?php foreach ($inventario as $item): ?>
-                                <?php $badge = ($item['estado']=='Activo') ? 'bg-success' : (($item['estado']=='Baja') ? 'bg-danger' : 'bg-warning'); ?>
-                                <tr>
-                                    <td><span class="badge <?php echo $badge; ?>"><?php echo $item['estado']; ?></span></td>
-                                    <td>
-                                        <div class="fw-bold text-dark"><?php echo htmlspecialchars($item['elemento']); ?></div>
-                                        <small class="text-muted font-monospace"><?php echo htmlspecialchars($item['codigo_inventario']); ?></small>
-                                    </td>
-                                    <td><?php echo htmlspecialchars($item['servicio_ubicacion']); ?></td>
-                                    <td><small class="fw-bold"><?php echo htmlspecialchars($item['nombre_responsable']); ?></small></td>
-                                    <td class="text-center">
-                                        <div class="dropdown">
-                                            <button class="btn btn-sm btn-light border dropdown-toggle" type="button" data-bs-toggle="dropdown"><i class="fas fa-ellipsis-v"></i></button>
-                                            <ul class="dropdown-menu dropdown-menu-end shadow">
-                                                <li><a class="dropdown-item" href="inventario_pdf.php?id=<?php echo $item['id_cargo']; ?>" target="_blank"><i class="fas fa-file-pdf text-danger me-2"></i> PDF Individual</a></li>
-                                                <li><a class="dropdown-item" href="inventario_editar.php?id=<?php echo $item['id_cargo']; ?>"><i class="fas fa-edit text-primary me-2"></i> Editar</a></li>
-                                                <li><a class="dropdown-item" href="inventario_transferir.php?id=<?php echo $item['id_cargo']; ?>"><i class="fas fa-exchange-alt text-info me-2"></i> Transferir</a></li>
-                                                <li><hr class="dropdown-divider"></li>
-                                                <li><a class="dropdown-item text-danger" href="inventario_baja.php?id=<?php echo $item['id_cargo']; ?>"><i class="fas fa-trash-alt me-2"></i> Dar de Baja</a></li>
-                                            </ul>
-                                        </div>
-                                    </td>
-                                </tr>
-                            <?php endforeach; ?>
+                            <?php if (!empty($inventario)): ?>
+                                <?php foreach ($inventario as $item): ?>
+                                    <?php $badge = ($item['estado']=='Activo') ? 'bg-success' : (($item['estado']=='Baja') ? 'bg-danger' : 'bg-warning'); ?>
+                                    <tr>
+                                        <td><span class="badge <?php echo $badge; ?>"><?php echo $item['estado']; ?></span></td>
+                                        <td>
+                                            <div class="fw-bold text-dark"><?php echo htmlspecialchars($item['elemento']); ?></div>
+                                            <small class="text-muted font-monospace"><?php echo htmlspecialchars($item['codigo_inventario']); ?></small>
+                                        </td>
+                                        <td><?php echo htmlspecialchars($item['servicio_ubicacion']); ?></td>
+                                        <td><small class="fw-bold"><?php echo htmlspecialchars($item['nombre_responsable']); ?></small></td>
+                                        <td class="text-center">
+                                            <div class="dropdown">
+                                                <button class="btn btn-sm btn-light border dropdown-toggle" type="button" data-bs-toggle="dropdown"><i class="fas fa-ellipsis-v"></i></button>
+                                                <ul class="dropdown-menu dropdown-menu-end shadow">
+                                                    <li><a class="dropdown-item" href="inventario_pdf.php?id=<?php echo $item['id_cargo']; ?>" target="_blank"><i class="fas fa-file-pdf text-danger me-2"></i> PDF Individual</a></li>
+                                                    <li><a class="dropdown-item" href="inventario_editar.php?id=<?php echo $item['id_cargo']; ?>"><i class="fas fa-edit text-primary me-2"></i> Editar</a></li>
+                                                    <li><a class="dropdown-item" href="inventario_transferir.php?id=<?php echo $item['id_cargo']; ?>"><i class="fas fa-exchange-alt text-info me-2"></i> Transferir</a></li>
+                                                    <li><hr class="dropdown-divider"></li>
+                                                    <li><a class="dropdown-item text-danger" href="inventario_baja.php?id=<?php echo $item['id_cargo']; ?>"><i class="fas fa-trash-alt me-2"></i> Dar de Baja</a></li>
+                                                </ul>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            <?php else: ?>
+                                <tr><td colspan="5" class="text-center text-muted p-4">No se encontraron bienes en el inventario.</td></tr>
+                            <?php endif; ?>
                         </tbody>
                     </table>
                 </div>
@@ -279,6 +317,7 @@ $data_tipo = $pdo->query("SELECT SUBSTRING_INDEX(elemento, ' ', 1) as tipo, COUN
                 if (activeEls.length > 0) {
                     const idx = activeEls[0].index;
                     const label = chart.data.labels[idx];
+                    // CORRECCIÓN: Se agregaron las backticks (`) y comillas para que el JS sea válido
                     if (chart.canvas.id === 'chartServicios') window.location.href = `?ubicacion=${encodeURIComponent(label)}`;
                     if (chart.canvas.id === 'chartTipos') window.location.href = `?tipo=${encodeURIComponent(label)}`;
                     if (chart.canvas.id === 'chartEstado') window.location.href = `?estado=${encodeURIComponent(label)}`;
