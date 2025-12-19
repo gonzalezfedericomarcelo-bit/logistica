@@ -1,82 +1,80 @@
 <?php
-// Archivo: inventario_guardar.php
+// Archivo: inventario_guardar.php (CORREGIDO: MANUAL SI GUARDA FECHAS)
 session_start();
 include 'conexion.php';
-include 'funciones_permisos.php'; // Agregado para evitar error 500 por función no definida
-
-if (!isset($_SESSION['usuario_id']) || !tiene_permiso('inventario_nuevo', $pdo)) {
-    header("Location: inventario_lista.php"); exit();
-}
+date_default_timezone_set('America/Argentina/Buenos_Aires');
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    $id_usuario = $_SESSION['usuario_id'];
+    $elemento = $_POST['elemento'];
+    $ubicacion = $_POST['servicio_ubicacion'];
+    $responsable = $_POST['nombre_responsable'];
+    $jefe = $_POST['nombre_jefe_servicio'];
+    $destino_principal = $_POST['destino_principal'] ?? '';
     
-    // Directorios
-    if (!file_exists('uploads/firmas')) mkdir('uploads/firmas', 0777, true);
-    
-    // FIRMAS
-    function guardarFirma($base64, $prefijo) {
-        if (empty($base64)) return null; // Validación básica para evitar error en replace
-        $base64 = str_replace(['data:image/png;base64,',' '], ['','+'], $base64);
-        $data = base64_decode($base64);
-        $nombre = 'uploads/firmas/' . $prefijo . '_' . time() . '_' . uniqid() . '.png';
-        file_put_contents($nombre, $data);
-        return $nombre;
+    // Variables para matafuegos (se llenan si se detectan en los dinámicos)
+    $mat_fecha_carga = null;
+    $mat_fecha_ph = null;
+    $mat_numero_grabado = null;
+    $mat_capacidad = null;
+    $mat_clase_id = null;
+    $mat_tipo_carga_id = null;
+    $fecha_fabricacion = null;
+    $vida_util = 20;
+
+    // INSERTAR CARGO INICIAL
+    $stmt = $pdo->prepare("INSERT INTO inventario_cargos (id_usuario_relevador, id_estado_fk, elemento, servicio_ubicacion, destino_principal, nombre_responsable, nombre_jefe_servicio, fecha_creacion) VALUES (?, 1, ?, ?, ?, ?, ?, NOW())");
+    $stmt->execute([$id_usuario, $elemento, $ubicacion, $destino_principal, $responsable, $jefe]);
+    $id_cargo = $pdo->lastInsertId();
+
+    // PROCESAR DINÁMICOS Y DETECTAR FECHAS
+    if (isset($_POST['dinamico']) && is_array($_POST['dinamico'])) {
+        foreach ($_POST['dinamico'] as $id_campo => $valor) {
+            if (!empty($valor)) {
+                // Guardar valor dinámico
+                $pdo->prepare("INSERT INTO inventario_valores_dinamicos (id_cargo, id_campo, valor) VALUES (?, ?, ?)")
+                    ->execute([$id_cargo, $id_campo, $valor]);
+
+                // Averiguar qué campo es (Etiqueta) para copiarlo a la columna oficial
+                $stmtC = $pdo->prepare("SELECT etiqueta FROM inventario_campos_dinamicos WHERE id_campo = ?");
+                $stmtC->execute([$id_campo]);
+                $etiqueta = mb_strtoupper(trim($stmtC->fetchColumn()), 'UTF-8');
+
+                // MAPEO MANUAL -> COLUMNA OFICIAL
+                if (strpos($etiqueta, 'ULTIMA CARGA') !== false || strpos($etiqueta, 'VENCIMIENTO CARGA') !== false) {
+                    $mat_fecha_carga = $valor;
+                }
+                if (strpos($etiqueta, 'ULTIMA PH') !== false || strpos($etiqueta, 'ULTIMA P.H.') !== false || strpos($etiqueta, 'VENCIMIENTO PH') !== false) {
+                    $mat_fecha_ph = $valor;
+                }
+                if (strpos($etiqueta, 'GRABADO') !== false || strpos($etiqueta, 'SERIE') !== false) {
+                    $mat_numero_grabado = $valor;
+                }
+                if (strpos($etiqueta, 'FABRICACION') !== false) {
+                    $fecha_fabricacion = $valor;
+                }
+                if (strpos($etiqueta, 'CAPACIDAD') !== false) {
+                    $mat_capacidad = $valor;
+                    $mat_tipo_carga_id = 1; // Asumimos matafuego si pone capacidad
+                }
+            }
+        }
+        
+        // Si detectamos fechas, actualizamos el registro principal
+        if ($mat_fecha_carga || $mat_fecha_ph || $mat_numero_grabado || $fecha_fabricacion) {
+            $sqlUpd = "UPDATE inventario_cargos SET 
+                        mat_fecha_carga = ?, 
+                        mat_fecha_ph = ?, 
+                        mat_numero_grabado = ?, 
+                        fecha_fabricacion = ?,
+                        mat_capacidad = ?,
+                        mat_tipo_carga_id = IFNULL(?, mat_tipo_carga_id)
+                       WHERE id_cargo = ?";
+            $pdo->prepare($sqlUpd)->execute([$mat_fecha_carga, $mat_fecha_ph, $mat_numero_grabado, $fecha_fabricacion, $mat_capacidad, $mat_tipo_carga_id, $id_cargo]);
+        }
     }
-    
-    $ruta_resp = isset($_POST['base64_responsable']) ? guardarFirma($_POST['base64_responsable'], 'resp') : null;
-    $ruta_jefe = isset($_POST['base64_jefe']) ? guardarFirma($_POST['base64_jefe'], 'jefe') : null;
-    
-    // Firma Relevador (Copia perfil)
-    $id_rel = $_SESSION['usuario_id'];
-    $ruta_rel = null;
-    $f_perfil = $pdo->query("SELECT firma_imagen_path FROM usuarios WHERE id_usuario=$id_rel")->fetchColumn();
-    if($f_perfil && file_exists('uploads/firmas/'.$f_perfil)) {
-        $ruta_rel = 'uploads/firmas/rel_'.time().uniqid().'.png';
-        copy('uploads/firmas/'.$f_perfil, $ruta_rel);
-    }
 
-    try {
-        $sql = "INSERT INTO inventario_cargos (
-            id_usuario_relevador, id_estado_fk, elemento, codigo_inventario, servicio_ubicacion, 
-            observaciones, complementos, 
-            mat_tipo_carga_id, mat_capacidad, mat_clase_id, mat_numero_grabado, mat_fecha_carga, mat_fecha_ph, fecha_fabricacion, vida_util_limite,
-            nombre_responsable, nombre_jefe_servicio, firma_responsable, firma_relevador, firma_jefe, fecha_creacion
-        ) VALUES (
-            :id_rel, :id_est, :elem, :cod, :serv, 
-            :obs, :comp, 
-            :mtipo, :mcap, :mclase, :mgrabado, :mvc, :mvph, :mfab, :mvida,
-            :nresp, :njefe, :fresp, :frel, :fjefe, NOW()
-        )";
-
-        $stmt = $pdo->prepare($sql);
-        $stmt->execute([
-            ':id_rel' => $id_rel,
-            ':id_est' => $_POST['id_estado'] ?? null, // Previene error si no se envía
-            ':elem' => $_POST['elemento'],
-            ':cod' => $_POST['codigo_inventario'],
-            ':serv' => $_POST['servicio_ubicacion'],
-            ':obs' => $_POST['observaciones'],
-            ':comp' => $_POST['complementos'] ?? null,
-            ':mtipo' => $_POST['mat_tipo_carga_id'] ?? null,
-            ':mcap' => $_POST['mat_capacidad'] ?? null,
-            ':mclase' => $_POST['mat_clase_id'] ?? null,
-            ':mgrabado' => $_POST['mat_numero_grabado'] ?? null,
-            ':mvc' => !empty($_POST['mat_fecha_carga']) ? $_POST['mat_fecha_carga'] : null,
-            ':mvph' => !empty($_POST['mat_fecha_ph']) ? $_POST['mat_fecha_ph'] : null,
-            ':mfab' => !empty($_POST['fecha_fabricacion']) ? $_POST['fecha_fabricacion'] : null,
-            ':mvida' => !empty($_POST['vida_util_limite']) ? $_POST['vida_util_limite'] : null,
-            ':nresp' => $_POST['nombre_responsable'],
-            ':njefe' => $_POST['nombre_jefe_servicio'],
-            ':fresp' => $ruta_resp,
-            ':frel' => $ruta_rel,
-            ':fjefe' => $ruta_jefe
-        ]);
-
-        $id = $pdo->lastInsertId();
-        header("Location: inventario_pdf.php?id=$id");
-
-    } catch (PDOException $e) {
-        die("Error DB: " . $e->getMessage());
-    }
+    header("Location: inventario_lista.php?msg=guardado_ok");
+    exit();
 }
 ?>

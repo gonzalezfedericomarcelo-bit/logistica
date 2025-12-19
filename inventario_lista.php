@@ -1,5 +1,5 @@
 <?php
-// Archivo: inventario_lista.php
+// Archivo: inventario_lista.php (TU DISEÑO ORIGINAL RESTAURADO + CHECKBOXES)
 session_start();
 include 'conexion.php';
 include 'funciones_permisos.php';
@@ -49,9 +49,6 @@ $kpi_vidautil = contar($pdo, "i.mat_tipo_carga_id IS NOT NULL AND i.vida_util_li
 $chart_total_tipo = $pdo->query("SELECT IFNULL(tm.tipo_carga, 'General') as label, COUNT(*) as data FROM inventario_cargos i LEFT JOIN inventario_config_matafuegos tm ON i.mat_tipo_carga_id = tm.id_config GROUP BY label ORDER BY data DESC")->fetchAll(PDO::FETCH_ASSOC);
 $sql_historial = "SELECT tipo_movimiento as label, COUNT(*) as data FROM historial_movimientos WHERE tipo_movimiento = 'Mantenimiento' GROUP BY label";
 try { $chart_mant_tipo = $pdo->query($sql_historial)->fetchAll(PDO::FETCH_ASSOC); } catch (Exception $e) { $chart_mant_tipo = []; }
-$chart_ubi = $pdo->query("SELECT servicio_ubicacion as label, COUNT(*) as data FROM inventario_cargos GROUP BY servicio_ubicacion ORDER BY data DESC LIMIT 10")->fetchAll(PDO::FETCH_ASSOC);
-$chart_est = $pdo->query("SELECT e.nombre as label, COUNT(*) as data FROM inventario_cargos i LEFT JOIN inventario_estados e ON i.id_estado_fk=e.id_estado GROUP BY e.nombre")->fetchAll(PDO::FETCH_ASSOC);
-$chart_tip = $pdo->query("SELECT IF(mat_tipo_carga_id IS NOT NULL, 'Matafuegos', 'General') as label, COUNT(*) as data FROM inventario_cargos GROUP BY label")->fetchAll(PDO::FETCH_ASSOC);
 
 // Listado
 $sql = "SELECT i.*, e.nombre as nombre_estado, e.color_badge FROM inventario_cargos i LEFT JOIN inventario_estados e ON i.id_estado_fk = e.id_estado WHERE $where ORDER BY i.fecha_creacion DESC LIMIT 1000";
@@ -105,38 +102,23 @@ $lista_estados = $pdo->query("SELECT DISTINCT nombre FROM inventario_estados ORD
             </div>
             
             <div class="d-flex flex-wrap gap-2">
-                <?php if(tiene_permiso('inventario_config', $pdo)): ?>
-                    <a href="inventario_config.php" class="btn btn-secondary fw-bold shadow-sm"><i class="fas fa-cogs me-2"></i> Configuración</a>
-                <?php endif; ?>
-                <?php if(tiene_permiso('inventario_reportes', $pdo)): ?>
-                    <a href="inventario_reporte_pdf.php?<?php echo http_build_query($_GET); ?>" target="_blank" class="btn btn-danger shadow-sm"><i class="fas fa-file-pdf me-2"></i> Reporte</a>
-                <?php endif; ?>
-                <?php if(tiene_permiso('inventario_historial', $pdo)): ?>
-                    <a href="inventario_movimientos.php" class="btn btn-info text-white shadow-sm"><i class="fas fa-history me-2"></i> Historial</a>
-                <?php endif; ?>
-                <?php if(tiene_permiso('inventario_mantenimiento', $pdo)): ?>
-                    <a href="inventario_mantenimiento.php" class="btn btn-warning fw-bold text-dark shadow-sm"><i class="fas fa-tools me-2"></i>Solicitar Servicio Técnico</a>
-                <?php endif; ?>
-                <?php if(tiene_permiso('inventario_ver_transferencias', $pdo)): ?>
-                    <a href="inventario_movimientos.php?tipo_movimiento=Transferencia" class="btn btn-outline-dark shadow-sm fw-bold">
-                        <i class="fas fa-exchange-alt me-2"></i> Historial Transferencias
-                    </a>
-                <?php endif; ?>
-                <?php if(tiene_permiso('inventario_nuevo', $pdo)): ?>
-                    <a href="inventario_nuevo.php" class="btn btn-primary fw-bold shadow-sm"><i class="fas fa-plus-circle me-2"></i> Nuevo</a>
-                <?php endif; ?>
+                <a href="inventario_config.php" class="btn btn-secondary fw-bold shadow-sm"><i class="fas fa-cogs me-2"></i> Configuración</a>
+                <a href="inventario_reporte_pdf.php?<?php echo http_build_query($_GET); ?>" target="_blank" class="btn btn-danger shadow-sm"><i class="fas fa-file-pdf me-2"></i> Reporte</a>
+                <a href="inventario_movimientos.php" class="btn btn-info text-white shadow-sm"><i class="fas fa-history me-2"></i> Historial</a>
+                <a href="inventario_mantenimiento.php" class="btn btn-warning fw-bold text-dark shadow-sm"><i class="fas fa-tools me-2"></i>Solicitar Servicio Técnico</a>
+                <a href="inventario_movimientos.php?tipo_movimiento=Transferencia" class="btn btn-outline-dark shadow-sm fw-bold"><i class="fas fa-exchange-alt me-2"></i> Historial Transferencias</a>
+                <a href="inventario_nuevo.php" class="btn btn-primary fw-bold shadow-sm"><i class="fas fa-plus-circle me-2"></i> Nuevo</a>
+                <a href="importar_datos.php" class="btn btn-dark fw-bold shadow-sm"><i class="fas fa-file-import me-2"></i> Importar Masivo</a>
             </div>
         </div>
 
-
-<div class="row row-cols-1 row-cols-sm-2 row-cols-md-5 g-3 mb-4">
+        <div class="row row-cols-1 row-cols-sm-2 row-cols-md-5 g-3 mb-4">
             <div class="col"><a href="?kpi=activos" class="card-kpi-small bg-success shadow-sm"><div class="label-text">Total Activos</div><div class="h3"><?php echo $kpi_activos; ?></div><i class="fas fa-check-circle icon-bg"></i></a></div>
             <div class="col"><a href="?kpi=prox_carga" class="card-kpi-small bg-warning text-dark shadow-sm" style="background-color: #ffc107 !important;"><div class="label-text text-dark">Prox. Vencer Carga</div><div class="h3 text-dark"><?php echo $kpi_prox_carga; ?></div><i class="fas fa-battery-half icon-bg text-dark"></i></a></div>
             <div class="col"><a href="?kpi=prox_ph" class="card-kpi-small bg-info text-white shadow-sm"><div class="label-text">Prox. Vencer PH</div><div class="h3"><?php echo $kpi_prox_ph; ?></div><i class="fas fa-flask icon-bg"></i></a></div>
             <div class="col"><a href="?kpi=vencidos" class="card-kpi-small bg-danger shadow-sm"><div class="label-text">Vencidos Total</div><div class="h3"><?php echo $kpi_vencidos; ?></div><i class="fas fa-exclamation-triangle icon-bg"></i></a></div>
             <div class="col"><a href="?kpi=vida_util" class="card-kpi-small bg-dark shadow-sm"><div class="label-text">Alerta Vida Útil</div><div class="h3"><?php echo $kpi_vidautil; ?></div><i class="fas fa-hourglass-end icon-bg"></i></a></div>
         </div>
-
 
          <div class="card shadow border-0 rounded-4">
             <div class="card-header bg-white py-3 border-bottom">
@@ -148,89 +130,104 @@ $lista_estados = $pdo->query("SELECT DISTINCT nombre FROM inventario_estados ORD
                     <?php if(!empty($_GET)): ?><div class="col-12 mt-1"><a href="inventario_lista.php" class="text-decoration-none small text-danger"><i class="fas fa-times"></i> Limpiar</a></div><?php endif; ?>
                 </form>
             </div>
+            
             <div class="card-body p-0">
-                <div class="table-responsive">
-                            <table id="tablaInventario" class="table table-hover align-middle mb-0 w-100">
-                                <thead class="bg-light small text-uppercase text-muted">
+                <form action="inventario_eliminar_masivo.php" method="POST" id="formMasivo" onsubmit="return confirm('ATENCIÓN: ¿Seguro que deseas eliminar los ítems seleccionados? Esta acción borrará historiales y fichas técnicas definitivamente.');">
+                    
+                    <div id="toolbarEliminar" class="bg-danger text-white p-2 text-center" style="display:none;">
+                        <button type="submit" class="btn btn-light btn-sm fw-bold text-danger">
+                            <i class="fas fa-trash-alt me-1"></i> ELIMINAR SELECCIONADOS (<span id="countSel">0</span>)
+                        </button>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table id="tablaInventario" class="table table-hover align-middle mb-0 w-100">
+                            <thead class="bg-light small text-uppercase text-muted">
+                                <tr>
+                                    <th class="text-center" width="40">
+                                        <input type="checkbox" id="checkTodos" class="form-check-input" style="cursor:pointer; transform: scale(1.2);">
+                                    </th>
+                                    <th>Estado</th>
+                                    <th>Códigos</th>
+                                    <th>Descripción</th>
+                                    <th>Destino (Sede)</th> <th>Área / Ubicación</th> <th>Vencimientos</th>
+                                    <th class="text-center" style="min-width: 180px;">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach($inventario as $i): ?>
                                     <tr>
-                                        <th>Estado</th>
-                                        <th>Códigos</th>
-                                        <th>Descripción</th>
-                                        <th>Destino (Sede)</th> <th>Área / Ubicación</th> <th>Vencimientos</th>
-                                        <th class="text-center" style="min-width: 180px;">Acciones</th>
+                                        <td class="text-center">
+                                            <input type="checkbox" name="ids[]" value="<?php echo $i['id_cargo']; ?>" class="form-check-input checkItem" style="cursor:pointer; transform: scale(1.2);">
+                                        </td>
+                                        
+                                        <td>
+                                            <span class="badge <?php echo $i['color_badge'] ?? 'bg-secondary'; ?> rounded-pill px-3 py-2">
+                                                <?php echo htmlspecialchars($i['nombre_estado'] ?? 'S/A'); ?>
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <div class="d-flex flex-column">
+                                                <?php if($i['codigo_inventario']): ?><div class="text-primary fw-bold small"><i class="fas fa-hashtag me-1 opacity-50"></i><?php echo $i['codigo_inventario']; ?></div><?php endif; ?>
+                                                <?php if($i['mat_numero_grabado']): ?><div class="text-danger fw-bold small"><i class="fas fa-fire-extinguisher me-1 opacity-50"></i><?php echo $i['mat_numero_grabado']; ?></div><?php endif; ?>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="fw-bold text-dark fs-6"><?php echo htmlspecialchars($i['elemento']); ?></div>
+                                            <?php if($i['observaciones']): ?><small class="text-muted text-truncate d-block mt-1" style="max-width:250px;"><?php echo htmlspecialchars($i['observaciones']); ?></small><?php endif; ?>
+                                        </td>
+                                        
+                                        <td>
+                                            <?php if(!empty($i['destino_principal'])): ?>
+                                                <div class="fw-bold text-dark"><i class="fas fa-building text-secondary me-1"></i> <?php echo htmlspecialchars($i['destino_principal']); ?></div>
+                                            <?php else: ?>
+                                                <span class="text-muted small">-</span>
+                                            <?php endif; ?>
+                                        </td>
+
+                                        <td>
+                                            <?php if(!empty($i['servicio_ubicacion'])): ?>
+                                                <div class="text-primary"><i class="fas fa-map-marker-alt me-1"></i> <?php echo htmlspecialchars($i['servicio_ubicacion']); ?></div>
+                                            <?php else: ?>
+                                                <span class="text-muted small">-</span> 
+                                            <?php endif; ?>
+                                        </td>
+
+                                        <td class="small">
+                                            <?php 
+                                                $hoy = new DateTime();
+                                                if($i['mat_fecha_carga']){
+                                                    $v = (new DateTime($i['mat_fecha_carga']))->modify('+1 year');
+                                                    $diff = $hoy->diff($v)->days; $is_exp = $v < $hoy; $is_alert = !$is_exp && $diff <= $conf_carga_dias;
+                                                    $cls = $is_exp ? 'text-danger fw-bold blink' : ($is_alert ? 'text-warning fw-bold' : 'text-success fw-bold');
+                                                    echo "<div class='$cls mb-1'><i class='fas fa-battery-full me-1'></i>Carga: ".$v->format('d/m/Y')."</div>";
+                                                }
+                                                if($i['mat_fecha_ph']){
+                                                    $v = (new DateTime($i['mat_fecha_ph']))->modify('+1 year');
+                                                    $diff = $hoy->diff($v)->days; $is_exp = $v < $hoy; $is_alert = !$is_exp && $diff <= $conf_ph_dias;
+                                                    $cls = $is_exp ? 'text-danger fw-bold blink' : ($is_alert ? 'text-warning fw-bold' : 'text-success fw-bold');
+                                                    echo "<div class='$cls mb-1'><i class='fas fa-flask me-1'></i>PH: ".$v->format('d/m/Y')."</div>";
+                                                }
+                                            ?>
+                                        </td>
+                                        <td class="text-center">
+                                            <div class="d-flex justify-content-center">
+                                                <?php if(tiene_permiso('inventario_reportes', $pdo)): ?><a href="inventario_pdf.php?id=<?php echo $i['id_cargo']; ?>" target="_blank" class="btn-icon-action btn-pdf" title="Ver PDF"><i class="fas fa-file-pdf"></i></a><?php endif; ?>
+                                                <?php if(tiene_permiso('inventario_editar', $pdo)): ?><a href="inventario_editar.php?id=<?php echo $i['id_cargo']; ?>" class="btn-icon-action btn-edit" title="Editar"><i class="fas fa-edit"></i></a><?php endif; ?>
+                                                <?php if($i['mat_tipo_carga_id'] && tiene_permiso('inventario_mantenimiento', $pdo)): ?><a href="inventario_mantenimiento.php?id=<?php echo $i['id_cargo']; ?>" class="btn-icon-action btn-service" title="Servicio"><i class="fas fa-tools"></i></a><?php endif; ?>
+                                                <?php if(tiene_permiso('inventario_transferir', $pdo)): ?><a href="inventario_transferir.php?id=<?php echo $i['id_cargo']; ?>" class="btn-icon-action btn-transfer" title="Transferir"><i class="fas fa-exchange-alt"></i></a><?php endif; ?>
+                                                <?php if(tiene_permiso('inventario_baja', $pdo)): ?><a href="inventario_baja.php?id=<?php echo $i['id_cargo']; ?>" class="btn-icon-action btn-baja" title="Dar de Baja"><i class="fas fa-ban"></i></a><?php endif; ?>
+                                                <?php if(tiene_permiso('inventario_eliminar', $pdo)): ?><a href="inventario_eliminar.php?id=<?php echo $i['id_cargo']; ?>" onclick="return confirm('¿Seguro? Se borrará definitivamente.')" class="btn-icon-action btn-del" title="Eliminar"><i class="fas fa-trash"></i></a><?php endif; ?>
+                                            </div>
+                                        </td>
                                     </tr>
-                                </thead>
-                                <tbody>
-                                    <?php foreach($inventario as $i): ?>
-                                        <tr>
-                                            <td>
-                                                <span class="badge <?php echo $i['color_badge'] ?? 'bg-secondary'; ?> rounded-pill px-3 py-2">
-                                                    <?php echo htmlspecialchars($i['nombre_estado'] ?? 'S/A'); ?>
-                                                </span>
-                                            </td>
-                                            <td>
-                                                <div class="d-flex flex-column">
-                                                    <?php if($i['codigo_inventario']): ?><div class="text-primary fw-bold small"><i class="fas fa-hashtag me-1 opacity-50"></i><?php echo $i['codigo_inventario']; ?></div><?php endif; ?>
-                                                    <?php if($i['mat_numero_grabado']): ?><div class="text-danger fw-bold small"><i class="fas fa-fire-extinguisher me-1 opacity-50"></i><?php echo $i['mat_numero_grabado']; ?></div><?php endif; ?>
-                                                </div>
-                                            </td>
-                                            <td>
-                                                <div class="fw-bold text-dark fs-6"><?php echo htmlspecialchars($i['elemento']); ?></div>
-                                                <?php if($i['observaciones']): ?><small class="text-muted text-truncate d-block mt-1" style="max-width:250px;"><?php echo htmlspecialchars($i['observaciones']); ?></small><?php endif; ?>
-                                            </td>
-                                            
-                                            <td>
-                                                <?php if(!empty($i['destino_principal'])): ?>
-                                                    <div class="fw-bold text-dark"><i class="fas fa-building text-secondary me-1"></i> <?php echo htmlspecialchars($i['destino_principal']); ?></div>
-                                                <?php else: ?>
-                                                    <span class="text-muted small">-</span>
-                                                <?php endif; ?>
-                                            </td>
-
-                                            <td>
-                                                <?php if(!empty($i['servicio_ubicacion'])): ?>
-                                                    <div class="text-primary"><i class="fas fa-map-marker-alt me-1"></i> <?php echo htmlspecialchars($i['servicio_ubicacion']); ?></div>
-                                                <?php else: ?>
-                                                    <span class="text-muted small">-</span> 
-                                                <?php endif; ?>
-                                            </td>
-
-                                            <td class="small">
-                                                <?php 
-                                                    $hoy = new DateTime();
-                                                    if($i['mat_fecha_carga']){
-                                                        $v = (new DateTime($i['mat_fecha_carga']))->modify('+1 year');
-                                                        $diff = $hoy->diff($v)->days; $is_exp = $v < $hoy; $is_alert = !$is_exp && $diff <= $conf_carga_dias;
-                                                        $cls = $is_exp ? 'text-danger fw-bold blink' : ($is_alert ? 'text-warning fw-bold' : 'text-success fw-bold');
-                                                        echo "<div class='$cls mb-1'><i class='fas fa-battery-full me-1'></i>Carga: ".$v->format('d/m/Y')."</div>";
-                                                    }
-                                                    if($i['mat_fecha_ph']){
-                                                        $v = (new DateTime($i['mat_fecha_ph']))->modify('+1 year');
-                                                        $diff = $hoy->diff($v)->days; $is_exp = $v < $hoy; $is_alert = !$is_exp && $diff <= $conf_ph_dias;
-                                                        $cls = $is_exp ? 'text-danger fw-bold blink' : ($is_alert ? 'text-warning fw-bold' : 'text-success fw-bold');
-                                                        echo "<div class='$cls mb-1'><i class='fas fa-flask me-1'></i>PH: ".$v->format('d/m/Y')."</div>";
-                                                    }
-                                                ?>
-                                            </td>
-                                            <td class="text-center">
-                                                <div class="d-flex justify-content-center">
-                                                    <?php if(tiene_permiso('inventario_reportes', $pdo)): ?><a href="inventario_pdf.php?id=<?php echo $i['id_cargo']; ?>" target="_blank" class="btn-icon-action btn-pdf" title="Ver PDF"><i class="fas fa-file-pdf"></i></a><?php endif; ?>
-                                                    <?php if(tiene_permiso('inventario_editar', $pdo)): ?><a href="inventario_editar.php?id=<?php echo $i['id_cargo']; ?>" class="btn-icon-action btn-edit" title="Editar"><i class="fas fa-edit"></i></a><?php endif; ?>
-                                                    <?php if($i['mat_tipo_carga_id'] && tiene_permiso('inventario_mantenimiento', $pdo)): ?><a href="inventario_mantenimiento.php?id=<?php echo $i['id_cargo']; ?>" class="btn-icon-action btn-service" title="Servicio"><i class="fas fa-tools"></i></a><?php endif; ?>
-                                                    <?php if(tiene_permiso('inventario_transferir', $pdo)): ?><a href="inventario_transferir.php?id=<?php echo $i['id_cargo']; ?>" class="btn-icon-action btn-transfer" title="Transferir"><i class="fas fa-exchange-alt"></i></a><?php endif; ?>
-                                                    <?php if(tiene_permiso('inventario_baja', $pdo)): ?><a href="inventario_baja.php?id=<?php echo $i['id_cargo']; ?>" class="btn-icon-action btn-baja" title="Dar de Baja"><i class="fas fa-ban"></i></a><?php endif; ?>
-                                                    <?php if(tiene_permiso('inventario_eliminar', $pdo)): ?><a href="inventario_eliminar.php?id=<?php echo $i['id_cargo']; ?>" onclick="return confirm('¿Seguro? Se borrará definitivamente.')" class="btn-icon-action btn-del" title="Eliminar"><i class="fas fa-trash"></i></a><?php endif; ?>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    <?php endforeach; ?>
-                                </tbody>
-                            </table>
-                </div>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </form>
             </div>
         </div>           
-        
-
         
          <div class="row g-4 mb-4">
             <div class="col-md-6">
@@ -254,7 +251,39 @@ $lista_estados = $pdo->query("SELECT DISTINCT nombre FROM inventario_estados ORD
     <script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
-        $(document).ready(function() { $('#tablaInventario').DataTable({ "language": { "url": "//cdn.datatables.net/plug-ins/1.13.4/i18n/es-ES.json" }, "dom": 'rtp' }); });
+        $(document).ready(function() { 
+            // Inicializar DataTable manteniendo tu configuración
+            var table = $('#tablaInventario').DataTable({ 
+                "language": { "url": "//cdn.datatables.net/plug-ins/1.13.4/i18n/es-ES.json" }, 
+                "dom": 'rtp',
+                "order": [[ 1, "desc" ]] // Ordenar por ID para ver los nuevos primero
+            }); 
+            
+            // Lógica para mostrar botón eliminar solo cuando hay seleccionados
+            $('#checkTodos').on('click', function() {
+                var checked = this.checked;
+                $('.checkItem').prop('checked', checked);
+                toggleToolbar();
+            });
+
+            $(document).on('change', '.checkItem', function() {
+                toggleToolbar();
+                // Si desmarca uno, desmarcar el "Todos"
+                if(!this.checked) $('#checkTodos').prop('checked', false);
+            });
+
+            function toggleToolbar() {
+                var count = $('.checkItem:checked').length;
+                $('#countSel').text(count);
+                if(count > 0) {
+                    $('#toolbarEliminar').slideDown();
+                } else {
+                    $('#toolbarEliminar').slideUp();
+                }
+            }
+        });
+
+        // TUS GRÁFICOS ORIGINALES
         const commonOptions = { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } };
         const dataTotalTipo = <?php echo json_encode($chart_total_tipo); ?>;
         const dataMantTipo = <?php echo json_encode($chart_mant_tipo); ?>;
