@@ -1,103 +1,120 @@
 <?php
-// Archivo: importar_datos_procesar.php (Carga Masiva de Bienes)
+// Archivo: importar_datos_procesar.php (BLINDADO)
 session_start();
 include 'conexion.php';
+set_time_limit(300);
+ini_set('display_errors', 0); // Ocultar warnings en pantalla
+error_reporting(E_ALL);
 
-// Aumentar tiempo de ejecución para archivos grandes
-set_time_limit(300); 
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') die("Error: Acceso incorrecto.");
+if (empty($_POST['id_tipo_bien'])) die("Error: Selecciona la categoría.");
 
-if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_FILES['archivo_datos'])) {
-    
-    $id_tipo_bien = $_POST['id_tipo_bien']; // La categoría donde vamos a meter los datos
-    $archivo = $_FILES['archivo_datos']['tmp_name'];
-    $id_usuario = $_SESSION['usuario_id'];
+$id_tipo_bien = $_POST['id_tipo_bien'];
+$archivo = $_FILES['archivo_datos']['tmp_name'];
+$id_usuario = $_SESSION['usuario_id'] ?? 1;
 
-    if (empty($id_tipo_bien) || empty($archivo)) die("Error: Datos faltantes.");
+// Función que no falla nunca
+function dame_dato($header, $row, $posibles) {
+    if (!is_array($posibles)) $posibles = [$posibles];
+    foreach ($posibles as $p) {
+        $key = mb_strtoupper(trim($p), 'UTF-8');
+        if (isset($header[$key]) && isset($row[$header[$key]])) {
+            $val = trim($row[$header[$key]]);
+            return ($val === '' || $val === 'NO') ? '-' : $val;
+        }
+    }
+    return '-';
+}
 
-    // 1. Obtener los campos dinámicos de esta categoría para mapearlos
-    $stmtCampos = $pdo->prepare("SELECT id_campo, etiqueta FROM inventario_campos_dinamicos WHERE id_tipo_bien = ?");
-    $stmtCampos->execute([$id_tipo_bien]);
-    $mapa_campos = []; // [ 'MARCA' => id_campo_15, 'MODELO' => id_campo_16 ]
-    while($row = $stmtCampos->fetch(PDO::FETCH_ASSOC)) {
-        $mapa_campos[strtoupper(trim($row['etiqueta']))] = $row['id_campo'];
+try {
+    $pdo->beginTransaction();
+
+    // MAPEO DE CAMPOS
+    $stmt = $pdo->prepare("SELECT id_campo, etiqueta FROM inventario_campos_dinamicos WHERE id_tipo_bien = ?");
+    $stmt->execute([$id_tipo_bien]);
+    $mapa = [];
+    while($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+        $mapa[mb_strtoupper(trim($row['etiqueta']), 'UTF-8')] = $row['id_campo'];
     }
 
-    // 2. Leer CSV
     if (($handle = fopen($archivo, "r")) !== FALSE) {
-        
-        $fila = 0;
-        $indices_header = []; // Guardará en qué columna está cada dato (Ej: 'MARCA' => col 3)
-        
-        while (($datos = fgetcsv($handle, 1000, ",")) !== FALSE) {
-            // Fix punto y coma
-            if (count($datos) == 1 && strpos($datos[0], ';') !== false) $datos = explode(';', $datos[0]);
+        $linea1 = fgets(fopen($archivo, 'r'));
+        $separador = (substr_count($linea1, ';') > substr_count($linea1, ',')) ? ';' : ',';
+        rewind($handle);
 
-            // Detectar cabecera (primera fila con datos)
-            if (empty($indices_header)) {
-                $tiene_datos = false;
-                foreach($datos as $idx => $val) {
-                    if(trim($val) != '') {
-                        $indices_header[strtoupper(trim($val))] = $idx;
-                        $tiene_datos = true;
-                    }
+        $header = [];
+        $fila = 0;
+
+        while (($row = fgetcsv($handle, 1000, $separador)) !== FALSE) {
+            if (empty($header)) {
+                foreach($row as $k => $v) {
+                    $limpio = mb_strtoupper(trim(preg_replace('/[\x00-\x1F\x7F]/', '', $v)), 'UTF-8');
+                    if($limpio) $header[$limpio] = $k;
                 }
-                if(!$tiene_datos) $indices_header = []; // Si era fila vacía, seguir buscando
                 continue;
             }
-
-            // PROCESAR FILA DE DATOS
             $fila++;
-            
-            // A. Extraer Datos Estándar (Columnas fijas si existen en el Excel)
-            // Buscamos columnas como 'DESTINO', 'AREA', 'ELEMENTO', etc.
-            $destino_nom = isset($indices_header['DESTINO']) ? trim($datos[$indices_header['DESTINO']]) : 'SIN ASIGNAR';
-            $area_nom = isset($indices_header['AREA']) ? trim($datos[$indices_header['AREA']]) : 'GENERAL';
-            $responsable = isset($indices_header['RESPONSABLE A CARGO']) ? trim($datos[$indices_header['RESPONSABLE A CARGO']]) : '';
-            $jefe = isset($indices_header['JEFE DE SERVICIO']) ? trim($datos[$indices_header['JEFE DE SERVICIO']]) : '';
-            
-            // Descripción del bien (Si hay columna EQUIPO o ELEMENTO, sino usa el nombre de categoría)
-            $elemento = "Importado";
-            if(isset($indices_header['EQUIPO'])) $elemento = trim($datos[$indices_header['EQUIPO']]);
-            elseif(isset($indices_header['ELEMENTO'])) $elemento = trim($datos[$indices_header['ELEMENTO']]);
 
-            // B. Resolver ID Destino (Crear si no existe)
-            // Nota: Esto es básico. Idealmente debería buscar coincidencia exacta.
-            $id_destino = 1; // Default
-            if($destino_nom) {
-                $stmtDest = $pdo->prepare("SELECT id_destino FROM destinos_internos WHERE nombre LIKE ?");
-                $stmtDest->execute([$destino_nom]);
-                $id_destino = $stmtDest->fetchColumn();
-                if(!$id_destino) {
-                    $pdo->prepare("INSERT INTO destinos_internos (nombre) VALUES (?)")->execute([$destino_nom]);
-                    $id_destino = $pdo->lastInsertId();
+            // DATOS FIJOS
+            $destino = dame_dato($header, $row, ['DESTINO', 'EDIFICIO']);
+            $area    = dame_dato($header, $row, ['AREA', 'SECTOR']);
+            $resp    = dame_dato($header, $row, ['RESPONSABLE', 'CARGO']);
+            $jefe    = dame_dato($header, $row, 'JEFE');
+
+            // DATOS ESPECÍFICOS
+            $tipo_eq = dame_dato($header, $row, ['TIPO EQUIPO', 'TIPO']);
+            $marca   = dame_dato($header, $row, 'MARCA');
+            $modelo  = dame_dato($header, $row, 'MODELO');
+            $tipo_ag = dame_dato($header, $row, ['TIPO AGENTE', 'TIPO DE CARGA']);
+            $cap     = dame_dato($header, $row, ['CAPACIDAD', 'CAPACIDAD (KG)']);
+            $clase   = dame_dato($header, $row, ['CLASE', 'CLASE FUEGO']);
+
+            // NOMBRE AUTOMÁTICO
+            $elemento = dame_dato($header, $row, ['ELEMENTO', 'EQUIPO', 'DESCRIPCION']);
+            if ($elemento === '-' || $elemento === 'IMPORTADO') {
+                if ($tipo_eq !== '-') {
+                    $elemento = "$tipo_eq $marca $modelo";
+                } elseif ($tipo_ag !== '-' || $cap !== '-') {
+                    $elemento = "Matafuego $tipo_ag $cap ($clase)";
+                } else {
+                    $elemento = "$marca $modelo";
                 }
             }
+            $elemento = str_replace(' - ', ' ', $elemento); 
 
-            // C. Insertar el Cargo (Base)
+            // CÓDIGOS (CRUCIAL)
+            $cod_pat = dame_dato($header, $row, ['N° IOSFA SISTEMAS', 'N° IOSE SISTEMAS', 'CODIGO PATRIMONIAL', 'CODIGO INTERNO']);
+            $serie   = dame_dato($header, $row, ['N° SERIE', 'NUMERO DE SERIE', 'N° GRABADO', 'SERIE']);
+
+            // INSERTAR
             $sql = "INSERT INTO inventario_cargos (
-                id_usuario_relevador, id_estado_fk, elemento, servicio_ubicacion, 
-                nombre_responsable, nombre_jefe_servicio, fecha_creacion, id_destino
-            ) VALUES (?, 1, ?, ?, ?, ?, NOW(), ?)";
+                id_usuario_relevador, id_estado_fk, elemento, fecha_creacion,
+                destino_principal, servicio_ubicacion, 
+                nombre_responsable, nombre_jefe_servicio, 
+                codigo_inventario, mat_numero_grabado
+            ) VALUES (?, 1, ?, NOW(), ?, ?, ?, ?, ?, ?)";
             
-            $pdo->prepare($sql)->execute([$id_usuario, $elemento, $area_nom, $responsable, $jefe, $id_destino]);
+            $pdo->prepare($sql)->execute([$id_usuario, $elemento, $destino, $area, $resp, $jefe, $cod_pat, $serie]);
             $id_cargo = $pdo->lastInsertId();
 
-            // D. Insertar Valores Dinámicos (Marca, Modelo, etc.)
-            // Recorremos el mapa de campos que tiene la categoría
-            foreach($mapa_campos as $nombre_columna_csv => $id_campo_db) {
-                if(isset($indices_header[$nombre_columna_csv])) {
-                    $valor = trim($datos[$indices_header[$nombre_columna_csv]]);
-                    if($valor != '') {
+            // GUARDAR DINÁMICOS
+            foreach ($mapa as $etiqueta => $id_campo) {
+                if (isset($header[$etiqueta])) {
+                    $val = trim($row[$header[$etiqueta]] ?? '');
+                    if ($val !== '') {
                         $pdo->prepare("INSERT INTO inventario_valores_dinamicos (id_cargo, id_campo, valor) VALUES (?, ?, ?)")
-                            ->execute([$id_cargo, $id_campo_db, $valor]);
+                            ->execute([$id_cargo, $id_campo, $val]);
                     }
                 }
             }
         }
         fclose($handle);
+        $pdo->commit();
     }
-
-    header("Location: inventario_lista.php?msg=importacion_exito");
+    header("Location: inventario_lista.php?msg=importado_ok&filas=$fila");
     exit();
+} catch (Exception $e) {
+    if ($pdo->inTransaction()) $pdo->rollBack();
+    die("Error Fatal: " . $e->getMessage());
 }
 ?>
