@@ -2,9 +2,12 @@
 // Archivo: inventario_guardar.php
 session_start();
 include 'conexion.php';
+include 'funciones_permisos.php'; // Agregado para evitar error 500 por función no definida
+
 if (!isset($_SESSION['usuario_id']) || !tiene_permiso('inventario_nuevo', $pdo)) {
     header("Location: inventario_lista.php"); exit();
 }
+
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     
     // Directorios
@@ -12,6 +15,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     
     // FIRMAS
     function guardarFirma($base64, $prefijo) {
+        if (empty($base64)) return null; // Validación básica para evitar error en replace
         $base64 = str_replace(['data:image/png;base64,',' '], ['','+'], $base64);
         $data = base64_decode($base64);
         $nombre = 'uploads/firmas/' . $prefijo . '_' . time() . '_' . uniqid() . '.png';
@@ -19,8 +23,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         return $nombre;
     }
     
-    $ruta_resp = guardarFirma($_POST['base64_responsable'], 'resp');
-    $ruta_jefe = guardarFirma($_POST['base64_jefe'], 'jefe');
+    $ruta_resp = isset($_POST['base64_responsable']) ? guardarFirma($_POST['base64_responsable'], 'resp') : null;
+    $ruta_jefe = isset($_POST['base64_jefe']) ? guardarFirma($_POST['base64_jefe'], 'jefe') : null;
     
     // Firma Relevador (Copia perfil)
     $id_rel = $_SESSION['usuario_id'];
@@ -47,7 +51,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $stmt = $pdo->prepare($sql);
         $stmt->execute([
             ':id_rel' => $id_rel,
-            ':id_est' => $_POST['id_estado'],
+            ':id_est' => $_POST['id_estado'] ?? null, // Previene error si no se envía
             ':elem' => $_POST['elemento'],
             ':cod' => $_POST['codigo_inventario'],
             ':serv' => $_POST['servicio_ubicacion'],

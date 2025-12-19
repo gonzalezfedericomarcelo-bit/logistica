@@ -5,27 +5,25 @@ require('fpdf/fpdf.php');
 include 'conexion.php';
 include 'funciones_permisos.php';
 
+// Configurar idioma local para fechas en español
+setlocale(LC_TIME, 'es_ES.UTF-8', 'spanish');
+
 // ============================================================================
 // 1. LÓGICA DE SEGURIDAD
 // ============================================================================
 $acceso_permitido = false;
 
-// A. Verificar usuario logueado (Admin o con permisos)
+// A. Verificar usuario logueado
 if (isset($_SESSION['usuario_id']) && (tiene_permiso('inventario_reportes', $pdo) || tiene_permiso('inventario_historial', $pdo))) {
     $acceso_permitido = true;
 }
 
 // B. Excepción por TOKEN (Acceso Externo)
-// IMPORTANTE: Se permite el acceso si el token existe para ese bien, SIN importar el estado (pendiente o confirmado)
 if (!$acceso_permitido && isset($_GET['token']) && isset($_GET['id'])) {
     $token_check = $_GET['token'];
     $id_bien_check = $_GET['id'];
-    
-    // Verificamos si existe el token asociado al bien
-    $stmtCheck = $pdo->prepare("SELECT id_token FROM inventario_transferencias_pendientes 
-                                WHERE token_hash = ? AND id_bien = ?");
+    $stmtCheck = $pdo->prepare("SELECT id_token FROM inventario_transferencias_pendientes WHERE token_hash = ? AND id_bien = ?");
     $stmtCheck->execute([$token_check, $id_bien_check]);
-    
     if ($stmtCheck->rowCount() > 0) {
         $acceso_permitido = true;
     }
@@ -52,103 +50,222 @@ $bien = $stmt->fetch(PDO::FETCH_ASSOC);
 
 if (!$bien) die("Bien no encontrado.");
 
+// URL actual para el QR
+$protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http";
+$url_actual = $protocol . "://" . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
+
 // ============================================================================
-// 3. GENERAR PDF (ACTA INDIVIDUAL / ACTUAL)
+// 3. CLASE PDF PERSONALIZADA
 // ============================================================================
 class PDF extends FPDF {
     function Header() {
-        // $this->Image('logo.png',10,6,30); // Descomentar si hay logo
-        $this->SetFont('Arial','B',14);
-        $this->Cell(0,10, utf8_decode('ACTA DE ENTREGA / CARGO INDIVIDUAL'),0,1,'C');
-        $this->Ln(5);
+        // Logo
+        if(file_exists('logo.png')) {
+            $this->Image('logo.png', 10, 10, 30); 
+        } elseif(file_exists('assets/logo.png')) {
+             $this->Image('assets/logo.png', 10, 10, 30);
+        }
+
+        // Membrete (Más compacto)
+        $this->SetFont('Times','',9);
+        $this->SetTextColor(80,80,80);
+        $this->Cell(0,4, utf8_decode('República Argentina - Poder Ejecutivo Nacional'),0,1,'R');
+        $this->SetFont('Times','B',9);
+        $this->Cell(0,4, utf8_decode('2025 - Año de la Reconstrucción de la Nación Argentina'),0,1,'R');
+        $this->Ln(8); // Reducido de 15 a 8
+        
+        // Título
+        $this->SetFont('Arial','B',14); // Reducido un poco para ahorrar espacio
+        $this->SetTextColor(0,0,0);
+        $this->Cell(0,8, utf8_decode('ACTA DE RECEPCIÓN DEFINITIVA DE BIEN'),0,1,'C');
+        $this->SetLineWidth(0.4);
+        $this->Line(10, $this->GetY(), 200, $this->GetY());
+        $this->Ln(5); // Reducido de 8 a 5
     }
 
     function Footer() {
-        $this->SetY(-15);
-        $this->SetFont('Arial','I',8);
-        $this->Cell(0,10, utf8_decode('Página ').$this->PageNo(),0,0,'C');
+        global $url_actual;
+        $this->SetY(-25); // Pie más compacto
+        
+        // QR Code
+        $qr_url = "https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=" . urlencode($url_actual);
+        $this->Image($qr_url, 10, $this->GetY(), 18, 18, 'PNG');
+
+        // Texto Legal
+        $this->SetX(30);
+        $this->SetFont('Arial','',7);
+        $this->SetTextColor(100,100,100);
+        $this->MultiCell(0,3, utf8_decode("Este documento ha sido generado electrónicamente por el Sistema de Gestión Logística Integral.\nLa validez del mismo puede ser verificada escaneando el código QR adjunto.\nDocumento oficial de uso interno y auditoría."),0,'L');
+        
+        // Paginación
+        $this->SetY(-12);
+        $this->SetFont('Arial','I',7);
+        $this->Cell(0,10, utf8_decode('Página ').$this->PageNo().'/{nb}',0,0,'R');
     }
 }
 
 $pdf = new PDF();
+$pdf->AliasNbPages();
 $pdf->AddPage();
-$pdf->SetFont('Arial','',11);
+$pdf->SetAutoPageBreak(true, 20); // Margen inferior automático ajustado
 
-// --- DATOS GENERALES ---
-$pdf->SetFillColor(230,230,230);
-$pdf->SetFont('Arial','B',11);
-$pdf->Cell(0,8, utf8_decode('IDENTIFICACIÓN DEL BIEN'),1,1,'L',true);
-$pdf->SetFont('Arial','',10);
+// --- 1. IDENTIFICACIÓN DEL BIEN ---
+$pdf->SetFillColor(240,240,240);
+$pdf->SetFont('Arial','B',10);
+$pdf->Cell(0,6, utf8_decode('1. IDENTIFICACIÓN DEL BIEN PATRIMONIAL'),1,1,'L',true);
 
-$pdf->Cell(40,8, utf8_decode('Código Interno:'),1); 
-$pdf->Cell(55,8, utf8_decode($bien['codigo_inventario']),1);
-$pdf->Cell(40,8, utf8_decode('N° Grabado/Serie:'),1); 
-$pdf->Cell(0,8, utf8_decode($bien['mat_numero_grabado']),1,1);
+// Usamos altura de línea 7 para compactar
+$h_line = 7;
 
-$pdf->Cell(40,8, utf8_decode('Elemento:'),1); 
-$pdf->Cell(0,8, utf8_decode($bien['elemento']),1,1);
+$pdf->SetFont('Arial','B',9);
+$pdf->Cell(35,$h_line, utf8_decode('Elemento / Bien:'),1,0,'L',false); 
+$pdf->SetFont('Arial','',9);
+$pdf->Cell(0,$h_line, utf8_decode($bien['elemento']),1,1,'L',false);
 
-$pdf->Cell(40,8, utf8_decode('Ubicación:'),1); 
-$pdf->Cell(0,8, utf8_decode($bien['destino_principal'] . ' - ' . $bien['servicio_ubicacion']),1,1);
+$pdf->SetFont('Arial','B',9);
+$pdf->Cell(35,$h_line, utf8_decode('Código Interno:'),1); 
+$pdf->SetFont('Arial','',9);
+$pdf->Cell(50,$h_line, utf8_decode($bien['codigo_inventario']),1);
+$pdf->SetFont('Arial','B',9);
+$pdf->Cell(35,$h_line, utf8_decode('N° Grabado/Serie:'),1); 
+$pdf->SetFont('Arial','',9);
+$pdf->Cell(0,$h_line, utf8_decode($bien['mat_numero_grabado']),1,1);
 
-$pdf->Cell(40,8, utf8_decode('Estado:'),1); 
-$pdf->Cell(0,8, utf8_decode($bien['nombre_estado']),1,1);
+$pdf->SetFont('Arial','B',9);
+$pdf->Cell(35,$h_line, utf8_decode('Ubicación Física:'),1); 
+$pdf->SetFont('Arial','',9);
+$pdf->Cell(0,$h_line, utf8_decode($bien['destino_principal'] . ' - ' . $bien['servicio_ubicacion']),1,1);
 
-$pdf->Cell(40,8, utf8_decode('Observaciones:'),1); 
-$pdf->Cell(0,8, utf8_decode($bien['observaciones']),1,1);
+$pdf->SetFont('Arial','B',9);
+$pdf->Cell(35,$h_line, utf8_decode('Estado Actual:'),1); 
+$pdf->SetFont('Arial','',9);
+$pdf->Cell(0,$h_line, utf8_decode($bien['nombre_estado']),1,1);
 
-// --- DATOS TÉCNICOS (SI ES MATAFUEGO) ---
+$pdf->SetFont('Arial','B',9);
+$pdf->Cell(35,$h_line, utf8_decode('Observaciones:'),1); 
+$pdf->SetFont('Arial','',9);
+// MultiCell puede ocupar mucho, cuidado
+$pdf->MultiCell(0,$h_line, utf8_decode($bien['observaciones']),1,'L');
+
+// --- 2. FICHA TÉCNICA (Compacta) ---
 if ($bien['mat_tipo_carga_id']) {
-    $pdf->Ln(5);
-    $pdf->SetFont('Arial','B',11);
-    $pdf->Cell(0,8, utf8_decode('FICHA TÉCNICA (MATAFUEGO)'),1,1,'L',true);
-    $pdf->SetFont('Arial','',10);
-
-    $pdf->Cell(30,8, utf8_decode('Tipo Carga:'),1); $pdf->Cell(65,8, utf8_decode($bien['tipo_carga']),1);
-    $pdf->Cell(30,8, utf8_decode('Capacidad:'),1); $pdf->Cell(20,8, $bien['mat_capacidad'].' Kg',1);
-    $pdf->Cell(20,8, utf8_decode('Clase:'),1); $pdf->Cell(0,8, utf8_decode($bien['nombre_clase']),1,1);
-
-    $pdf->Cell(30,8, utf8_decode('Fabricación:'),1); $pdf->Cell(65,8, $bien['fecha_fabricacion'],1);
-    $pdf->Cell(30,8, utf8_decode('Vida Útil:'),1); $pdf->Cell(0,8, $bien['vida_util_limite'],1,1);
-
-    $pdf->Cell(30,8, utf8_decode('Vto Carga:'),1); 
-    $pdf->Cell(65,8, $bien['mat_fecha_carga'] ? date('d/m/Y', strtotime($bien['mat_fecha_carga']. ' +1 year')) : '-',1);
-    $pdf->Cell(30,8, utf8_decode('Vto PH:'),1); 
-    $pdf->Cell(0,8, $bien['mat_fecha_ph'] ? date('d/m/Y', strtotime($bien['mat_fecha_ph']. ' +1 year')) : '-',1,1);
+    $pdf->Ln(3); // Espacio pequeño
+    $pdf->SetFont('Arial','B',10);
+    $pdf->Cell(0,6, utf8_decode('2. ESPECIFICACIONES TÉCNICAS'),1,1,'L',true);
     
-    $pdf->Cell(30,8, utf8_decode('Técnico:'),1); $pdf->Cell(0,8, utf8_decode($bien['nombre_tecnico']),1,1);
+    // Fila 1
+    $pdf->SetFont('Arial','B',9);
+    $pdf->Cell(25,$h_line, utf8_decode('Tipo Agente:'),1);
+    $pdf->SetFont('Arial','',9);
+    $pdf->Cell(70,$h_line, utf8_decode($bien['tipo_carga']),1);
+    
+    $pdf->SetFont('Arial','B',9);
+    $pdf->Cell(25,$h_line, utf8_decode('Capacidad:'),1);
+    $pdf->SetFont('Arial','',9);
+    $pdf->Cell(25,$h_line, $bien['mat_capacidad'].' Kg',1);
+    
+    $pdf->SetFont('Arial','B',9);
+    $pdf->Cell(20,$h_line, utf8_decode('Clase:'),1);
+    $pdf->SetFont('Arial','',9);
+    $pdf->Cell(0,$h_line, utf8_decode($bien['nombre_clase']),1,1);
+
+    // Fila 2
+    $pdf->SetFont('Arial','B',9);
+    $pdf->Cell(25,$h_line, utf8_decode('Fabricación:'),1);
+    $pdf->SetFont('Arial','',9);
+    $pdf->Cell(70,$h_line, $bien['fecha_fabricacion'],1);
+    
+    $pdf->SetFont('Arial','B',9);
+    $pdf->Cell(25,$h_line, utf8_decode('Vida Útil:'),1);
+    $pdf->SetFont('Arial','',9);
+    $pdf->Cell(0,$h_line, $bien['vida_util_limite'].' '.utf8_decode('años'),1,1);
+
+    // Fila 3
+    $pdf->SetFont('Arial','B',9);
+    $pdf->Cell(25,$h_line, utf8_decode('Vto Carga:'),1);
+    $pdf->SetFont('Arial','',9);
+    $fecha_carga = $bien['mat_fecha_carga'] ? date('d/m/Y', strtotime($bien['mat_fecha_carga']. ' +1 year')) : '-';
+    $pdf->Cell(70,$h_line, $fecha_carga, 1);
+    
+    $pdf->SetFont('Arial','B',9);
+    $pdf->Cell(25,$h_line, utf8_decode('Vto P.H.:'),1);
+    $pdf->SetFont('Arial','',9);
+    $fecha_ph = $bien['mat_fecha_ph'] ? date('d/m/Y', strtotime($bien['mat_fecha_ph']. ' +1 year')) : '-';
+    $pdf->Cell(0,$h_line, $fecha_ph, 1, 1);
 }
 
-// --- FIRMAS ---
-$pdf->Ln(20);
-$pdf->SetFont('Arial','B',11);
-$pdf->Cell(0,8, utf8_decode('RESPONSABLES ASIGNADOS'),0,1,'L');
-$pdf->Ln(5);
+// --- FECHA Y LUGAR (Movido AQUÍ abajo) ---
+$pdf->Ln(3);
+$fecha_obj = new DateTime($bien['fecha_creacion']);
+$meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+$mes = $meses[$fecha_obj->format('n')-1];
+$fecha_texto = "Ciudad Autónoma de Buenos Aires, " . $fecha_obj->format('d') . " de " . $mes . " de " . $fecha_obj->format('Y');
 
-$y = $pdf->GetY();
+$pdf->SetFont('Arial','I',10);
+$pdf->Cell(0, 6, utf8_decode($fecha_texto), 0, 1, 'R');
 
-// Firma Responsable
-$pdf->SetXY(20, $y);
+// --- 3. FIRMAS ---
+$pdf->Ln(5); // Espacio antes de firmas
+$pdf->SetFont('Arial','B',10);
+$pdf->Cell(0,6, utf8_decode('3. CONFORMIDAD Y FIRMAS'),0,1,'L');
+
+// Configuración de firmas
+$y_inicio = $pdf->GetY() + 2; // Un pelín de margen
+$alto_firma = 35; // Altura de la caja de firma
+$ancho_col = 85;
+$offset_col2 = 95; // Separación horizontal
+
+// --- FILA 1 ---
+
+// 1.1 Responsable
+$pdf->SetXY(10, $y_inicio);
+// AJUSTE CLAVE: Bajamos la imagen (+12 en vez de +5) para que toque la línea de abajo
 if($bien['firma_responsable'] && file_exists($bien['firma_responsable'])) {
-    $pdf->Image($bien['firma_responsable'], 30, $y, 40);
+    $pdf->Image($bien['firma_responsable'], 25, $y_inicio + 12, 40); 
 }
-$pdf->SetXY(20, $y+35);
-$pdf->Cell(60,5, utf8_decode('Responsable a Cargo'), 'T', 1, 'C');
-$pdf->SetX(20);
-$pdf->SetFont('Arial','',9);
-$pdf->Cell(60,5, utf8_decode($bien['nombre_responsable']), 0, 0, 'C');
+// La línea va abajo
+$pdf->SetXY(10, $y_inicio + $alto_firma);
+$pdf->Cell($ancho_col, 5, utf8_decode('Firma Responsable a Cargo'), 'T', 1, 'C');
+$pdf->SetX(10);
+$pdf->SetFont('Arial','',8);
+$pdf->Cell($ancho_col, 4, utf8_decode($bien['nombre_responsable']), 0, 0, 'C');
 
-// Firma Jefe
-$pdf->SetXY(120, $y);
+// 1.2 Jefe Servicio
+$pdf->SetXY(10 + $offset_col2, $y_inicio);
 if($bien['firma_jefe'] && file_exists($bien['firma_jefe'])) {
-    $pdf->Image($bien['firma_jefe'], 130, $y, 40);
+    $pdf->Image($bien['firma_jefe'], 10 + $offset_col2 + 25, $y_inicio + 12, 40);
 }
-$pdf->SetXY(120, $y+35);
-$pdf->SetFont('Arial','B',11);
-$pdf->Cell(60,5, utf8_decode('Jefe de Servicio'), 'T', 1, 'C');
-$pdf->SetX(120);
-$pdf->SetFont('Arial','',9);
-$pdf->Cell(60,5, utf8_decode($bien['nombre_jefe_servicio']), 0, 0, 'C');
+$pdf->SetXY(10 + $offset_col2, $y_inicio + $alto_firma);
+$pdf->SetFont('Arial','B',10);
+$pdf->Cell($ancho_col, 5, utf8_decode('Firma Jefe de Servicio'), 'T', 1, 'C');
+$pdf->SetXY(10 + $offset_col2, $pdf->GetY());
+$pdf->SetFont('Arial','',8);
+$pdf->Cell($ancho_col, 4, utf8_decode($bien['nombre_jefe_servicio']), 0, 0, 'C');
+
+
+// --- FILA 2 ---
+$y_fila2 = $y_inicio + $alto_firma + 15; // Espacio entre filas de firmas
+
+// 2.1 Relevador
+$pdf->SetXY(10, $y_fila2);
+if(!empty($bien['firma_relevador']) && file_exists($bien['firma_relevador'])) {
+    $pdf->Image($bien['firma_relevador'], 25, $y_fila2 + 12, 40);
+}
+$pdf->SetXY(10, $y_fila2 + $alto_firma);
+$pdf->SetFont('Arial','B',10);
+$pdf->Cell($ancho_col, 5, utf8_decode('Firma Relevador (Logística)'), 'T', 1, 'C');
+$pdf->SetX(10);
+$pdf->SetFont('Arial','',8);
+$pdf->Cell($ancho_col, 4, utf8_decode('Dpto. Logística'), 0, 0, 'C');
+
+// 2.2 Patrimonial
+$pdf->SetXY(10 + $offset_col2, $y_fila2);
+$pdf->SetXY(10 + $offset_col2, $y_fila2 + $alto_firma);
+$pdf->SetFont('Arial','B',10);
+$pdf->Cell($ancho_col, 5, utf8_decode('Encargada Cargo Patrimonial'), 'T', 1, 'C');
+$pdf->SetXY(10 + $offset_col2, $pdf->GetY());
+$pdf->SetFont('Arial','',8);
+$pdf->Cell($ancho_col, 4, utf8_decode('Verificación y Control'), 0, 0, 'C');
 
 $pdf->Output('I', 'Acta_Inventario_'.$bien['id_cargo'].'.pdf');
 ?>
