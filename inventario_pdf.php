@@ -1,14 +1,19 @@
 <?php
-// Archivo: inventario_pdf.php (TU DISEÑO ORIGINAL + TÍTULOS CORREGIDOS)
+// Archivo: inventario_pdf.php (VERSIÓN CORREGIDA - SIN ERROR DE COLUMNA)
 session_start();
 require('fpdf/fpdf.php');
 include 'conexion.php';
 include 'funciones_permisos.php';
 
-// Idioma español
-setlocale(LC_TIME, 'es_ES.UTF-8', 'spanish');
+// --- CONFIGURACIÓN RÁPIDA ---
+// Como se eliminó la configuración de la BD, definimos aquí la vida útil base.
+// Puedes cambiar este número si la norma cambia.
+$VIDA_UTIL_BASE = 20; 
 
-// Validar Acceso
+setlocale(LC_TIME, 'es_ES.UTF-8', 'spanish');
+date_default_timezone_set('America/Argentina/Buenos_Aires');
+
+// --- 1. VALIDACIÓN DE ACCESO ---
 $acceso = false;
 if (isset($_SESSION['usuario_id']) && (tiene_permiso('inventario_reportes', $pdo) || tiene_permiso('inventario_historial', $pdo))) $acceso = true;
 if (!$acceso && isset($_GET['token']) && isset($_GET['id'])) {
@@ -18,14 +23,24 @@ if (!$acceso && isset($_GET['token']) && isset($_GET['id'])) {
 }
 if (!$acceso) die("Acceso denegado.");
 
-// Obtener Datos
+// --- 2. OBTENER DATOS ---
 $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
-$sql = "SELECT i.*, e.nombre as nombre_estado, m.tipo_carga, c.nombre as nombre_clase
+
+// CONSULTA ARREGLADA: Se eliminó 'm.vida_util' que causaba el error 500
+$sql = "SELECT i.*, e.nombre as nombre_estado, 
+               m.tipo_carga, c.nombre as nombre_clase,
+               (SELECT tb.nombre 
+                FROM inventario_valores_dinamicos vd 
+                JOIN inventario_campos_dinamicos cd ON vd.id_campo = cd.id_campo
+                JOIN inventario_tipos_bien tb ON cd.id_tipo_bien = tb.id_tipo_bien
+                WHERE vd.id_cargo = i.id_cargo 
+                LIMIT 1) as tipo_bien_dinamico
         FROM inventario_cargos i 
         LEFT JOIN inventario_estados e ON i.id_estado_fk = e.id_estado
         LEFT JOIN inventario_config_matafuegos m ON i.mat_tipo_carga_id = m.id_config
         LEFT JOIN inventario_config_clases c ON i.mat_clase_id = c.id_clase
         WHERE i.id_cargo = ?";
+
 $stmt = $pdo->prepare($sql);
 $stmt->execute([$id]);
 $bien = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -34,6 +49,7 @@ if (!$bien) die("Bien no encontrado. (ID: $id)");
 
 $url_actual = (isset($_SERVER['HTTPS']) ? "https" : "http") . "://" . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
 
+// --- 3. CLASE PDF ---
 class PDF extends FPDF {
     function Header() {
         if(file_exists('logo.png')) $this->Image('logo.png', 10, 10, 30); 
@@ -73,7 +89,7 @@ $pdf->AliasNbPages();
 $pdf->AddPage();
 $pdf->SetAutoPageBreak(true, 20);
 
-// 1. IDENTIFICACIÓN
+// --- SECCIÓN 1: IDENTIFICACIÓN ---
 $pdf->SetFillColor(240,240,240);
 $pdf->SetFont('Arial','B',10);
 $pdf->Cell(0,6, utf8_decode('1. IDENTIFICACIÓN DEL BIEN PATRIMONIAL'),1,1,'L',true);
@@ -84,17 +100,17 @@ $pdf->Cell(35,$h, utf8_decode('Elemento / Bien:'),1);
 $pdf->SetFont('Arial','',9);
 $pdf->Cell(0,$h, utf8_decode($bien['elemento']),1,1);
 
-// --- CAMBIOS SOLICITADOS AQUÍ ---
 $pdf->SetFont('Arial','B',9);
-$pdf->Cell(35,$h, utf8_decode('N° Cargo Patrimonial:'),1); // CAMBIADO
+$pdf->Cell(35,$h, utf8_decode('N° Cargo Patrimonial:'),1);
 $pdf->SetFont('Arial','',9);
 $pdf->Cell(50,$h, utf8_decode($bien['codigo_inventario']),1);
 
 $pdf->SetFont('Arial','B',9);
-$pdf->Cell(35,$h, utf8_decode('N° Serie de Fábrica:'),1); // CAMBIADO
+$pdf->Cell(35,$h, utf8_decode('N° Serie de Fábrica:'),1);
 $pdf->SetFont('Arial','',9);
-$pdf->Cell(0,$h, utf8_decode($bien['mat_numero_grabado']),1,1);
-// --------------------------------
+// Prioridad: Grabado matafuego > Campo dinámico 'Serie' > Nada
+$serial = $bien['mat_numero_grabado']; 
+$pdf->Cell(0,$h, utf8_decode($serial),1,1);
 
 $pdf->SetFont('Arial','B',9);
 $pdf->Cell(35,$h, utf8_decode('Ubicación Física:'),1); 
@@ -108,67 +124,127 @@ $pdf->Cell(35,$h, utf8_decode('Estado Actual:'),1);
 $pdf->SetFont('Arial','',9);
 $pdf->Cell(0,$h, utf8_decode($bien['nombre_estado']),1,1);
 
-// 2. FICHA TÉCNICA (Solo se muestra si tiene datos técnicos)
+// --- SECCIÓN 2: LÓGICA DE FICHAS ---
+$pdf->Ln(3);
+
+// A. CASO MATAFUEGOS (Detectado por tener capacidad o tipo de carga)
 if ($bien['mat_tipo_carga_id'] || $bien['mat_capacidad']) {
-    $pdf->Ln(3);
     $pdf->SetFont('Arial','B',10);
-    $pdf->Cell(0,6, utf8_decode('2. ESPECIFICACIONES TÉCNICAS'),1,1,'L',true);
-    
+    $pdf->Cell(0,6, utf8_decode('2. ESPECIFICACIONES TÉCNICAS (MATAFUEGOS)'),1,1,'L',true);
+
     // Fila 1
     $pdf->SetFont('Arial','B',9);
     $pdf->Cell(25,$h, utf8_decode('Tipo Agente:'),1);
     $pdf->SetFont('Arial','',9);
     $pdf->Cell(70,$h, utf8_decode($bien['tipo_carga']),1);
-    
+
     $pdf->SetFont('Arial','B',9);
     $pdf->Cell(25,$h, utf8_decode('Capacidad:'),1);
     $pdf->SetFont('Arial','',9);
-    $pdf->Cell(25,$h, $bien['mat_capacidad'].' Kg',1);
-    
+    $pdf->Cell(25,$h, $bien['mat_capacidad'] ? $bien['mat_capacidad'].' Kg' : '-',1);
+
     $pdf->SetFont('Arial','B',9);
     $pdf->Cell(20,$h, utf8_decode('Clase:'),1);
     $pdf->SetFont('Arial','',9);
     $pdf->Cell(0,$h, utf8_decode($bien['nombre_clase']),1,1);
 
-    // Fila 2
+    // Fila 2 - FABRICACIÓN Y VIDA ÚTIL
     $pdf->SetFont('Arial','B',9);
     $pdf->Cell(25,$h, utf8_decode('Fabricación:'),1);
     $pdf->SetFont('Arial','',9);
-    $pdf->Cell(70,$h, $bien['fecha_fabricacion'],1);
     
+    $fab_date = ($bien['fecha_fabricacion'] && $bien['fecha_fabricacion'] != '0000-00-00') ? date('d/m/Y', strtotime($bien['fecha_fabricacion'])) : '-';
+    $pdf->Cell(70,$h, $fab_date, 1);
+
     $pdf->SetFont('Arial','B',9);
     $pdf->Cell(25,$h, utf8_decode('Vida Útil:'),1);
     $pdf->SetFont('Arial','',9);
-    $pdf->Cell(0,$h, $bien['vida_util_limite'] ? $bien['vida_util_limite'].' '.utf8_decode('años') : '',1,1);
 
-    // Fila 3
+    // CÁLCULO VIDA ÚTIL
+    $texto_vida_util = '-';
+    if ($bien['fecha_fabricacion'] && $bien['fecha_fabricacion'] != '0000-00-00') {
+        $anos_vida = $VIDA_UTIL_BASE; // Usamos la variable definida al inicio
+        $anio_fab = date('Y', strtotime($bien['fecha_fabricacion']));
+        $anio_vence = $anio_fab + $anos_vida;
+        $texto_vida_util = $anos_vida . ' Años (Vence: ' . $anio_vence . ')';
+    }
+    $pdf->Cell(0,$h, utf8_decode($texto_vida_util),1,1);
+
+    // Fila 3 - CARGA
     $pdf->SetFont('Arial','B',9);
     $pdf->Cell(25,$h, utf8_decode('Última Carga:'),1);
     $pdf->SetFont('Arial','',9);
-    $ultima_carga = $bien['mat_fecha_carga'] ? date('d/m/Y', strtotime($bien['mat_fecha_carga'])) : '-';
+    $ultima_carga = ($bien['mat_fecha_carga'] && $bien['mat_fecha_carga'] != '0000-00-00') ? date('d/m/Y', strtotime($bien['mat_fecha_carga'])) : '-';
     $pdf->Cell(70,$h, $ultima_carga, 1);
-    
+
     $pdf->SetFont('Arial','B',9);
     $pdf->Cell(25,$h, utf8_decode('Vto Carga:'),1);
     $pdf->SetFont('Arial','B',9);
-    $vto_carga = $bien['mat_fecha_carga'] ? date('d/m/Y', strtotime($bien['mat_fecha_carga']. ' +1 year')) : '-';
+    // Vencimiento Carga = +1 Año
+    $vto_carga = ($bien['mat_fecha_carga'] && $bien['mat_fecha_carga'] != '0000-00-00') ? date('d/m/Y', strtotime($bien['mat_fecha_carga']. ' +1 year')) : '-';
     $pdf->Cell(0,$h, $vto_carga, 1, 1);
 
-    // Fila 4
+    // Fila 4 - PH
     $pdf->SetFont('Arial','B',9);
     $pdf->Cell(25,$h, utf8_decode('Última P.H.:'),1);
     $pdf->SetFont('Arial','',9);
-    $ultima_ph = $bien['mat_fecha_ph'] ? date('d/m/Y', strtotime($bien['mat_fecha_ph'])) : '-';
+    $ultima_ph = ($bien['mat_fecha_ph'] && $bien['mat_fecha_ph'] != '0000-00-00') ? date('d/m/Y', strtotime($bien['mat_fecha_ph'])) : '-';
     $pdf->Cell(70,$h, $ultima_ph, 1);
-    
+
     $pdf->SetFont('Arial','B',9);
     $pdf->Cell(25,$h, utf8_decode('Vto P.H.:'),1);
     $pdf->SetFont('Arial','B',9);
-    $vto_ph = $bien['mat_fecha_ph'] ? date('d/m/Y', strtotime($bien['mat_fecha_ph']. ' +5 years')) : '-';
+    // Vencimiento PH = +5 Años
+    $vto_ph = ($bien['mat_fecha_ph'] && $bien['mat_fecha_ph'] != '0000-00-00') ? date('d/m/Y', strtotime($bien['mat_fecha_ph']. ' +5 years')) : '-';
     $pdf->Cell(0,$h, $vto_ph, 1, 1);
+
+} 
+// B. CASO DINÁMICO (Informática, Cámaras, etc.)
+else {
+    $sqlDin = "SELECT cd.etiqueta, vd.valor 
+               FROM inventario_valores_dinamicos vd
+               JOIN inventario_campos_dinamicos cd ON vd.id_campo = cd.id_campo
+               WHERE vd.id_cargo = ?
+               ORDER BY cd.orden ASC";
+    $stmtD = $pdo->prepare($sqlDin);
+    $stmtD->execute([$id]);
+    $campos = $stmtD->fetchAll(PDO::FETCH_ASSOC);
+
+    // Solo dibujamos si hay campos (evita cuadro vacío para Muebles)
+    if (count($campos) > 0) {
+        $titulo_seccion = '2. ESPECIFICACIONES TÉCNICAS';
+        if (!empty($bien['tipo_bien_dinamico'])) {
+            $titulo_seccion .= ' (' . mb_strtoupper($bien['tipo_bien_dinamico'], 'UTF-8') . ')';
+        }
+
+        $pdf->SetFont('Arial','B',10);
+        $pdf->Cell(0,6, utf8_decode($titulo_seccion),1,1,'L',true);
+
+        $col = 0; 
+        $ancho_etiqueta = 40;
+        $ancho_valor = 55;
+        
+        foreach ($campos as $campo) {
+            $etiqueta = utf8_decode($campo['etiqueta'] . ':');
+            $valor = utf8_decode($campo['valor']);
+
+            $pdf->SetFont('Arial','B',9);
+            $pdf->Cell($ancho_etiqueta, $h, $etiqueta, 1);
+            $pdf->SetFont('Arial','',9);
+            
+            if ($col == 0) { 
+                $pdf->Cell($ancho_valor, $h, $valor, 1);
+                $col = 1;
+            } else { 
+                $pdf->Cell(0, $h, $valor, 1, 1); 
+                $col = 0;
+            }
+        }
+        if ($col == 1) $pdf->Cell(0, $h, '', 1, 1);
+    }
 }
 
-// FECHA Y FIRMAS
+// --- SECCIÓN 3: FIRMAS ---
 $pdf->Ln(3);
 $fecha = new DateTime($bien['fecha_creacion']);
 $meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
