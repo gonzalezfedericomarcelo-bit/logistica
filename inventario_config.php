@@ -1,5 +1,5 @@
 <?php
-// Archivo: inventario_config.php
+// Archivo: inventario_config.php (CON ICON PICKER + LIMPIEZA)
 session_start();
 include 'conexion.php';
 include 'funciones_permisos.php';
@@ -28,7 +28,7 @@ function getModelos($pdo, $ambito) {
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
-// CARGA DE DATOS
+// CARGA DE DATOS COMPLETA
 $tipos_bien = getTable($pdo, 'inventario_tipos_bien', 'id_tipo_bien');
 $agentes = $pdo->query("SELECT * FROM inventario_config_matafuegos ORDER BY tipo_carga ASC")->fetchAll(PDO::FETCH_ASSOC);
 $clases = getTable($pdo, 'inventario_config_clases', 'nombre');
@@ -36,7 +36,7 @@ $capacidades = getTable($pdo, 'inventario_config_capacidades', 'capacidad');
 $tipos_it = getTable($pdo, 'inventario_config_tipos_it');
 $estados = getTable($pdo, 'inventario_estados');
 
-// Para los selects de los modales, necesitamos todas las marcas disponibles por ámbito
+// Para los selects de los modales
 $all_marcas_it = getMarcas($pdo, 'informatica');
 $all_marcas_cam = getMarcas($pdo, 'camara');
 $all_marcas_tel = getMarcas($pdo, 'telefono');
@@ -45,7 +45,8 @@ $all_marcas_tel = getMarcas($pdo, 'telefono');
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"> <title>Configuración Inventario</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"> 
+    <title>Configuración Inventario</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
@@ -57,6 +58,12 @@ $all_marcas_tel = getMarcas($pdo, 'telefono');
         .action-btn:hover { transform: scale(1.2); }
         .nav-pills .nav-link { color: #555; border-radius: 5px; margin: 0 2px; }
         .nav-pills .nav-link.active { background-color: #0d6efd; color: white; font-weight: 600; }
+        
+        /* Estilos Icon Picker */
+        .icon-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(50px, 1fr)); gap: 10px; max-height: 400px; overflow-y: auto; padding: 10px; }
+        .icon-btn { border: 1px solid #ddd; background: white; border-radius: 5px; padding: 10px; cursor: pointer; transition: 0.2s; text-align: center; }
+        .icon-btn:hover { background: #f0f0f0; transform: scale(1.1); border-color: #0d6efd; }
+        .icon-btn i { font-size: 1.5rem; color: #333; }
     </style>
 </head>
 <body class="bg-light">
@@ -75,7 +82,7 @@ $all_marcas_tel = getMarcas($pdo, 'telefono');
             <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#telefonos">Teléfonos</button></li>
             <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#estados">Estados</button></li>
             <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#fichas">Fichas</button></li>
-            <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#herramientas">Herramientas</button></li>
+            <li class="nav-item"><button class="nav-link bg-dark text-white" data-bs-toggle="tab" data-bs-target="#herramientas"><i class="fas fa-tools me-1"></i> Herramientas</button></li>
         </ul>
 
         <div class="tab-content" id="myTabContent">
@@ -156,11 +163,9 @@ $all_marcas_tel = getMarcas($pdo, 'telefono');
             <div class="tab-pane fade" id="informatico">
                 <?php renderSection($pdo, 'informatica', $tipos_it, $all_marcas_it, 'dark'); ?>
             </div>
-
             <div class="tab-pane fade" id="camaras">
                 <?php renderSection($pdo, 'camara', [], $all_marcas_cam, 'info'); ?>
             </div>
-
             <div class="tab-pane fade" id="telefonos">
                 <?php renderSection($pdo, 'telefono', [], $all_marcas_tel, 'success'); ?>
             </div>
@@ -202,16 +207,15 @@ $all_marcas_tel = getMarcas($pdo, 'telefono');
                     <div class="card-body">
                         <button class="btn btn-dark mb-3" onclick="modalAddFicha()">+ Nueva Ficha</button>
                         <table class="table table-hover align-middle">
-                            <thead class="table-light"><tr><th>Icono</th><th>Nombre</th><th>Descripción</th><th>Técnico</th><th>Acción</th></tr></thead>
+                            <thead class="table-light"><tr><th>Icono</th><th>Nombre</th><th>Descripción</th><th>Acción</th></tr></thead>
                             <tbody>
                                 <?php foreach ($tipos_bien as $t): ?>
                                 <tr>
-                                    <td><i class="<?php echo $t['icono']; ?>"></i></td>
+                                    <td><i class="<?php echo $t['icono']; ?> fa-lg text-primary"></i></td>
                                     <td><?php echo $t['nombre']; ?></td>
                                     <td><?php echo $t['descripcion']; ?></td>
-                                    <td><?php echo $t['tiene_campos_tecnicos']?'Si':'No'; ?></td>
                                     <td>
-                                        <i class="fas fa-pen text-primary action-btn" onclick="modalEditFicha(<?php echo $t['id_tipo_bien']; ?>, '<?php echo $t['nombre']; ?>', '<?php echo $t['icono']; ?>', '<?php echo $t['descripcion']; ?>', <?php echo $t['tiene_campos_tecnicos']; ?>)"></i>
+                                        <i class="fas fa-pen text-primary action-btn" onclick="modalEditFicha(<?php echo $t['id_tipo_bien']; ?>, '<?php echo $t['nombre']; ?>', '<?php echo $t['icono']; ?>', '<?php echo $t['descripcion']; ?>')"></i>
                                         <i class="fas fa-trash text-danger action-btn" onclick="delItem('del_ficha', <?php echo $t['id_tipo_bien']; ?>)"></i>
                                     </td>
                                 </tr>
@@ -223,95 +227,341 @@ $all_marcas_tel = getMarcas($pdo, 'telefono');
             </div>
 
             <div class="tab-pane fade" id="herramientas">
-                <div class="row">
-                    <div class="col-md-6"><div class="card border-info"><div class="card-header bg-info text-white">Importar Estructura</div><div class="card-body"><form action="importar_estructura_procesar.php" method="POST" enctype="multipart/form-data"><input type="file" name="archivo_csv" class="form-control mb-2"><button class="btn btn-info text-white">Subir</button></form></div></div></div>
-                    <div class="col-md-6"><div class="card border-success"><div class="card-header bg-success text-white">Importar Datos</div><div class="card-body"><form action="importar_datos_procesar.php" method="POST" enctype="multipart/form-data"><input type="file" name="archivo_datos" class="form-control mb-2"><button class="btn btn-success">Importar</button></form></div></div></div>
+                
+                <div class="card border-primary mb-4 shadow-sm">
+                    <div class="card-header bg-primary text-white fw-bold">
+                        <i class="fas fa-magic me-2"></i> Creador de Fichas (Manual)
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted small">Crea una categoría y define sus columnas sin usar Excel.</p>
+                        
+                        <form id="formCrearManual">
+                            <div class="mb-3">
+                                <label class="fw-bold">Nombre de la Categoría (ej: Climatización)</label>
+                                <input type="text" id="manual_nombre" class="form-control" required placeholder="Nombre de la familia de productos">
+                            </div>
+                            
+                            <label class="fw-bold mb-2">Columnas Técnicas (ej: Marca, Modelo, Frigorías)</label>
+                            <div id="lista_campos_manual">
+                                <div class="input-group mb-2">
+                                    <input type="text" name="campos[]" class="form-control" placeholder="Nombre del Campo (ej: Marca)">
+                                    <button type="button" class="btn btn-outline-danger" onclick="this.parentElement.remove()"><i class="fas fa-trash"></i></button>
+                                </div>
+                            </div>
+                            
+                            <button type="button" class="btn btn-outline-secondary btn-sm mb-3" onclick="agregarCampoManual()">
+                                <i class="fas fa-plus"></i> Agregar otra columna
+                            </button>
+
+                            <div class="d-grid">
+                                <button type="submit" class="btn btn-primary fw-bold">Guardar Estructura</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                
+                <div class="row g-4">
+                    <div class="col-md-6">
+                        <div class="card h-100 border-info">
+                            <div class="card-header bg-info text-white fw-bold"><i class="fas fa-folder-plus"></i> Importar Estructura (CSV)</div>
+                            <div class="card-body">
+                                <form action="importar_estructura_procesar.php" method="POST" enctype="multipart/form-data">
+                                    <div class="mb-3"><label class="fw-bold">Nombre Categoría</label><input type="text" name="nombre_categoria" class="form-control" required></div>
+                                    <div class="mb-3"><label class="fw-bold">Archivo CSV</label><input type="file" name="archivo_estructura" class="form-control" accept=".csv" required></div>
+                                    <button class="btn btn-info text-white w-100 fw-bold">Subir Estructura</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card h-100 border-success">
+                            <div class="card-header bg-success text-white fw-bold"><i class="fas fa-file-upload"></i> Importar Datos (CSV)</div>
+                            <div class="card-body">
+                                <form action="importar_datos_procesar.php" method="POST" enctype="multipart/form-data">
+                                    <div class="mb-3"><label class="fw-bold">Categoría Destino</label><select name="id_tipo_bien" class="form-select" required><option value="">-- Seleccionar --</option><?php foreach($tipos_bien as $tb): ?><option value="<?php echo $tb['id_tipo_bien']; ?>"><?php echo htmlspecialchars($tb['nombre']); ?></option><?php endforeach; ?></select></div>
+                                    <div class="mb-3"><label class="fw-bold">Archivo CSV</label><input type="file" name="archivo_datos" class="form-control" accept=".csv" required></div>
+                                    <button class="btn btn-success w-100 fw-bold">Importar Bienes</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="modal fade" id="modAgente" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header bg-danger text-white"><h5 class="modal-title">Editar Agente</h5><button class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body">
-        <input type="hidden" id="edit_age_id">
-        <label>Nombre:</label><input type="text" id="edit_age_nom" class="form-control mb-2">
-        <label>Vida Útil (Años):</label><input type="number" id="edit_age_vida" class="form-control">
-    </div><div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button><button class="btn btn-danger" onclick="saveAgente()">Guardar</button></div></div></div></div>
+    <div class="modal fade" id="modAgente" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header bg-danger text-white"><h5 class="modal-title">Editar Agente</h5><button class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><input type="hidden" id="edit_age_id"><label>Nombre:</label><input type="text" id="edit_age_nom" class="form-control mb-2"><label>Vida Útil (Años):</label><input type="number" id="edit_age_vida" class="form-control"></div><div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button><button class="btn btn-danger" onclick="saveAgente()">Guardar</button></div></div></div></div>
 
-    <div class="modal fade" id="modSimple" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header bg-secondary text-white"><h5 class="modal-title">Editar</h5><button class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body">
-        <input type="hidden" id="simp_accion"><input type="hidden" id="simp_tabla"><input type="hidden" id="simp_col_id"><input type="hidden" id="simp_col_val"><input type="hidden" id="simp_id">
-        <label>Nombre/Valor:</label><input type="text" id="simp_val" class="form-control">
-    </div><div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button><button class="btn btn-primary" onclick="saveSimple()">Guardar</button></div></div></div></div>
+    <div class="modal fade" id="modSimple" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header bg-secondary text-white"><h5 class="modal-title">Editar</h5><button class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><input type="hidden" id="simp_accion"><input type="hidden" id="simp_tabla"><input type="hidden" id="simp_col_id"><input type="hidden" id="simp_col_val"><input type="hidden" id="simp_id"><label>Nombre/Valor:</label><input type="text" id="simp_val" class="form-control"></div><div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button><button class="btn btn-primary" onclick="saveSimple()">Guardar</button></div></div></div></div>
 
-    <div class="modal fade" id="modModelo" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header bg-primary text-white"><h5 class="modal-title">Editar Modelo</h5><button class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body">
-        <input type="hidden" id="mod_id">
-        <label>Nombre Modelo:</label><input type="text" id="mod_nom" class="form-control mb-2">
-        <label>Pertenece a Marca:</label><select id="mod_marca" class="form-select"></select>
-    </div><div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button><button class="btn btn-primary" onclick="saveModelo()">Guardar</button></div></div></div></div>
+    <div class="modal fade" id="modModelo" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header bg-primary text-white"><h5 class="modal-title">Editar Modelo</h5><button class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><input type="hidden" id="mod_id"><label>Nombre Modelo:</label><input type="text" id="mod_nom" class="form-control mb-2"><label>Pertenece a Marca:</label><select id="mod_marca" class="form-select"></select></div><div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button><button class="btn btn-primary" onclick="saveModelo()">Guardar</button></div></div></div></div>
 
-    <div class="modal fade" id="modEstado" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header bg-primary text-white"><h5 class="modal-title">Editar Estado</h5><button class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body">
-        <input type="hidden" id="est_id">
-        <label>Nombre:</label><input type="text" id="est_nom" class="form-control mb-2">
-        <label>Ámbito:</label><select id="est_amb" class="form-select"><option value="general">General</option><option value="matafuego">Matafuego</option><option value="ambos">Ambos</option></select>
-    </div><div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button><button class="btn btn-primary" onclick="saveEstado()">Guardar</button></div></div></div></div>
+    <div class="modal fade" id="modEstado" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header bg-primary text-white"><h5 class="modal-title">Editar Estado</h5><button class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><input type="hidden" id="est_id"><label>Nombre:</label><input type="text" id="est_nom" class="form-control mb-2"><label>Ámbito:</label><select id="est_amb" class="form-select"><option value="general">General</option><option value="matafuego">Matafuego</option><option value="ambos">Ambos</option></select></div><div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button><button class="btn btn-primary" onclick="saveEstado()">Guardar</button></div></div></div></div>
 
-    <div class="modal fade" id="modFicha" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header bg-dark text-white"><h5 class="modal-title">Ficha</h5><button class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body">
-        <input type="hidden" id="fic_id"><input type="hidden" id="fic_action">
-        <label>Nombre:</label><input type="text" id="fic_nom" class="form-control mb-2">
-        <label>Icono (FontAwesome):</label><input type="text" id="fic_ico" class="form-control mb-2" placeholder="fas fa-box">
-        <label>Descripción:</label><input type="text" id="fic_desc" class="form-control mb-2">
-        <div class="form-check"><input class="form-check-input" type="checkbox" id="fic_tec"><label class="form-check-label">Es Matafuego (Campos Técnicos)</label></div>
-    </div><div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button><button class="btn btn-primary" onclick="saveFicha()">Guardar</button></div></div></div></div>
+    <div class="modal fade" id="modFicha" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-dark text-white">
+                    <h5 class="modal-title">Editar Ficha / Categoría</h5>
+                    <button class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+    <input type="hidden" id="fic_id">
+    <input type="hidden" id="fic_action">
+    
+    <label class="fw-bold">Nombre de la Categoría:</label>
+    <input type="text" id="fic_nom" class="form-control mb-3">
+    
+    <label class="fw-bold">Icono:</label>
+    <div class="input-group mb-3">
+        <span class="input-group-text"><i id="icon_preview" class="fas fa-box"></i></span>
+        <input type="text" id="fic_ico" class="form-control" placeholder="fas fa-box">
+        <button class="btn btn-outline-secondary" type="button" onclick="openIconPicker()">Seleccionar</button>
+    </div>
+    
+    <label class="fw-bold">Descripción:</label>
+    <input type="text" id="fic_desc" class="form-control mb-4">
+    
+    <div class="card bg-light border-0">
+        <div class="card-header bg-secondary text-white fw-bold d-flex justify-content-between align-items-center">
+            <span><i class="fas fa-columns me-1"></i> Columnas / Datos Técnicos</span>
+            <button class="btn btn-sm btn-light text-dark fw-bold" onclick="addCampoEdit(null, '')"><i class="fas fa-plus"></i> Agregar</button>
+        </div>
+        <div class="card-body p-2" id="container_campos_edit" style="max-height: 200px; overflow-y: auto;">
+            </div>
+        <div class="card-footer text-muted small p-1 text-center">
+            Si eliminas una columna, perderás los datos cargados en ella.
+        </div>
+    </div>
+</div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button class="btn btn-primary" onclick="saveFicha()">Guardar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modIconos" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Galería de Iconos</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <input type="text" id="filtro_iconos" class="form-control" placeholder="Buscar icono (ej: medico, pc, herramienta)..." onkeyup="filtrarIconos()">
+                    </div>
+                    <div class="icon-grid" id="gridIconos">
+                        </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <?php 
-    // Función Helper para renderizar secciones repetitivas (Info, Camara, Tel)
+    // Función Helper Render
     function renderSection($pdo, $ambito, $tipos, $marcas, $color) {
         $modelos = getModelos($pdo, $ambito);
         echo '<div class="row g-4">';
         if($ambito == 'informatica') {
             echo '<div class="col-md-4"><div class="card card-custom h-100 border-'.$color.'"><div class="card-header bg-'.$color.' text-white fw-bold">Tipos Equipo</div><div class="card-body">';
             echo '<div class="input-group mb-2"><input type="text" id="add_it_nom" class="form-control"><button class="btn btn-'.$color.'" onclick="addSimple(\'add_tipo_it\',\'add_it_nom\')">+</button></div><ul class="list-group list-scrollable">';
-            foreach($tipos as $t) {
-                echo '<li class="list-group-item d-flex justify-content-between align-items-center"><span>'.$t['nombre'].'</span>';
-                echo '<div><i class="fas fa-pen text-primary action-btn" onclick="modalEditSimple(\'edit_simple\',\'inventario_config_tipos_it\',\'id_tipo_it\',\'nombre\','.$t['id_tipo_it'].',\''.$t['nombre'].'\')"></i><i class="fas fa-trash text-danger action-btn" onclick="delItem(\'del_tipo_it\','.$t['id_tipo_it'].')"></i></div></li>';
-            }
+            foreach($tipos as $t) echo '<li class="list-group-item d-flex justify-content-between align-items-center"><span>'.$t['nombre'].'</span><div><i class="fas fa-pen text-primary action-btn" onclick="modalEditSimple(\'edit_simple\',\'inventario_config_tipos_it\',\'id_tipo_it\',\'nombre\','.$t['id_tipo_it'].',\''.$t['nombre'].'\')"></i><i class="fas fa-trash text-danger action-btn" onclick="delItem(\'del_tipo_it\','.$t['id_tipo_it'].')"></i></div></li>';
             echo '</ul></div></div></div>';
         }
-        
         $colWidth = ($ambito == 'informatica') ? '4' : '6';
-        
-        // Marcas
         echo '<div class="col-md-'.$colWidth.'"><div class="card card-custom h-100 border-'.$color.'"><div class="card-header bg-'.$color.' text-white fw-bold">Marcas</div><div class="card-body">';
         echo '<div class="input-group mb-2"><input type="text" id="add_m_'.$ambito.'" class="form-control"><button class="btn btn-'.$color.'" onclick="addMarca(\''.$ambito.'\',\'add_m_'.$ambito.'\')">+</button></div><ul class="list-group list-scrollable">';
-        foreach($marcas as $m) {
-            echo '<li class="list-group-item d-flex justify-content-between align-items-center"><span>'.$m['nombre'].'</span>';
-            echo '<div><i class="fas fa-pen text-primary action-btn" onclick="modalEditSimple(\'edit_marca\',\'inventario_config_marcas\',\'id_marca\',\'nombre\','.$m['id_marca'].',\''.$m['nombre'].'\')"></i><i class="fas fa-trash text-danger action-btn" onclick="delItem(\'del_marca\','.$m['id_marca'].')"></i></div></li>';
-        }
+        foreach($marcas as $m) echo '<li class="list-group-item d-flex justify-content-between align-items-center"><span>'.$m['nombre'].'</span><div><i class="fas fa-pen text-primary action-btn" onclick="modalEditSimple(\'edit_marca\',\'inventario_config_marcas\',\'id_marca\',\'nombre\','.$m['id_marca'].',\''.$m['nombre'].'\')"></i><i class="fas fa-trash text-danger action-btn" onclick="delItem(\'del_marca\','.$m['id_marca'].')"></i></div></li>';
         echo '</ul></div></div></div>';
-
-        // Modelos
         echo '<div class="col-md-'.$colWidth.'"><div class="card card-custom h-100 border-'.$color.'"><div class="card-header bg-'.$color.' text-white fw-bold">Modelos</div><div class="card-body">';
-        echo '<select id="sel_m_'.$ambito.'" class="form-select mb-2"><option value="">Marca...</option>';
-        foreach($marcas as $m) echo "<option value='".$m['id_marca']."'>".$m['nombre']."</option>";
+        echo '<select id="sel_m_'.$ambito.'" class="form-select mb-2"><option value="">Marca...</option>'; foreach($marcas as $m) echo "<option value='".$m['id_marca']."'>".$m['nombre']."</option>";
         echo '</select><div class="input-group mb-2"><input type="text" id="add_mod_'.$ambito.'" class="form-control"><button class="btn btn-'.$color.'" onclick="addModelo(\'sel_m_'.$ambito.'\',\'add_mod_'.$ambito.'\')">+</button></div>';
-        
-        // Generamos JSON de marcas para el modal de edición de modelos de este ámbito
         $jsonMarcas = htmlspecialchars(json_encode($marcas), ENT_QUOTES, 'UTF-8');
-        
         echo '<ul class="list-group list-scrollable">';
-        foreach($modelos as $mo) {
-            echo '<li class="list-group-item d-flex justify-content-between align-items-center"><span>'.$mo['nombre'].' <small class="text-muted">('.$mo['nombre_marca'].')</small></span>';
-            // Pasamos JSON de marcas al onclick para llenar el select del modal
-            echo '<div><i class="fas fa-pen text-primary action-btn" onclick="modalEditModelo('.$mo['id_modelo'].',\''.$mo['nombre'].'\','.$mo['id_marca'].', '.$jsonMarcas.')"></i><i class="fas fa-trash text-danger action-btn" onclick="delItem(\'del_modelo\','.$mo['id_modelo'].')"></i></div></li>';
-        }
+        foreach($modelos as $mo) echo '<li class="list-group-item d-flex justify-content-between align-items-center"><span>'.$mo['nombre'].' <small class="text-muted">('.$mo['nombre_marca'].')</small></span><div><i class="fas fa-pen text-primary action-btn" onclick="modalEditModelo('.$mo['id_modelo'].',\''.$mo['nombre'].'\','.$mo['id_marca'].', '.$jsonMarcas.')"></i><i class="fas fa-trash text-danger action-btn" onclick="delItem(\'del_modelo\','.$mo['id_modelo'].')"></i></div></li>';
         echo '</ul></div></div></div></div>';
     }
     ?>
 
     <script>
-    // --- LÓGICA AGENTES ---
+    // --- LÓGICA ICON PICKER ---
+    const commonIcons = [
+        'fas fa-box', 'fas fa-box-open', 'fas fa-boxes', 'fas fa-pallet', 'fas fa-dolly', 'fas fa-truck-loading', 
+        'fas fa-desktop', 'fas fa-laptop', 'fas fa-server', 'fas fa-print', 'fas fa-wifi', 'fas fa-keyboard', 'fas fa-mouse', 
+        'fas fa-stethoscope', 'fas fa-syringe', 'fas fa-pills', 'fas fa-hospital', 'fas fa-user-md', 'fas fa-x-ray', 'fas fa-notes-medical', 'fas fa-heartbeat', 
+        'fas fa-wrench', 'fas fa-tools', 'fas fa-hammer', 'fas fa-screwdriver', 'fas fa-ruler', 
+        'fas fa-snowflake', 'fas fa-fire', 'fas fa-wind', 'fas fa-fan', 'fas fa-temperature-low', 
+        'fas fa-chair', 'fas fa-couch', 'fas fa-table', 'fas fa-door-closed', 'fas fa-lightbulb', 
+        'fas fa-video', 'fas fa-camera', 'fas fa-lock', 'fas fa-key', 'fas fa-shield-alt', 
+        'fas fa-phone', 'fas fa-mobile-alt', 'fas fa-headset', 'fas fa-envelope', 
+        'fas fa-car', 'fas fa-ambulance', 'fas fa-truck', 'fas fa-bus', 
+        'fas fa-fire-extinguisher', 'fas fa-clipboard-list', 'fas fa-archive', 'fas fa-trash-alt'
+    ];
+
+    function openIconPicker() {
+        let grid = document.getElementById('gridIconos');
+        grid.innerHTML = '';
+        commonIcons.forEach(icon => {
+            let btn = document.createElement('div');
+            btn.className = 'icon-btn';
+            btn.innerHTML = `<i class="${icon}"></i>`;
+            btn.onclick = function() {
+                document.getElementById('fic_ico').value = icon;
+                document.getElementById('icon_preview').className = icon;
+                bootstrap.Modal.getInstance(document.getElementById('modIconos')).hide();
+            };
+            grid.appendChild(btn);
+        });
+        new bootstrap.Modal(document.getElementById('modIconos')).show();
+    }
+
+    function filtrarIconos() {
+        let filtro = document.getElementById('filtro_iconos').value.toLowerCase();
+        let btns = document.querySelectorAll('.icon-btn');
+        btns.forEach(btn => {
+            let iconClass = btn.querySelector('i').className;
+            if(iconClass.includes(filtro)) btn.style.display = 'block';
+            else btn.style.display = 'none';
+        });
+    }
+
+    // --- LÓGICA CREADOR MANUAL ---
+    function agregarCampoManual() {
+        let html = `<div class="input-group mb-2"><input type="text" name="campos[]" class="form-control" placeholder="Nombre del Campo"><button type="button" class="btn btn-outline-danger" onclick="this.parentElement.remove()"><i class="fas fa-trash"></i></button></div>`;
+        document.getElementById('lista_campos_manual').insertAdjacentHTML('beforeend', html);
+    }
+
+    if(document.getElementById('formCrearManual')) {
+        document.getElementById('formCrearManual').addEventListener('submit', function(e) {
+            e.preventDefault();
+            let nombre = document.getElementById('manual_nombre').value;
+            let campos = [];
+            document.querySelectorAll('input[name="campos[]"]').forEach(i => { if(i.value.trim()) campos.push(i.value.trim()); });
+
+            if(campos.length === 0) if(!confirm("No agregaste columnas. ¿Crear vacía?")) return;
+
+            $.post('ajax_crear_estructura_manual.php', {nombre_categoria: nombre, campos: campos}, function(res) {
+                let data = (typeof res === 'object') ? res : JSON.parse(res);
+                if(data.status === 'ok') { alert('¡Estructura creada!'); window.location.reload(); } 
+                else { alert('Error: ' + data.msg); }
+            });
+        });
+    }
+
+    // --- LÓGICA FICHAS (CORREGIDA Y BLINDADA) ---
+    function modalAddFicha() {
+        $('#fic_action').val('add_ficha'); 
+        $('#fic_id').val(''); 
+        $('#fic_nom').val(''); 
+        $('#fic_ico').val(''); 
+        $('#fic_desc').val('');
+        $('#icon_preview').attr('class', 'fas fa-box');
+        $('#container_campos_edit').html('<div class="text-center text-muted small py-2">Guarda primero para agregar columnas.</div>');
+        $('#btnGuardarFicha').prop('disabled', false); // Habilitar guardar
+        new bootstrap.Modal('#modFicha').show();
+    }
+
+    function modalEditFicha(id, nom, ico, desc) {
+        $('#fic_action').val('edit_ficha'); 
+        $('#fic_id').val(id); 
+        $('#fic_nom').val(nom); 
+        $('#fic_ico').val(ico); 
+        $('#fic_desc').val(desc);
+        $('#icon_preview').attr('class', ico);
+        
+        // BLOQUEAMOS EL BOTÓN GUARDAR HASTA QUE CARGUE
+        let btnGuardar = $('#modFicha .modal-footer button.btn-primary');
+        btnGuardar.prop('disabled', true).text('Cargando...');
+        
+        $('#container_campos_edit').html('<div class="text-center"><i class="fas fa-spinner fa-spin"></i> Cargando estructura...</div>');
+        
+        // Petición AJAX Segura
+        $.ajax({
+            url: 'ajax_config_admin.php',
+            type: 'POST',
+            dataType: 'json', // Forzamos JSON
+            data: {accion: 'get_ficha_campos', id: id},
+            success: function(campos) {
+                $('#container_campos_edit').empty();
+                
+                // Si viene vacío o con datos, iteramos
+                if(Array.isArray(campos)) {
+                    if(campos.length === 0) {
+                       // Opcional: mostrar mensaje de vacío
+                    } else {
+                        campos.forEach(c => {
+                            addCampoEdit(c.id_campo, c.etiqueta);
+                        });
+                    }
+                    // HABILITAMOS GUARDAR SOLO SI FUE ÉXITO
+                    btnGuardar.prop('disabled', false).text('Guardar');
+                } else {
+                    $('#container_campos_edit').html('<div class="text-danger">Error: Respuesta inválida del servidor.</div>');
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error(error);
+                $('#container_campos_edit').html('<div class="text-danger fw-bold">Error al cargar columnas. NO GUARDAR.</div>');
+                // El botón sigue deshabilitado por seguridad
+            }
+        });
+
+        new bootstrap.Modal('#modFicha').show();
+    }
+
+    function addCampoEdit(id, valor) {
+        let inputId = id ? id : 'new_' + Math.floor(Math.random() * 10000);
+        let html = `
+        <div class="input-group mb-2 item-campo" data-db-id="${id || ''}">
+            <span class="input-group-text"><i class="fas fa-tag"></i></span>
+            <input type="text" class="form-control input-etiqueta" value="${valor}" placeholder="Nombre Columna">
+            <button class="btn btn-outline-danger" onclick="this.parentElement.remove()" title="Eliminar"><i class="fas fa-times"></i></button>
+        </div>`;
+        $('#container_campos_edit').append(html);
+    }
+
+    function saveFicha() {
+        let accion = $('#fic_action').val();
+        let datos = {
+            accion: accion,
+            id: $('#fic_id').val(),
+            nombre: $('#fic_nom').val(),
+            icono: $('#fic_ico').val(),
+            descripcion: $('#fic_desc').val()
+        };
+
+        if (accion === 'edit_ficha') {
+            let listaCampos = [];
+            $('.item-campo').each(function() {
+                let id_db = $(this).data('db-id');
+                let val = $(this).find('.input-etiqueta').val();
+                if(val && val.trim()) {
+                    listaCampos.push({id: id_db, valor: val.trim()});
+                }
+            });
+            datos.campos = listaCampos;
+        }
+
+        $.post('ajax_config_admin.php', datos, function(res) {
+            // Manejo robusto de respuesta (string o json)
+            let data = (typeof res === 'object') ? res : JSON.parse(res);
+            
+            if(data.status === 'ok') {
+                location.reload(); 
+            } else {
+                alert('Error al guardar: ' + (data.msg || 'Desconocido'));
+            }
+        }, 'json');
+    }
+
+    // --- FUNCIONES AUXILIARES VIEJAS (Matafuegos, etc) ---
+    function delItem(acc, id) { if(confirm('¿Eliminar?')) $.post('ajax_config_admin.php',{accion:acc,id:id},res=>{ if(res.status=='ok') location.reload(); },'json'); }
+    
     function addAgente() {
         let n=$('#add_agente_nom').val(), v=$('#add_agente_vida').val();
-        if(!n||!v) return alert('Datos incompletos');
         $.post('ajax_config_admin.php',{accion:'add_agente',valor:n,vida_util:v},res=>{ if(res.status=='ok') location.reload(); },'json');
     }
     function modalEditAgente(id, nom, vida) {
@@ -321,8 +571,7 @@ $all_marcas_tel = getMarcas($pdo, 'telefono');
     function saveAgente() {
         $.post('ajax_config_admin.php',{accion:'edit_agente',id:$('#edit_age_id').val(),valor:$('#edit_age_nom').val(),vida_util:$('#edit_age_vida').val()},res=>{ if(res.status=='ok') location.reload(); },'json');
     }
-
-    // --- LÓGICA SIMPLE (Clases, Caps, Marcas, Tipos) ---
+    
     function addSimple(acc, inputId) {
         let val=$('#'+inputId).val(); if(!val) return;
         $.post('ajax_config_admin.php',{accion:acc,valor:val},res=>{ if(res.status=='ok') location.reload(); },'json');
@@ -334,8 +583,7 @@ $all_marcas_tel = getMarcas($pdo, 'telefono');
     function saveSimple() {
         $.post('ajax_config_admin.php',{accion:$('#simp_accion').val(),tabla:$('#simp_tabla').val(),campo_id:$('#simp_col_id').val(),campo_val:$('#simp_col_val').val(),id:$('#simp_id').val(),valor:$('#simp_val').val()},res=>{ if(res.status=='ok') location.reload(); },'json');
     }
-
-    // --- LÓGICA MARCAS Y MODELOS ---
+    
     function addMarca(ambito, inputId) {
         let val=$('#'+inputId).val(); if(!val) return;
         $.post('ajax_config_admin.php',{accion:'add_marca',valor:val,ambito:ambito},res=>{ if(res.status=='ok') location.reload(); },'json');
@@ -356,8 +604,7 @@ $all_marcas_tel = getMarcas($pdo, 'telefono');
     function saveModelo() {
         $.post('ajax_config_admin.php',{accion:'edit_modelo',id:$('#mod_id').val(),valor:$('#mod_nom').val(),id_marca:$('#mod_marca').val()},res=>{ if(res.status=='ok') location.reload(); },'json');
     }
-
-    // --- LÓGICA ESTADOS ---
+    
     function addEstado() {
         let n=$('#add_est_nom').val(), a=$('#add_est_amb').val(); if(!n) return;
         $.post('ajax_config_admin.php',{accion:'add_estado',valor:n,ambito:a},res=>{ if(res.status=='ok') location.reload(); },'json');
@@ -369,23 +616,6 @@ $all_marcas_tel = getMarcas($pdo, 'telefono');
     function saveEstado() {
         $.post('ajax_config_admin.php',{accion:'edit_estado',id:$('#est_id').val(),valor:$('#est_nom').val(),ambito:$('#est_amb').val()},res=>{ if(res.status=='ok') location.reload(); },'json');
     }
-
-    // --- LÓGICA FICHAS ---
-    function modalAddFicha() {
-        $('#fic_action').val('add_ficha'); $('#fic_id').val(''); $('#fic_nom').val(''); $('#fic_ico').val(''); $('#fic_desc').val(''); $('#fic_tec').prop('checked',false);
-        new bootstrap.Modal('#modFicha').show();
-    }
-    function modalEditFicha(id, nom, ico, desc, tec) {
-        $('#fic_action').val('edit_ficha'); $('#fic_id').val(id); $('#fic_nom').val(nom); $('#fic_ico').val(ico); $('#fic_desc').val(desc); $('#fic_tec').prop('checked', tec==1);
-        new bootstrap.Modal('#modFicha').show();
-    }
-    function saveFicha() {
-        $.post('ajax_config_admin.php',{
-            accion: $('#fic_action').val(), id: $('#fic_id').val(), nombre: $('#fic_nom').val(), icono: $('#fic_ico').val(), descripcion: $('#fic_desc').val(), es_tecnico: $('#fic_tec').is(':checked')
-        },res=>{ if(res.status=='ok') location.reload(); },'json');
-    }
-
-    function delItem(acc, id) { if(confirm('¿Eliminar?')) $.post('ajax_config_admin.php',{accion:acc,id:id},res=>{ if(res.status=='ok') location.reload(); },'json'); }
-    </script>
+</script>
 </body>
 </html>
