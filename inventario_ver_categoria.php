@@ -145,7 +145,9 @@ $bienes = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                         <a href="inventario_pdf.php?id=<?php echo $b['id_cargo']; ?>" target="_blank" class="btn btn-sm btn-outline-danger" title="Descargar PDF">
                                             <i class="fas fa-file-pdf"></i>
                                         </a>
-                                        
+                                        <a href="inventario_transferir.php?id=<?= $b['id_cargo'] ?>" class="btn btn-sm btn-info text-white" title="Transferir">
+                                            <i class="fas fa-exchange-alt"></i>
+                                        </a>
                                         <a href="inventario_editar.php?id=<?php echo $b['id_cargo']; ?>" class="btn btn-sm btn-outline-primary" title="Editar"><i class="fas fa-edit"></i></a>
                                         <a href="inventario_eliminar.php?id=<?php echo $b['id_cargo']; ?>" class="btn btn-sm btn-outline-danger" onclick="return confirm('¿Eliminar?');"><i class="fas fa-trash"></i></a>
                                     </div>

@@ -56,10 +56,10 @@ $ultimos_movimientos = $pdo->query($sqlMovs)->fetchAll(PDO::FETCH_ASSOC);
                 <div class="btn-group shadow-sm">
                     <a href="inventario_config.php" class="btn btn-outline-secondary" title="Configuración"><i class="fas fa-cog"></i></a>
                     <a href="inventario_reporte_pdf.php" target="_blank" class="btn btn-outline-danger" title="Reporte PDF"><i class="fas fa-file-pdf"></i> Reporte</a>
-                    <a href="inventario_movimientos.php" class="btn btn-outline-primary" title="Historial"><i class="fas fa-history"></i> Historial</a>
+                    
                 </div>
                 <a href="inventario_mantenimiento.php" class="btn btn-outline-warning text-dark shadow-sm"><i class="fas fa-tools me-1"></i> Servicio Técnico</a>
-                <a href="inventario_transferir.php" class="btn btn-outline-info text-dark shadow-sm"><i class="fas fa-exchange-alt me-1"></i> Transferencias</a>
+                <a href="inventario_movimientos.php" class="btn btn-outline-info text-dark shadow-sm"><i class="fas fa-exchange-alt me-1"></i> Historial de Transferencias</a>
                 
                 <a href="inventario_nuevo.php" class="btn btn-success fw-bold px-4 shadow-sm"><i class="fas fa-plus me-2"></i>NUEVO</a>
             </div>
