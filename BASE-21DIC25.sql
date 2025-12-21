@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1:3306
--- Tiempo de generación: 21-12-2025 a las 15:25:08
+-- Tiempo de generación: 21-12-2025 a las 19:34:42
 -- Versión del servidor: 11.8.3-MariaDB-log
 -- Versión de PHP: 7.2.34
 
@@ -1215,9 +1215,7 @@ INSERT INTO `destinos_internos` (`id_destino`, `nombre`, `ubicacion_referencia`)
 (6, 'CM VILLA MARTELLI', ''),
 (7, 'CM TEMPERLEY', ''),
 (8, 'CM SANTA RITA', ''),
-(9, 'CM PUNTA ALTA', ''),
-(14, 'Clinica Central', NULL),
-(15, 'Anexo Diagnostico', NULL);
+(9, 'CM PUNTA ALTA', '');
 
 -- --------------------------------------------------------
 
@@ -1256,6 +1254,14 @@ CREATE TABLE `historial_movimientos` (
   `ubicacion_nueva` varchar(255) DEFAULT NULL,
   `observacion_movimiento` text DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Volcado de datos para la tabla `historial_movimientos`
+--
+
+INSERT INTO `historial_movimientos` (`id_movimiento`, `id_bien`, `tipo_movimiento`, `usuario_registro`, `fecha_movimiento`, `ubicacion_anterior`, `ubicacion_nueva`, `observacion_movimiento`) VALUES
+(11, 582, 'Transferencia', 2, '2025-12-21 14:48:07', '1 - DEPÓSITO INFORMÁTICA', 'CM TEMPERLEY -', 'TRANSFERENCIA EXTERNA COMPLETADA.\nDesde: 1 - DEPÓSITO INFORMÁTICA (SG Federico González)\nHacia: CM TEMPERLEY - (fede)\nMotivo: quiero'),
+(12, 582, 'Transferencia', 2, '2025-12-21 15:00:45', 'CM TEMPERLEY -', 'POLICLÍNICA ACTIS - AMBA', 'TRANSFERENCIA EXTERNA COMPLETADA.\nDesde: CM TEMPERLEY - (fede)\nHacia: POLICLÍNICA ACTIS - AMBA (NOMBRE DEL RESPONSABLE)\nMotivo:  - Motivo de cambio');
 
 -- --------------------------------------------------------
 
@@ -1408,6 +1414,7 @@ CREATE TABLE `inventario_cargos` (
   `mat_numero_grabado` varchar(100) DEFAULT NULL,
   `numero_serie` varchar(100) DEFAULT NULL,
   `codigo_patrimonial` varchar(100) DEFAULT NULL,
+  `n_iosfa` varchar(50) DEFAULT NULL,
   `nro_serie` varchar(100) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
 
@@ -1415,11 +1422,45 @@ CREATE TABLE `inventario_cargos` (
 -- Volcado de datos para la tabla `inventario_cargos`
 --
 
-INSERT INTO `inventario_cargos` (`id_cargo`, `id_tipo_bien`, `id_usuario_relevador`, `fecha_creacion`, `elemento`, `destino_principal`, `codigo_inventario`, `servicio_ubicacion`, `observaciones`, `nombre_responsable`, `nombre_jefe_servicio`, `firma_responsable_path`, `firma_jefe_path`, `firma_responsable`, `firma_relevador`, `firma_jefe`, `id_estado_fk`, `complementos`, `archivo_remito`, `archivo_comprobante`, `nombre_tecnico`, `fecha_fabricacion`, `vida_util_limite`, `mat_tipo_carga_id`, `mat_capacidad`, `mat_clase`, `mat_fecha_carga`, `mat_fecha_ph`, `mat_clase_id`, `mat_numero_grabado`, `numero_serie`, `codigo_patrimonial`, `nro_serie`) VALUES
-(390, 24, 15, '2025-12-20 18:34:24', 'MATAFUEGO AGUA (A) 5 KG (AB)', '3', NULL, 'General', 'observaciones lorem ipsum', 'FEDERICO GONZALEZ', 'MARCELO CAÑETE', 'uploads/firmas/resp_1766266464_69471660567af.png', 'uploads/firmas/jefe_1766266464_6947166056913.png', NULL, NULL, NULL, 12, NULL, NULL, NULL, NULL, 1999, NULL, 0, '5 KG', NULL, '2025-12-02', '2025-12-17', 0, 'Serie123456', NULL, 'PAT-3243', NULL),
-(394, 37, 15, '2025-12-20 19:22:42', 'Carestream DirectView Classic CR', '14', NULL, 'Rayos X Guardia', 'Importado masivamente', 'Tec. Juan Perez', 'Dr. Martinez', NULL, NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'SN-45992', NULL),
-(395, 37, 15, '2025-12-20 19:22:42', 'Carestream Vita Flex CR', '14', NULL, 'Quirofano 1', 'Importado masivamente', 'Dra. Ana Lopez', 'Dr. Martinez', NULL, NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'SN-99210', NULL),
-(396, 37, 15, '2025-12-20 19:22:42', 'Carestream DRX Evolution Plus', '15', NULL, 'Tomografia', 'Importado masivamente', 'Lic. Carlos Ruiz', 'Dra. Suar', NULL, NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'SN-11004', NULL);
+INSERT INTO `inventario_cargos` (`id_cargo`, `id_tipo_bien`, `id_usuario_relevador`, `fecha_creacion`, `elemento`, `destino_principal`, `codigo_inventario`, `servicio_ubicacion`, `observaciones`, `nombre_responsable`, `nombre_jefe_servicio`, `firma_responsable_path`, `firma_jefe_path`, `firma_responsable`, `firma_relevador`, `firma_jefe`, `id_estado_fk`, `complementos`, `archivo_remito`, `archivo_comprobante`, `nombre_tecnico`, `fecha_fabricacion`, `vida_util_limite`, `mat_tipo_carga_id`, `mat_capacidad`, `mat_clase`, `mat_fecha_carga`, `mat_fecha_ph`, `mat_clase_id`, `mat_numero_grabado`, `numero_serie`, `codigo_patrimonial`, `n_iosfa`, `nro_serie`) VALUES
+(390, 24, 15, '2025-12-20 18:34:24', 'MATAFUEGO AGUA (A) 5 KG (AB)', '3', NULL, 'General', 'observaciones lorem ipsum', 'FEDERICO GONZALEZ', 'MARCELO CAÑETE', 'uploads/firmas/resp_1766266464_69471660567af.png', 'uploads/firmas/jefe_1766266464_6947166056913.png', NULL, NULL, NULL, 12, NULL, NULL, NULL, NULL, 1999, NULL, 0, '5 KG', NULL, '2025-12-02', '2025-12-17', 0, 'Serie123456', NULL, 'PAT-3243', NULL, NULL),
+(394, 37, 15, '2025-12-20 19:22:42', 'Carestream DirectView Classic CR', '14', NULL, 'Rayos X Guardia', 'Importado masivamente', 'Tec. Juan Perez', 'Dr. Martinez', NULL, NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'SN-45992', NULL, NULL),
+(395, 37, 15, '2025-12-20 19:22:42', 'Carestream Vita Flex CR', '14', NULL, 'Quirofano 1', 'Importado masivamente', 'Dra. Ana Lopez', 'Dr. Martinez', NULL, NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'SN-99210', NULL, NULL),
+(396, 37, 15, '2025-12-20 19:22:42', 'Carestream DRX Evolution Plus', '15', NULL, 'Tomografia', 'Importado masivamente', 'Lic. Carlos Ruiz', 'Dra. Suar', NULL, NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'SN-11004', NULL, NULL),
+(490, NULL, 2, '2025-12-21 13:23:29', 'CPU LG 10212', '1', NULL, 'DEPÓSITO INFORMÁTICA', 'Importación Masiva.', 'SG Federico González', 'SM Marcelo Cañete', NULL, NULL, NULL, NULL, NULL, 9, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '-', NULL, NULL),
+(491, NULL, 2, '2025-12-21 13:24:03', 'CPU LG 10212', '1', NULL, 'DEPÓSITO INFORMÁTICA', 'Importación Masiva.', 'SG Federico González', 'SM Marcelo Cañete', NULL, NULL, NULL, NULL, NULL, 7, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '-', NULL, NULL),
+(492, NULL, 2, '2025-12-21 13:25:32', 'CPU LG 10212', '7', NULL, 'DEPÓSITO INFORMÁTICA', 'Importación Masiva.', 'SG Federico González', 'SM Marcelo Cañete', NULL, NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '-', NULL, NULL),
+(555, 35, 2, '2025-12-21 14:26:37', 'MONITOR NOBLEX MK27X7100', '1', NULL, 'APOYO LOGISTICO', 'Importación Masiva.', 'SG Federico González', 'SM Marcelo Cañete', NULL, NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '12972', NULL),
+(556, 35, 2, '2025-12-21 14:26:37', 'MONITOR SAMSUNG 519F355HN', '1', NULL, 'APOYO LOGISTICO', 'Importación Masiva.', 'SM Marcelo Cañete', 'SM Marcelo Cañete', NULL, NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '13902', NULL),
+(557, 35, 2, '2025-12-21 14:26:37', 'MONITOR SAMSUNG S19F355HN', '1', NULL, 'APOYO LOGISTICO', 'Importación Masiva.', 'VS \"ec\" Luana Villa', 'SM Marcelo Cañete', NULL, NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '13932', NULL),
+(558, 35, 2, '2025-12-21 14:26:37', 'MONITOR SAMSUNG S19F355HNL', '1', NULL, 'APOYO LOGISTICO', 'Importación Masiva.', 'AC Alejandro Batista', 'SM Marcelo Cañete', NULL, NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '13919', NULL),
+(559, 35, 2, '2025-12-21 14:26:37', 'MONITOR BANGHO', '1', NULL, 'APOYO LOGISTICO', 'Importación Masiva.', 'VS \"ec\" Constanza Pihuala', 'SM Marcelo Cañete', NULL, NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(560, 35, 2, '2025-12-21 14:26:37', 'CPU DELL M31M001', '1', NULL, 'APOYO LOGISTICO', 'Importación Masiva.', 'AC Alejandro Batista', 'SM Marcelo Cañete', NULL, NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '207694', NULL),
+(561, 35, 2, '2025-12-21 14:26:37', 'CPU GFAST', '1', NULL, 'APOYO LOGISTICO', 'Importación Masiva.', 'SM Marcelo Cañete', 'SM Marcelo Cañete', NULL, NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '13886', NULL),
+(562, 35, 2, '2025-12-21 14:26:37', 'CPU GFAST', '1', NULL, 'APOYO LOGISTICO', 'Importación Masiva.', 'VS \"ec\" Luana Villa', 'SM Marcelo Cañete', NULL, NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '13876', NULL),
+(563, 35, 2, '2025-12-21 14:26:37', 'CPU GFAST', '1', NULL, 'APOYO LOGISTICO', 'Importación Masiva.', 'VS \"ec\" Constanza Pihuala', 'SM Marcelo Cañete', NULL, NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(564, 35, 2, '2025-12-21 14:26:37', 'CPU GFAST GFAST R-520', '1', NULL, 'APOYO LOGISTICO', 'Importación Masiva.', 'SG Federico González', 'SM Marcelo Cañete', NULL, NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '21079', NULL),
+(565, 35, 2, '2025-12-21 14:26:37', 'CPU GENERICO', '1', NULL, 'DEPÓSITO INFORMÁTICA', 'Importación Masiva.', 'SG Federico González', 'SM Marcelo Cañete', NULL, NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(566, 35, 2, '2025-12-21 14:26:37', 'CPU ASUS 2136', '1', NULL, 'DEPÓSITO INFORMÁTICA', 'Importación Masiva.', 'SG Federico González', 'SM Marcelo Cañete', NULL, NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(567, 35, 2, '2025-12-21 14:26:37', 'CPU OVER', '1', NULL, 'DEPÓSITO INFORMÁTICA', 'Importación Masiva.', 'SG Federico González', 'SM Marcelo Cañete', NULL, NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '49752', NULL),
+(568, 35, 2, '2025-12-21 14:26:37', 'MONITOR SAMSUNG S19F355HW', '1', NULL, 'DEPÓSITO INFORMÁTICA', 'Importación Masiva.', 'SG Federico González', 'SM Marcelo Cañete', NULL, NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '13912', NULL),
+(569, 35, 2, '2025-12-21 14:26:37', 'CPU BANGHO OPTIMA 4607', '1', NULL, 'DEPÓSITO INFORMÁTICA', 'Importación Masiva.', 'SG Federico González', 'SM Marcelo Cañete', NULL, NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '93246', NULL),
+(570, 35, 2, '2025-12-21 14:26:37', 'CPU BANGHO OPTIMA B01', '1', NULL, 'DEPÓSITO INFORMÁTICA', 'Importación Masiva.', 'SG Federico González', 'SM Marcelo Cañete', NULL, NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '43361', NULL),
+(571, 35, 2, '2025-12-21 14:26:37', 'CPU BANGHO OPTIMA B01', '1', NULL, 'DEPÓSITO INFORMÁTICA', 'Importación Masiva.', 'SG Federico González', 'SM Marcelo Cañete', NULL, NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '98113', NULL),
+(572, 35, 2, '2025-12-21 14:26:37', 'MONITOR CORADIR 1744 REPUESTO', '1', NULL, 'DEPÓSITO INFORMÁTICA', 'Importación Masiva.', 'SG Federico González', 'SM Marcelo Cañete', NULL, NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(573, 35, 2, '2025-12-21 14:26:37', 'MONITOR CORADIR 1744 REPUESTO', '1', NULL, 'DEPÓSITO INFORMÁTICA', 'Importación Masiva.', 'SG Federico González', 'SM Marcelo Cañete', NULL, NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '60516', NULL),
+(574, 35, 2, '2025-12-21 14:26:37', 'CPU CORADIR', '1', NULL, 'DEPÓSITO INFORMÁTICA', 'Importación Masiva.', 'SG Federico González', 'SM Marcelo Cañete', NULL, NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '57585', NULL),
+(575, 35, 2, '2025-12-21 14:26:37', 'CPU CORADIR AX 540', '1', NULL, 'DEPÓSITO INFORMÁTICA', 'Importación Masiva.', 'SG Federico González', 'SM Marcelo Cañete', NULL, NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '57776', NULL),
+(576, 35, 2, '2025-12-21 14:26:37', 'CPU CORADIR', '1', NULL, 'DEPÓSITO INFORMÁTICA', 'Importación Masiva.', 'SG Federico González', 'SM Marcelo Cañete', NULL, NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '57660', NULL),
+(577, 35, 2, '2025-12-21 14:26:37', 'CPU CORADIR', '1', NULL, 'DEPÓSITO INFORMÁTICA', 'Importación Masiva.', 'SG Federico González', 'SM Marcelo Cañete', NULL, NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '70287', NULL),
+(578, 35, 2, '2025-12-21 14:26:37', 'CPU CORADIR', '1', NULL, 'DEPÓSITO INFORMÁTICA', 'Importación Masiva.', 'SG Federico González', 'SM Marcelo Cañete', NULL, NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '70157', NULL),
+(579, 35, 2, '2025-12-21 14:26:37', 'CPU CORADIR', '1', NULL, 'DEPÓSITO INFORMÁTICA', 'Importación Masiva.', 'SG Federico González', 'SM Marcelo Cañete', NULL, NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '84918', NULL),
+(580, 35, 2, '2025-12-21 14:26:37', 'MONITOR CORADIR 19WHE', '1', NULL, 'DEPÓSITO INFORMÁTICA', 'Importación Masiva.', 'SG Federico González', 'SM Marcelo Cañete', NULL, NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '93409', NULL),
+(581, 35, 2, '2025-12-21 14:26:37', 'CPU CX', '1', NULL, 'DEPÓSITO INFORMÁTICA', 'Importación Masiva.', 'SG Federico González', 'SM Marcelo Cañete', NULL, NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '67409', NULL),
+(582, 35, 2, '2025-12-21 14:26:37', 'CPU GFAST', '1', NULL, 'AMBA', 'Importación Masiva.', 'NOMBRE DEL RESPONSABLE', 'NOMBRE DEL JEFE', NULL, NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '', '13857', NULL),
+(583, 35, 2, '2025-12-21 14:26:37', 'CPU GFAST DX ATX-600-5836', '1', NULL, 'DEPÓSITO INFORMÁTICA', 'Importación Masiva.', 'SG Federico González', 'SM Marcelo Cañete', NULL, NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(584, 35, 2, '2025-12-21 14:26:37', 'CPU LG AX 540', '1', NULL, 'DEPÓSITO INFORMÁTICA', 'Importación Masiva.', 'SG Federico González', 'SM Marcelo Cañete', NULL, NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '35650', NULL),
+(585, 35, 2, '2025-12-21 14:26:37', 'CPU LG 10212', '1', NULL, 'DEPÓSITO INFORMÁTICA', 'Importación Masiva.', 'SG Federico González', 'SM Marcelo Cañete', NULL, NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -1615,25 +1656,50 @@ CREATE TABLE `inventario_estados` (
   `id_estado` int(11) NOT NULL,
   `nombre` varchar(50) NOT NULL,
   `color_badge` varchar(20) DEFAULT 'bg-secondary',
-  `ambito` enum('general','matafuego','ambos') NOT NULL DEFAULT 'general'
+  `ambito` enum('general','matafuego','ambos') NOT NULL DEFAULT 'general',
+  `id_tipo_bien` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
 
 --
 -- Volcado de datos para la tabla `inventario_estados`
 --
 
-INSERT INTO `inventario_estados` (`id_estado`, `nombre`, `color_badge`, `ambito`) VALUES
-(1, 'Activo', 'bg-success', 'general'),
-(2, 'Para recarga', 'bg-warning', 'matafuego'),
-(3, 'Carga Vencida', 'bg-secondary', 'matafuego'),
-(4, 'P. Hid. Vencida', 'bg-dark', 'matafuego'),
-(5, 'Fuera de servicio', 'bg-danger', 'general'),
-(7, 'En Mantenimiento', 'bg-warning', 'general'),
-(8, 'Vida Útil Vencida', 'bg-secondary', 'matafuego'),
-(9, 'En Reparación', 'bg-warning', 'general'),
-(10, 'Para Baja', 'bg-dark', 'general'),
-(11, 'Prueba Vencida', 'bg-danger', 'matafuego'),
-(12, 'Baja', 'bg-secondary', 'ambos');
+INSERT INTO `inventario_estados` (`id_estado`, `nombre`, `color_badge`, `ambito`, `id_tipo_bien`) VALUES
+(1, 'Activo', 'bg-success', 'general', NULL),
+(2, 'Para recarga', 'bg-warning', '', 24),
+(3, 'Carga Vencida', 'bg-secondary', '', 24),
+(4, 'P. Hid. Vencida', 'bg-dark', '', 24),
+(5, 'Fuera de servicio', 'bg-danger', 'general', NULL),
+(7, 'En Mantenimiento', 'bg-warning', 'general', NULL),
+(8, 'Vida Útil Vencida', 'bg-secondary', '', 24),
+(9, 'En Reparación', 'bg-warning', 'general', NULL),
+(10, 'Para Baja', 'bg-dark', 'general', NULL),
+(11, 'Prueba Vencida', 'bg-danger', '', 24),
+(12, 'Baja', 'bg-secondary', 'ambos', NULL);
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `inventario_orden_usuarios`
+--
+
+CREATE TABLE `inventario_orden_usuarios` (
+  `id_usuario` int(11) NOT NULL,
+  `id_tipo_bien` int(11) NOT NULL,
+  `orden` int(11) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Volcado de datos para la tabla `inventario_orden_usuarios`
+--
+
+INSERT INTO `inventario_orden_usuarios` (`id_usuario`, `id_tipo_bien`, `orden`) VALUES
+(2, 24, 3),
+(2, 33, 2),
+(2, 34, 1),
+(2, 35, 0),
+(2, 37, 4),
+(2, 38, 5);
 
 -- --------------------------------------------------------
 
@@ -1656,12 +1722,12 @@ CREATE TABLE `inventario_tipos_bien` (
 --
 
 INSERT INTO `inventario_tipos_bien` (`id_tipo_bien`, `nombre`, `icono`, `descripcion`, `tiene_campos_tecnicos`, `categoria_agrupadora`, `color`) VALUES
-(24, 'Matafuegos', 'fas fa-fire-extinguisher', 'Importada Excel', 2, 'General', 'primary'),
-(33, 'Cámara de vigilancia', 'fas fa-video', 'Importada Excel', 2, 'General', 'primary'),
-(34, 'Teléfono', 'fas fa-phone', 'Importada Excel', 2, 'General', 'primary'),
+(24, 'Matafuegos', 'fas fa-fire-extinguisher', 'Importada Excel', 2, 'General', 'danger'),
+(33, 'Cámara de vigilancia', 'fas fa-video', 'Importada Excel', 2, 'General', 'success'),
+(34, 'Teléfono', 'fas fa-phone', 'Importada Excel', 2, 'General', 'info'),
 (35, 'Informatica', 'fas fa-desktop', 'Importada Excel', 2, 'General', 'primary'),
-(37, 'Equipos medicos', 'fas fa-hospital', 'Importado masivamente', 2, 'General', 'primary'),
-(38, 'Refrigeracion', 'fas fa-fan', 'Creado manualmente', 1, 'General', 'primary');
+(37, 'Equipos medicos', 'fas fa-hospital', 'Importado masivamente', 2, 'General', 'warning'),
+(38, 'Refrigeracion', 'fas fa-fan', 'Creado manualmente', 1, 'General', 'navy');
 
 -- --------------------------------------------------------
 
@@ -1687,31 +1753,39 @@ CREATE TABLE `inventario_transferencias_pendientes` (
   `creado_por` int(11) DEFAULT NULL,
   `fecha_creacion` datetime DEFAULT current_timestamp(),
   `fecha_expiracion` datetime DEFAULT NULL,
-  `estado` enum('pendiente','esperando_otp','confirmado','expirado') DEFAULT 'pendiente'
+  `estado` enum('pendiente','esperando_otp','confirmado','expirado') DEFAULT 'pendiente',
+  `email_usuario` varchar(255) DEFAULT NULL,
+  `codigo_otp` varchar(20) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Volcado de datos para la tabla `inventario_transferencias_pendientes`
 --
 
-INSERT INTO `inventario_transferencias_pendientes` (`id_token`, `token_hash`, `id_bien`, `nuevo_destino_id`, `nuevo_destino_nombre`, `nueva_area_nombre`, `nuevo_responsable_nombre`, `firma_nuevo_responsable_path`, `nuevo_jefe_nombre`, `firma_nuevo_jefe_path`, `motivo_transferencia`, `observaciones`, `email_verificacion`, `token_otp`, `creado_por`, `fecha_creacion`, `fecha_expiracion`, `estado`) VALUES
-(1, '902622af60fa769b65d71d406b608e5f96f2a557e24de187ef552c69a0b6bee6', 7, 0, NULL, 'AUDIOMETRIA', 'FEDE', 'uploads/firmas/transf_resp_69431119cf903.png', 'CAÑETE', 'uploads/firmas/transf_jefe_69431119cfa50.png', 'PROQ UE QUIEROP', 'PROQ UE QUIEROP', 'gonzalezmarcelo159@gmail.com', '354010', 13, '2025-12-17 17:22:49', '2025-12-19 17:22:49', 'pendiente'),
-(2, 'd0aea7a68245bfa220074cda7070dcdec4f5dae614c08de7ec336c05703b43d0', 8, 3, NULL, 'General', 'DSFDSFSD', 'uploads/firmas/transf_resp_694311a15e0a9.png', 'DSFDSFSD', 'uploads/firmas/transf_jefe_694311a15e178.png', 'PROQ UE QUIEROP2', 'PROQ UE QUIEROP2', NULL, NULL, 13, '2025-12-17 17:25:05', '2025-12-19 17:25:05', 'pendiente'),
-(3, '5e7f3d160a6bc55858399adafec0fe6f98f1ad6095a4cfe6044aadd3cbc10d58', 8, 9, NULL, 'General', 'dsafdsfsd', 'uploads/firmas/transf_resp_6943127569674.png', 'fsdfdsfds', 'uploads/firmas/transf_jefe_694312756979d.png', '123321321', '123321321', 'gonzalezmarcelo159@gmail.com', '521772', 13, '2025-12-17 17:28:37', '2025-12-19 17:28:37', 'pendiente'),
-(4, '4568f2ebf29bde655fa1ab3ddde713e832f1742e01b783859709f22fa2d1ee8b', 7, 2, NULL, 'General', 'FEDE', 'uploads/firmas/transf_resp_6943136620711.png', 'CAÑETE', 'uploads/firmas/transf_jefe_694313662081a.png', 'PROQ UE QUIEROP4', 'PROQ UE QUIEROP4', 'gonzalezmarcelo159@gmail.com', '545942', 13, '2025-12-17 17:32:38', '2025-12-19 17:32:38', 'pendiente'),
-(5, '9c3def33772077cbfa7ff8518670a8d3280ece9468841df76f5f89169f853ba3', 7, 5, NULL, 'General', 'FEDE', 'uploads/firmas/transf_resp_694314796be27.png', 'CAÑETE', 'uploads/firmas/transf_jefe_694314796bf20.png', 'quiero', 'quiero', 'gonzalezmarcelo159@gmail.com', '968574', 13, '2025-12-17 17:37:13', '2025-12-19 17:37:13', 'pendiente'),
-(6, 'd5ba741906be0e23c3974c086c6144a9b3e4594cc4e32a22361a9318cfdf6f04', 7, 3, NULL, 'General', 'fede', 'uploads/firmas/transf_resp_69431536e876c.png', 'caletye', 'uploads/firmas/transf_jefe_69431536e8869.png', 'quiero', 'quiero', 'gonzalezmarcelo159@gmail.com', '977107', 2, '2025-12-17 17:40:22', '2025-12-19 17:40:22', 'pendiente'),
-(7, '1833e804452264926c21ee2d69a93240453f5714dc75b77fe2f325fd0970650b', 8, 2, NULL, 'General', 'fede', 'uploads/firmas/transf_resp_694315f65b8b8.png', 'CAÑETE', 'uploads/firmas/transf_jefe_694315f65b9b8.png', 'quiero', 'quiero', 'gonzalezmarcelo159@gmail.com', '316610', 13, '2025-12-17 17:43:34', '2025-12-19 17:43:34', 'pendiente'),
-(8, 'c8f9567cc853c5954ac7fafd95e594beb32ea30c4ed7f426606051514acd8c8f', 8, 3, NULL, 'General', 'fede', 'uploads/firmas/transf_resp_694316f236395.png', 'caletye', 'uploads/firmas/transf_jefe_694316f2364ae.png', 'quiero', 'quiero', 'gonzalezmarcelo159@gmail.com', '672836', 2, '2025-12-17 17:47:46', '2025-12-19 17:47:46', 'pendiente'),
-(9, 'f70fbdcfca092e60b895d7a6c8b0fd3d76511a6abf32f4e6085baa4875835547', 7, 3, NULL, 'General', 'FEDE', 'uploads/firmas/transf_resp_694317c245ba4.png', 'CAÑETE', 'uploads/firmas/transf_jefe_694317c245cb7.png', 'quiero', 'quiero', 'gonzalezmarcelo159@gmail.com', '870837', 13, '2025-12-17 17:51:14', '2025-12-19 17:51:14', 'confirmado'),
-(10, 'bb1fc25d4ba89e5a3bc3fe0a0cacdb570bc98f3dd05f0149f364477f89ea64e8', 7, 8, 'CM SANTA RITA', '', 'DSFDSFSD', 'uploads/firmas/transf_resp_694319f2c12b8.png', 'DSFDSFSD', 'uploads/firmas/transf_resp_694319f2c12b8.png', 'PROQ UE QUIEROP', 'PROQ UE QUIEROP', 'gonzalezmarcelo159@gmail.com', '498323', 13, '2025-12-17 18:00:34', '2025-12-19 18:00:34', 'confirmado'),
-(11, 'c8b0773071391ed0ab74255edd7cb429d25b3b12316751ee782cfa8e30528416', 7, 3, 'CM MORON', '', 'FEDE', 'uploads/firmas/transf_resp_69431cf192313.png', 'FEDE', 'uploads/firmas/transf_resp_69431cf192313.png', 'PROQ UE QUIEROP', 'PROQ UE QUIEROP', NULL, NULL, 13, '2025-12-17 18:13:21', '2025-12-19 18:13:21', 'pendiente'),
-(12, '651f730039fe455cd52aefc7af3399481ad9210b1e6f16b5c3c76f7554df44c0', 7, 3, 'CM MORON', '', 'FEDE', 'uploads/firmas/transf_resp_69431d32a397b.png', 'FEDE', 'uploads/firmas/transf_resp_69431d32a397b.png', 'PROQ UE QUIEROP', 'PROQ UE QUIEROP', NULL, NULL, 13, '2025-12-17 18:14:26', '2025-12-19 18:14:26', 'pendiente'),
-(13, 'b2a5e618e32a6c117f2a00ca9651c339b56f582feab75fa3682f560c97c56406', 7, 3, 'CM MORON', '', 'FEDE', 'uploads/firmas/transf_resp_69431e9a1fcea.png', 'FEDE', 'uploads/firmas/transf_resp_69431e9a1fcea.png', 'PROQ UE QUIEROP', 'PROQ UE QUIEROP', NULL, NULL, 13, '2025-12-17 18:20:26', '2025-12-19 18:20:26', 'pendiente'),
-(14, '0bb6096b65a8f1d1ab67e25d59a007b793dede86f6d029fafc8be36290d49567', 7, 3, 'CM MORON', '', 'DSFDSFSD', 'uploads/firmas/transf_resp_6943221ce8f86.png', 'DSFDSFSD', 'uploads/firmas/transf_resp_6943221ce8f86.png', 'PROQ UE QUIEROP', 'PROQ UE QUIEROP', 'gonzalezmarcelo159@gmail.com', '878591', 13, '2025-12-17 18:35:24', '2025-12-19 18:35:24', 'confirmado'),
-(15, 'b52356dfa3860cb674f37c7ff4fcd5f1574caf5c61b421de1c8d1d183cf18c74', 7, 1, 'POLICLINICA ACTIS', 'DELEGACION ACTIS', 'FEDEgoznalez', 'uploads/firmas/transf_resp_69432726a7b9c.png', 'FEDEgoznalez', 'uploads/firmas/transf_resp_69432726a7b9c.png', 'quiero', 'quiero', 'gonzalezmarcelo159@gmail.com', '919124', 13, '2025-12-17 18:56:54', '2025-12-19 18:56:54', 'confirmado'),
-(16, '187f3a0ebb77914aa8bae7e6f23d1dd5983bb28e0a1e2c1759f8a9849a5bba68', 7, 1, 'POLICLINICA ACTIS', 'CONMUTADOR', 'FEDE', 'uploads/firmas/transf_resp_69432a8f3ec83.png', 'FEDE', 'uploads/firmas/transf_resp_69432a8f3ec83.png', 'dsfds', 'dsfds', 'gonzalezmarcelo159@gmail.com', '288948', 13, '2025-12-17 19:11:27', '2025-12-19 19:11:27', 'confirmado'),
-(17, '7b7acd78fd860684b1dbbc7d71e05f27bbe9d26e92c1b92fe5f78e0812f4d891', 396, 3, 'CM MORON', '', 'fede', 'uploads/firmas/transf_resp_6947f5727107f.png', 'fede', 'uploads/firmas/transf_resp_6947f5727107f.png', 'Motivo', 'Motivo', NULL, NULL, 2, '2025-12-21 10:26:10', '2025-12-23 10:26:10', 'pendiente');
+INSERT INTO `inventario_transferencias_pendientes` (`id_token`, `token_hash`, `id_bien`, `nuevo_destino_id`, `nuevo_destino_nombre`, `nueva_area_nombre`, `nuevo_responsable_nombre`, `firma_nuevo_responsable_path`, `nuevo_jefe_nombre`, `firma_nuevo_jefe_path`, `motivo_transferencia`, `observaciones`, `email_verificacion`, `token_otp`, `creado_por`, `fecha_creacion`, `fecha_expiracion`, `estado`, `email_usuario`, `codigo_otp`) VALUES
+(1, '902622af60fa769b65d71d406b608e5f96f2a557e24de187ef552c69a0b6bee6', 7, 0, NULL, 'AUDIOMETRIA', 'FEDE', 'uploads/firmas/transf_resp_69431119cf903.png', 'CAÑETE', 'uploads/firmas/transf_jefe_69431119cfa50.png', 'PROQ UE QUIEROP', 'PROQ UE QUIEROP', 'gonzalezmarcelo159@gmail.com', '354010', 13, '2025-12-17 17:22:49', '2025-12-19 17:22:49', 'pendiente', NULL, NULL),
+(2, 'd0aea7a68245bfa220074cda7070dcdec4f5dae614c08de7ec336c05703b43d0', 8, 3, NULL, 'General', 'DSFDSFSD', 'uploads/firmas/transf_resp_694311a15e0a9.png', 'DSFDSFSD', 'uploads/firmas/transf_jefe_694311a15e178.png', 'PROQ UE QUIEROP2', 'PROQ UE QUIEROP2', NULL, NULL, 13, '2025-12-17 17:25:05', '2025-12-19 17:25:05', 'pendiente', NULL, NULL),
+(3, '5e7f3d160a6bc55858399adafec0fe6f98f1ad6095a4cfe6044aadd3cbc10d58', 8, 9, NULL, 'General', 'dsafdsfsd', 'uploads/firmas/transf_resp_6943127569674.png', 'fsdfdsfds', 'uploads/firmas/transf_jefe_694312756979d.png', '123321321', '123321321', 'gonzalezmarcelo159@gmail.com', '521772', 13, '2025-12-17 17:28:37', '2025-12-19 17:28:37', 'pendiente', NULL, NULL),
+(4, '4568f2ebf29bde655fa1ab3ddde713e832f1742e01b783859709f22fa2d1ee8b', 7, 2, NULL, 'General', 'FEDE', 'uploads/firmas/transf_resp_6943136620711.png', 'CAÑETE', 'uploads/firmas/transf_jefe_694313662081a.png', 'PROQ UE QUIEROP4', 'PROQ UE QUIEROP4', 'gonzalezmarcelo159@gmail.com', '545942', 13, '2025-12-17 17:32:38', '2025-12-19 17:32:38', 'pendiente', NULL, NULL),
+(5, '9c3def33772077cbfa7ff8518670a8d3280ece9468841df76f5f89169f853ba3', 7, 5, NULL, 'General', 'FEDE', 'uploads/firmas/transf_resp_694314796be27.png', 'CAÑETE', 'uploads/firmas/transf_jefe_694314796bf20.png', 'quiero', 'quiero', 'gonzalezmarcelo159@gmail.com', '968574', 13, '2025-12-17 17:37:13', '2025-12-19 17:37:13', 'pendiente', NULL, NULL),
+(6, 'd5ba741906be0e23c3974c086c6144a9b3e4594cc4e32a22361a9318cfdf6f04', 7, 3, NULL, 'General', 'fede', 'uploads/firmas/transf_resp_69431536e876c.png', 'caletye', 'uploads/firmas/transf_jefe_69431536e8869.png', 'quiero', 'quiero', 'gonzalezmarcelo159@gmail.com', '977107', 2, '2025-12-17 17:40:22', '2025-12-19 17:40:22', 'pendiente', NULL, NULL),
+(7, '1833e804452264926c21ee2d69a93240453f5714dc75b77fe2f325fd0970650b', 8, 2, NULL, 'General', 'fede', 'uploads/firmas/transf_resp_694315f65b8b8.png', 'CAÑETE', 'uploads/firmas/transf_jefe_694315f65b9b8.png', 'quiero', 'quiero', 'gonzalezmarcelo159@gmail.com', '316610', 13, '2025-12-17 17:43:34', '2025-12-19 17:43:34', 'pendiente', NULL, NULL),
+(8, 'c8f9567cc853c5954ac7fafd95e594beb32ea30c4ed7f426606051514acd8c8f', 8, 3, NULL, 'General', 'fede', 'uploads/firmas/transf_resp_694316f236395.png', 'caletye', 'uploads/firmas/transf_jefe_694316f2364ae.png', 'quiero', 'quiero', 'gonzalezmarcelo159@gmail.com', '672836', 2, '2025-12-17 17:47:46', '2025-12-19 17:47:46', 'pendiente', NULL, NULL),
+(9, 'f70fbdcfca092e60b895d7a6c8b0fd3d76511a6abf32f4e6085baa4875835547', 7, 3, NULL, 'General', 'FEDE', 'uploads/firmas/transf_resp_694317c245ba4.png', 'CAÑETE', 'uploads/firmas/transf_jefe_694317c245cb7.png', 'quiero', 'quiero', 'gonzalezmarcelo159@gmail.com', '870837', 13, '2025-12-17 17:51:14', '2025-12-19 17:51:14', 'confirmado', NULL, NULL),
+(10, 'bb1fc25d4ba89e5a3bc3fe0a0cacdb570bc98f3dd05f0149f364477f89ea64e8', 7, 8, 'CM SANTA RITA', '', 'DSFDSFSD', 'uploads/firmas/transf_resp_694319f2c12b8.png', 'DSFDSFSD', 'uploads/firmas/transf_resp_694319f2c12b8.png', 'PROQ UE QUIEROP', 'PROQ UE QUIEROP', 'gonzalezmarcelo159@gmail.com', '498323', 13, '2025-12-17 18:00:34', '2025-12-19 18:00:34', 'confirmado', NULL, NULL),
+(11, 'c8b0773071391ed0ab74255edd7cb429d25b3b12316751ee782cfa8e30528416', 7, 3, 'CM MORON', '', 'FEDE', 'uploads/firmas/transf_resp_69431cf192313.png', 'FEDE', 'uploads/firmas/transf_resp_69431cf192313.png', 'PROQ UE QUIEROP', 'PROQ UE QUIEROP', NULL, NULL, 13, '2025-12-17 18:13:21', '2025-12-19 18:13:21', 'pendiente', NULL, NULL),
+(12, '651f730039fe455cd52aefc7af3399481ad9210b1e6f16b5c3c76f7554df44c0', 7, 3, 'CM MORON', '', 'FEDE', 'uploads/firmas/transf_resp_69431d32a397b.png', 'FEDE', 'uploads/firmas/transf_resp_69431d32a397b.png', 'PROQ UE QUIEROP', 'PROQ UE QUIEROP', NULL, NULL, 13, '2025-12-17 18:14:26', '2025-12-19 18:14:26', 'pendiente', NULL, NULL),
+(13, 'b2a5e618e32a6c117f2a00ca9651c339b56f582feab75fa3682f560c97c56406', 7, 3, 'CM MORON', '', 'FEDE', 'uploads/firmas/transf_resp_69431e9a1fcea.png', 'FEDE', 'uploads/firmas/transf_resp_69431e9a1fcea.png', 'PROQ UE QUIEROP', 'PROQ UE QUIEROP', NULL, NULL, 13, '2025-12-17 18:20:26', '2025-12-19 18:20:26', 'pendiente', NULL, NULL),
+(14, '0bb6096b65a8f1d1ab67e25d59a007b793dede86f6d029fafc8be36290d49567', 7, 3, 'CM MORON', '', 'DSFDSFSD', 'uploads/firmas/transf_resp_6943221ce8f86.png', 'DSFDSFSD', 'uploads/firmas/transf_resp_6943221ce8f86.png', 'PROQ UE QUIEROP', 'PROQ UE QUIEROP', 'gonzalezmarcelo159@gmail.com', '878591', 13, '2025-12-17 18:35:24', '2025-12-19 18:35:24', 'confirmado', NULL, NULL),
+(15, 'b52356dfa3860cb674f37c7ff4fcd5f1574caf5c61b421de1c8d1d183cf18c74', 7, 1, 'POLICLINICA ACTIS', 'DELEGACION ACTIS', 'FEDEgoznalez', 'uploads/firmas/transf_resp_69432726a7b9c.png', 'FEDEgoznalez', 'uploads/firmas/transf_resp_69432726a7b9c.png', 'quiero', 'quiero', 'gonzalezmarcelo159@gmail.com', '919124', 13, '2025-12-17 18:56:54', '2025-12-19 18:56:54', 'confirmado', NULL, NULL),
+(16, '187f3a0ebb77914aa8bae7e6f23d1dd5983bb28e0a1e2c1759f8a9849a5bba68', 7, 1, 'POLICLINICA ACTIS', 'CONMUTADOR', 'FEDE', 'uploads/firmas/transf_resp_69432a8f3ec83.png', 'FEDE', 'uploads/firmas/transf_resp_69432a8f3ec83.png', 'dsfds', 'dsfds', 'gonzalezmarcelo159@gmail.com', '288948', 13, '2025-12-17 19:11:27', '2025-12-19 19:11:27', 'confirmado', NULL, NULL),
+(17, '7b7acd78fd860684b1dbbc7d71e05f27bbe9d26e92c1b92fe5f78e0812f4d891', 396, 3, 'CM MORON', '', 'fede', 'uploads/firmas/transf_resp_6947f5727107f.png', 'fede', 'uploads/firmas/transf_resp_6947f5727107f.png', 'Motivo', 'Motivo', NULL, NULL, 2, '2025-12-21 10:26:10', '2025-12-23 10:26:10', 'pendiente', NULL, NULL),
+(18, '4d8f90006a3b562d2b5cf7eb66eb35528b1d8298c8ff235024fee69e8321f197', 582, 7, 'CM TEMPERLEY', '', 'fede', 'uploads/firmas/transf_resp_694832ac8912b.png', 'fede', 'uploads/firmas/transf_resp_694832ac8912b.png', 'quiero', 'quiero', 'gonzalezmarcelo159@gmail.com', '597145', 2, '2025-12-21 14:47:24', '2025-12-23 14:47:24', 'confirmado', NULL, NULL),
+(19, 'cf3235993a01c2cda0a0bb71d0987c937e1c79fdf7c75743fe836d021f997123', 582, 1, 'POLICLÍNICA ACTIS', 'AMBA', 'NOMBRE DEL RESPONSABLE', 'uploads/firmas/transf_resp_6948357f26109.png', 'NOMBRE DEL JEFE', 'uploads/firmas/transf_jefe_6948357f2623e.png', ' - Motivo de cambio', 'Motivo de cambio', 'gonzalezmarcelo159@gmail.com', '218517', 2, '2025-12-21 14:59:27', '2025-12-23 14:59:27', 'confirmado', NULL, NULL),
+(20, '2170a3537b102e55d51d70b313f5639a19052abe17d4759bacc13d7aad3a6695', 582, 1, 'POLICLÍNICA ACTIS', 'ALERGIA', 'NOMBRE DEL RESPONSABLE FEDERICO', 'uploads/firmas/transf_resp_6948394a8f842.png', 'NOMBRE DEL RESPONSABLE FEDERICO', 'uploads/firmas/transf_resp_6948394a8f842.png', 'quiero', 'quiero', NULL, NULL, 2, '2025-12-21 15:15:38', '2025-12-23 15:15:38', 'pendiente', NULL, NULL),
+(21, '9c9aff679c21d3f02b58031a291e2d336806015a32176802e818fabf823fde08', 585, 1, 'POLICLÍNICA ACTIS', 'APOYO LOGISTICO', 'NOMBRE DEL RESPONSABLE', 'uploads/firmas/transf_resp_694841d94dfbd.png', 'NOMBRE DEL RESPONSABLE', 'uploads/firmas/transf_resp_694841d94dfbd.png', 'Motivo', 'Motivo', NULL, NULL, 2, '2025-12-21 15:52:09', '2025-12-23 15:52:09', 'pendiente', NULL, NULL),
+(22, '9b2b50879ea4d8a4d5fab53b8e4ed42e91d17fa6addaad1f8eb3543101fba5a7', 584, 1, 'POLICLÍNICA ACTIS', 'ADMISION/TURNOS', 'NOMBRE DEL RESPONSABLE', 'uploads/firmas/transf_resp_6948426198975.png', 'NOMBRE DEL RESPONSABLE', 'uploads/firmas/transf_resp_6948426198975.png', 'Motivo', 'Motivo', NULL, NULL, 2, '2025-12-21 15:54:25', '2025-12-23 15:54:25', 'pendiente', NULL, NULL),
+(24, '0adfd555b964b6b6cb830dcbeb3160b5c298786dd4d42142674fbded4a3e3241', 582, 1, 'POLICLÍNICA ACTIS', 'ARCHIVO PASIVO', 'NOMBRE DEL RESPONSABLE', 'uploads/firmas/transf_resp_694849a1d85a5.png', 'NOMBRE DEL JEFE', 'uploads/firmas/transf_jefe_694849a1d8693.png', 'quiero', 'quiero', NULL, NULL, 2, '2025-12-21 16:25:21', '2025-12-23 16:25:21', 'pendiente', NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -2052,7 +2126,86 @@ INSERT INTO `inventario_valores_dinamicos` (`id_valor`, `id_cargo`, `id_campo`, 
 (2447, 396, 199, 'v8.0'),
 (2448, 396, 200, '2023-01-10'),
 (2449, 396, 201, '2026-01-10'),
-(2450, 396, 202, 'Carestream Directo');
+(2450, 396, 202, 'Carestream Directo'),
+(2624, 490, 182, 'LG'),
+(2625, 490, 183, '10212'),
+(2626, 491, 182, 'LG'),
+(2627, 491, 183, '10212'),
+(2628, 492, 182, 'LG'),
+(2629, 492, 183, '10212'),
+(2756, 555, 182, 'NOBLEX'),
+(2757, 555, 183, 'MK27X7100'),
+(2758, 555, 184, '65310000007716'),
+(2759, 556, 182, 'SAMSUNG'),
+(2760, 556, 183, '519F355HN'),
+(2761, 556, 184, 'ZZSF4TK202777'),
+(2762, 557, 182, 'SAMSUNG'),
+(2763, 557, 183, 'S19F355HN'),
+(2764, 557, 184, 'ZZNFH4TK206783L'),
+(2765, 558, 182, 'SAMSUNG'),
+(2766, 558, 183, 'S19F355HNL'),
+(2767, 558, 184, 'ZZSFH4TK208456M'),
+(2768, 559, 182, 'BANGHO'),
+(2769, 559, 184, '800958501001030'),
+(2770, 560, 182, 'DELL'),
+(2771, 560, 183, 'M31M001'),
+(2772, 560, 184, '15420'),
+(2773, 561, 182, 'GFAST'),
+(2774, 561, 184, 'AMDA88GB0393'),
+(2775, 562, 182, 'GFAST'),
+(2776, 562, 184, 'AMDA88GB0370'),
+(2777, 563, 182, 'GFAST'),
+(2778, 563, 184, 'AMDA88GB0156'),
+(2779, 564, 182, 'GFAST'),
+(2780, 564, 183, 'GFAST R-520'),
+(2781, 564, 184, 'DASR516GS400W115440993'),
+(2782, 565, 182, 'GENERICO'),
+(2783, 566, 182, 'ASUS'),
+(2784, 566, 183, '2136'),
+(2785, 567, 182, 'OVER'),
+(2786, 567, 184, '72694'),
+(2787, 568, 182, 'SAMSUNG'),
+(2788, 568, 183, 'S19F355HW'),
+(2789, 568, 184, 'ZZSFH4TK207709A'),
+(2790, 569, 182, 'BANGHO'),
+(2791, 569, 183, 'OPTIMA 4607'),
+(2792, 569, 184, 'B0107KDYA8QP101'),
+(2793, 570, 182, 'BANGHO'),
+(2794, 570, 183, 'OPTIMA B01'),
+(2795, 570, 184, 'B0107KDYA8QP101'),
+(2796, 571, 182, 'BANGHO'),
+(2797, 571, 183, 'OPTIMA B01'),
+(2798, 571, 184, 'B0107KDYA8QP101'),
+(2799, 572, 182, 'CORADIR'),
+(2800, 572, 183, '1744 REPUESTO'),
+(2801, 572, 184, '1748B1047200531'),
+(2802, 573, 182, 'CORADIR'),
+(2803, 573, 183, '1744 REPUESTO'),
+(2804, 573, 184, '1748B1047200315'),
+(2805, 574, 182, 'CORADIR'),
+(2806, 575, 182, 'CORADIR'),
+(2807, 575, 183, 'AX 540'),
+(2808, 576, 182, 'CORADIR'),
+(2809, 576, 184, '00180-020-301-268'),
+(2810, 577, 182, 'CORADIR'),
+(2811, 577, 184, '0018-020-487-971'),
+(2812, 578, 182, 'CORADIR'),
+(2813, 578, 184, '00180-020-487-964'),
+(2814, 579, 182, 'CORADIR'),
+(2815, 579, 184, '00180-020-506-736'),
+(2816, 580, 182, 'CORADIR'),
+(2817, 580, 183, '19WHE'),
+(2818, 580, 184, 'CDR19WHE03150137'),
+(2819, 581, 182, 'CX'),
+(2820, 581, 184, '00180-020-384-937'),
+(2821, 582, 182, 'GFAST'),
+(2822, 582, 184, 'AMDA88GB0378'),
+(2823, 583, 182, 'GFAST'),
+(2824, 583, 183, 'DX ATX-600-5836'),
+(2825, 584, 182, 'LG'),
+(2826, 584, 183, 'AX 540'),
+(2827, 585, 182, 'LG'),
+(2828, 585, 183, '10212');
 
 -- --------------------------------------------------------
 
@@ -3404,6 +3557,12 @@ ALTER TABLE `inventario_estados`
   ADD PRIMARY KEY (`id_estado`);
 
 --
+-- Indices de la tabla `inventario_orden_usuarios`
+--
+ALTER TABLE `inventario_orden_usuarios`
+  ADD PRIMARY KEY (`id_usuario`,`id_tipo_bien`);
+
+--
 -- Indices de la tabla `inventario_tipos_bien`
 --
 ALTER TABLE `inventario_tipos_bien`
@@ -3634,7 +3793,7 @@ ALTER TABLE `conversaciones`
 -- AUTO_INCREMENT de la tabla `destinos_internos`
 --
 ALTER TABLE `destinos_internos`
-  MODIFY `id_destino` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=16;
+  MODIFY `id_destino` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=17;
 
 --
 -- AUTO_INCREMENT de la tabla `empresas_mantenimiento`
@@ -3646,7 +3805,7 @@ ALTER TABLE `empresas_mantenimiento`
 -- AUTO_INCREMENT de la tabla `historial_movimientos`
 --
 ALTER TABLE `historial_movimientos`
-  MODIFY `id_movimiento` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
+  MODIFY `id_movimiento` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
 
 --
 -- AUTO_INCREMENT de la tabla `inventario_campos_dinamicos`
@@ -3664,7 +3823,7 @@ ALTER TABLE `inventario_campos_opciones`
 -- AUTO_INCREMENT de la tabla `inventario_cargos`
 --
 ALTER TABLE `inventario_cargos`
-  MODIFY `id_cargo` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=397;
+  MODIFY `id_cargo` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=586;
 
 --
 -- AUTO_INCREMENT de la tabla `inventario_config_capacidades`
@@ -3724,13 +3883,13 @@ ALTER TABLE `inventario_tipos_bien`
 -- AUTO_INCREMENT de la tabla `inventario_transferencias_pendientes`
 --
 ALTER TABLE `inventario_transferencias_pendientes`
-  MODIFY `id_token` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=18;
+  MODIFY `id_token` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=25;
 
 --
 -- AUTO_INCREMENT de la tabla `inventario_valores_dinamicos`
 --
 ALTER TABLE `inventario_valores_dinamicos`
-  MODIFY `id_valor` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2451;
+  MODIFY `id_valor` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2829;
 
 --
 -- AUTO_INCREMENT de la tabla `mensajes`
