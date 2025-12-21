@@ -20,6 +20,15 @@ if ($accion == 'eliminar') {
     $stmt->execute([$id_opcion]);
     echo json_encode(['status' => 'ok']);
 }
+if ($accion == 'editar') {
+    $id_opcion = $_POST['id_opcion'];
+    $valor = trim($_POST['valor']);
+    if (!empty($valor)) {
+        $stmt = $pdo->prepare("UPDATE inventario_campos_opciones SET valor = ? WHERE id_opcion = ?");
+        $stmt->execute([$valor, $id_opcion]);
+        echo json_encode(['status' => 'ok']);
+    }
+}
 
 if ($accion == 'listar') {
     $id_campo = $_POST['id_campo'];

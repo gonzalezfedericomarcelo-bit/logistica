@@ -1,5 +1,5 @@
 <?php
-// Archivo: ajax_config_admin.php (CORREGIDO COMPLETO: Dependencias funcionando)
+// Archivo: ajax_config_admin.php (SOPORTE PARA COLORES DINÁMICOS)
 ob_start(); 
 session_start();
 include 'conexion.php';
@@ -17,7 +17,6 @@ $response = ['status'=>'error','msg'=>'Accion no valida'];
 try {
     // --- 1. GESTIÓN DE FICHAS Y ESTRUCTURA ---
     if ($accion == 'get_ficha_campos') {
-        // CORRECCIÓN VITAL: Agregamos id_campo_dependencia al SELECT
         $stmt = $pdo->prepare("SELECT id_campo, etiqueta, id_campo_dependencia FROM inventario_campos_dinamicos WHERE id_tipo_bien = ? ORDER BY orden ASC");
         $stmt->execute([$_POST['id']]);
         $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -29,49 +28,46 @@ try {
     }
 
     elseif ($accion == 'add_ficha') {
-        $pdo->prepare("INSERT INTO inventario_tipos_bien (nombre, icono, descripcion, tiene_campos_tecnicos) VALUES (?, ?, ?, 2)")
-            ->execute([trim($_POST['nombre']), $_POST['icono'], $_POST['descripcion']]);
+        // AHORA GUARDAMOS EL COLOR
+        $color = $_POST['color'] ?? 'primary';
+        $pdo->prepare("INSERT INTO inventario_tipos_bien (nombre, icono, descripcion, color, tiene_campos_tecnicos) VALUES (?, ?, ?, ?, 2)")
+            ->execute([trim($_POST['nombre']), $_POST['icono'], $_POST['descripcion'], $color]);
         $response = ['status'=>'ok'];
     }
 
     elseif ($accion == 'edit_ficha') {
         $pdo->beginTransaction();
         $id_tipo = $_POST['id'];
+        $color = $_POST['color'] ?? 'primary';
 
-        // Actualizar Info Básica
-        $pdo->prepare("UPDATE inventario_tipos_bien SET nombre=?, icono=?, descripcion=? WHERE id_tipo_bien=?")
-            ->execute([trim($_POST['nombre']), $_POST['icono'], $_POST['descripcion'], $id_tipo]);
+        // Actualizar Info Básica INCLUYENDO COLOR
+        $pdo->prepare("UPDATE inventario_tipos_bien SET nombre=?, icono=?, descripcion=?, color=? WHERE id_tipo_bien=?")
+            ->execute([trim($_POST['nombre']), $_POST['icono'], $_POST['descripcion'], $color, $id_tipo]);
 
         // Procesar Columnas y Dependencias
         if (isset($_POST['campos'])) {
             $ids_mantener = [];
-            
-            // Obtener último orden
             $stmtOrd = $pdo->prepare("SELECT MAX(orden) FROM inventario_campos_dinamicos WHERE id_tipo_bien = ?");
             $stmtOrd->execute([$id_tipo]);
             $orden = ($stmtOrd->fetchColumn() ?: 0) + 1;
 
             foreach ($_POST['campos'] as $c) {
                 $etiqueta = trim($c['valor']);
-                // Capturar dependencia (si viene vacía es NULL)
                 $id_dependencia = (isset($c['dependencia']) && $c['dependencia'] != '') ? $c['dependencia'] : null;
 
                 if(empty($etiqueta)) continue;
 
                 if (isset($c['id']) && is_numeric($c['id']) && $c['id'] > 0) {
-                    // ACTUALIZAR EXISTENTE (Incluyendo dependencia)
                     $pdo->prepare("UPDATE inventario_campos_dinamicos SET etiqueta = ?, id_campo_dependencia = ? WHERE id_campo = ?")
                         ->execute([$etiqueta, $id_dependencia, $c['id']]);
                     $ids_mantener[] = $c['id'];
                 } else {
-                    // INSERTAR NUEVO (Incluyendo dependencia)
                     $stmtIns = $pdo->prepare("INSERT INTO inventario_campos_dinamicos (id_tipo_bien, etiqueta, tipo_input, id_campo_dependencia, orden) VALUES (?, ?, 'text', ?, ?)");
                     $stmtIns->execute([$id_tipo, $etiqueta, $id_dependencia, $orden++]);
                     $ids_mantener[] = $pdo->lastInsertId();
                 }
             }
 
-            // Borrar eliminados
             if (!empty($ids_mantener)) {
                 $inQuery = implode(',', array_fill(0, count($ids_mantener), '?'));
                 $pdo->prepare("DELETE FROM inventario_campos_dinamicos WHERE id_tipo_bien = ? AND id_campo NOT IN ($inQuery)")
@@ -85,9 +81,7 @@ try {
         $response = ['status'=>'ok'];
     }
     
-    // --- 2. CONFIGURACIONES SIMPLES ---
-    
-    // Matafuegos
+    // --- 2. CONFIGURACIONES SIMPLES (Mantiene todo lo anterior) ---
     elseif ($accion == 'add_agente') {
         $pdo->prepare("INSERT INTO inventario_config_matafuegos (tipo_carga, vida_util) VALUES (?, ?)")->execute([$_POST['valor'], $_POST['vida_util']]);
         $response = ['status'=>'ok'];
@@ -96,8 +90,6 @@ try {
         $pdo->prepare("UPDATE inventario_config_matafuegos SET tipo_carga=?, vida_util=? WHERE id_config=?")->execute([$_POST['valor'], $_POST['vida_util'], $_POST['id']]);
         $response = ['status'=>'ok'];
     }
-
-    // Marcas
     elseif ($accion == 'add_marca') {
         $pdo->prepare("INSERT INTO inventario_config_marcas (nombre, ambito) VALUES (?, ?)")->execute([$_POST['valor'], $_POST['ambito']]);
         $response = ['status'=>'ok'];
@@ -106,8 +98,6 @@ try {
         $pdo->prepare("UPDATE inventario_config_marcas SET nombre = ? WHERE id_marca = ?")->execute([$_POST['valor'], $_POST['id']]);
         $response = ['status'=>'ok'];
     }
-
-    // Modelos
     elseif ($accion == 'add_modelo') {
         $pdo->prepare("INSERT INTO inventario_config_modelos (nombre, id_marca) VALUES (?, ?)")->execute([$_POST['valor'], $_POST['id_marca']]);
         $response = ['status'=>'ok'];
@@ -116,8 +106,6 @@ try {
         $pdo->prepare("UPDATE inventario_config_modelos SET nombre = ?, id_marca = ? WHERE id_modelo = ?")->execute([$_POST['valor'], $_POST['id_marca'], $_POST['id']]);
         $response = ['status'=>'ok'];
     }
-
-    // Estados
     elseif ($accion == 'add_estado') {
         $pdo->prepare("INSERT INTO inventario_estados (nombre, ambito) VALUES (?, ?)")->execute([$_POST['valor'], $_POST['ambito']]);
         $response = ['status'=>'ok'];
@@ -126,8 +114,6 @@ try {
         $pdo->prepare("UPDATE inventario_estados SET nombre=?, ambito=? WHERE id_estado=?")->execute([$_POST['valor'], $_POST['ambito'], $_POST['id']]);
         $response = ['status'=>'ok'];
     }
-
-    // Genéricos
     elseif (in_array($accion, ['add_clase', 'add_capacidad', 'add_tipo_it'])) {
         $tablas = [
             'add_clase' => ['inventario_config_clases', 'nombre'],
@@ -140,20 +126,14 @@ try {
     }
     elseif ($accion == 'edit_simple') {
         $tablas_permitidas = ['inventario_config_clases', 'inventario_config_capacidades', 'inventario_config_tipos_it'];
-        $tabla = $_POST['tabla'];
-        $campo_id = $_POST['campo_id'];
-        $campo_val = $_POST['campo_val']; 
-        
+        $tabla = $_POST['tabla']; $campo_id = $_POST['campo_id']; $campo_val = $_POST['campo_val']; 
         if (in_array($tabla, $tablas_permitidas)) {
             if (preg_match('/^[a-zA-Z0-9_]+$/', $campo_val) && preg_match('/^[a-zA-Z0-9_]+$/', $campo_id)) {
-                $sql = "UPDATE $tabla SET $campo_val = ? WHERE $campo_id = ?";
-                $pdo->prepare($sql)->execute([$_POST['valor'], $_POST['id']]);
+                $pdo->prepare("UPDATE $tabla SET $campo_val = ? WHERE $campo_id = ?")->execute([$_POST['valor'], $_POST['id']]);
                 $response = ['status'=>'ok'];
             }
         }
     }
-
-    // Eliminaciones
     elseif (strpos($accion, 'del_') === 0) {
         $tablas = [
             'del_ficha' => ['inventario_tipos_bien', 'id_tipo_bien'],
