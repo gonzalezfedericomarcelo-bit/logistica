@@ -1,5 +1,5 @@
 <?php
-// Archivo: inventario_config.php (ESTANDARIZADO: Diseño Unificado + Colores Dinámicos + Importadores)
+// Archivo: inventario_config.php (CORREGIDO: Nombres de colores en la tabla)
 session_start();
 include 'conexion.php';
 include 'funciones_permisos.php';
@@ -60,16 +60,31 @@ $all_marcas_tel = getMarcas($pdo, 'telefono');
         .nav-pills .nav-link { color: #555; border-radius: 5px; margin: 0 2px; }
         .nav-pills .nav-link.active { background-color: #0d6efd; color: white; font-weight: 600; }
         
-        /* COLORES PERSONALIZADOS (Violeta, etc) */
-        .border-indigo { border-color: #6610f2 !important; }
-        .bg-indigo { background-color: #6610f2 !important; }
-        .text-indigo { color: #6610f2 !important; }
-        .btn-indigo { background-color: #6610f2; color: white; }
-        .btn-indigo:hover { background-color: #520dc2; color: white; }
-
         .icon-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(50px, 1fr)); gap: 10px; max-height: 400px; overflow-y: auto; padding: 10px; }
         .icon-btn { border: 1px solid #ddd; background: white; border-radius: 5px; padding: 10px; cursor: pointer; transition: 0.2s; text-align: center; }
         .icon-btn:hover { background: #f0f0f0; transform: scale(1.1); border-color: #0d6efd; }
+
+        /* --- PALETA EXTENDIDA (20+ COLORES) --- */
+        /* Definimos Borde, Fondo y Texto para cada color nuevo */
+        
+        /* Bootstrap Base */
+        .text-indigo { color: #6610f2 !important; } .bg-indigo { background-color: #6610f2 !important; } .border-indigo { border-color: #6610f2 !important; } .btn-indigo { background-color: #6610f2; color: white; }
+        
+        /* Nuevos Colores */
+        .text-purple { color: #6f42c1 !important; } .bg-purple { background-color: #6f42c1 !important; } .border-purple { border-color: #6f42c1 !important; } .btn-purple { background-color: #6f42c1; color: white; }
+        .text-pink { color: #d63384 !important; } .bg-pink { background-color: #d63384 !important; } .border-pink { border-color: #d63384 !important; } .btn-pink { background-color: #d63384; color: white; }
+        .text-orange { color: #fd7e14 !important; } .bg-orange { background-color: #fd7e14 !important; } .border-orange { border-color: #fd7e14 !important; } .btn-orange { background-color: #fd7e14; color: white; }
+        .text-teal { color: #20c997 !important; } .bg-teal { background-color: #20c997 !important; } .border-teal { border-color: #20c997 !important; } .btn-teal { background-color: #20c997; color: white; }
+        .text-brown { color: #795548 !important; } .bg-brown { background-color: #795548 !important; } .border-brown { border-color: #795548 !important; } .btn-brown { background-color: #795548; color: white; }
+        .text-blue-grey { color: #607d8b !important; } .bg-blue-grey { background-color: #607d8b !important; } .border-blue-grey { border-color: #607d8b !important; } .btn-blue-grey { background-color: #607d8b; color: white; }
+        .text-navy { color: #001f3f !important; } .bg-navy { background-color: #001f3f !important; } .border-navy { border-color: #001f3f !important; } .btn-navy { background-color: #001f3f; color: white; }
+        .text-olive { color: #3d9970 !important; } .bg-olive { background-color: #3d9970 !important; } .border-olive { border-color: #3d9970 !important; } .btn-olive { background-color: #3d9970; color: white; }
+        .text-maroon { color: #85144b !important; } .bg-maroon { background-color: #85144b !important; } .border-maroon { border-color: #85144b !important; } .btn-maroon { background-color: #85144b; color: white; }
+        .text-fuchsia { color: #f012be !important; } .bg-fuchsia { background-color: #f012be !important; } .border-fuchsia { border-color: #f012be !important; } .btn-fuchsia { background-color: #f012be; color: white; }
+        .text-royal { color: #4169e1 !important; } .bg-royal { background-color: #4169e1 !important; } .border-royal { border-color: #4169e1 !important; } .btn-royal { background-color: #4169e1; color: white; }
+        .text-crimson { color: #dc143c !important; } .bg-crimson { background-color: #dc143c !important; } .border-crimson { border-color: #dc143c !important; } .btn-crimson { background-color: #dc143c; color: white; }
+        .text-chocolate { color: #d2691e !important; } .bg-chocolate { background-color: #d2691e !important; } .border-chocolate { border-color: #d2691e !important; } .btn-chocolate { background-color: #d2691e; color: white; }
+        .text-slate { color: #708090 !important; } .bg-slate { background-color: #708090 !important; } .border-slate { border-color: #708090 !important; } .btn-slate { background-color: #708090; color: white; }
     </style>
 </head>
 <body class="bg-light">
@@ -100,8 +115,15 @@ $all_marcas_tel = getMarcas($pdo, 'telefono');
                             <thead class="table-light"><tr><th>Icono</th><th>Nombre</th><th>Descripción</th><th>Color</th><th>Acción</th></tr></thead>
                             <tbody>
                                 <?php foreach ($tipos_bien as $t): 
-                                    $coloresMap = ['primary'=>'Azul', 'secondary'=>'Gris', 'success'=>'Verde', 'danger'=>'Rojo', 'warning'=>'Amarillo', 'info'=>'Celeste', 'dark'=>'Negro', 'indigo'=>'Violeta'];
-                                    $colorName = $coloresMap[$t['color'] ?? 'primary'] ?? 'Azul';
+                                    // MAPA COMPLETO DE COLORES (Aquí estaba el error)
+                                    $coloresMap = [
+                                        'primary'=>'Azul', 'secondary'=>'Gris', 'success'=>'Verde', 'danger'=>'Rojo', 'warning'=>'Amarillo', 'info'=>'Celeste', 'dark'=>'Negro', 'indigo'=>'Índigo',
+                                        'purple'=>'Púrpura', 'pink'=>'Rosa', 'orange'=>'Naranja', 'teal'=>'Turquesa', 'brown'=>'Marrón', 'blue-grey'=>'Gris Azulado',
+                                        'navy'=>'Azul Marino', 'olive'=>'Oliva', 'maroon'=>'Bordó', 'fuchsia'=>'Fucsia', 'royal'=>'Azul Real', 'crimson'=>'Carmesí',
+                                        'chocolate'=>'Chocolate', 'slate'=>'Pizarra'
+                                    ];
+                                    $colorKey = $t['color'] ?? 'primary';
+                                    $colorName = $coloresMap[$colorKey] ?? 'Azul';
                                 ?>
                                 <tr>
                                     <td><i class="<?php echo $t['icono']; ?> fa-lg text-<?php echo ($t['color']=='indigo'?'dark':$t['color']); ?>"></i></td>
@@ -237,10 +259,11 @@ $all_marcas_tel = getMarcas($pdo, 'telefono');
                     <div class="card-body">
                         <div class="input-group mb-3">
                             <input type="text" id="add_est_nom" class="form-control" placeholder="Nombre Estado">
-                            <select id="add_est_amb" class="form-select">
-                                <option value="general">General</option>
-                                <option value="matafuego">Matafuegos</option>
-                                <option value="ambos">Ambos</option>
+                            <select id="add_est_tipo" class="form-select" style="max-width: 200px;">
+                                <option value="">General (Para todos)</option>
+                                <?php foreach($tipos_bien as $tb): ?>
+                                    <option value="<?php echo $tb['id_tipo_bien']; ?>"><?php echo htmlspecialchars($tb['nombre']); ?></option>
+                                <?php endforeach; ?>
                             </select>
                             <button class="btn btn-primary" onclick="addEstado()">+</button>
                         </div>
@@ -248,7 +271,7 @@ $all_marcas_tel = getMarcas($pdo, 'telefono');
                             <?php foreach($estados as $e): ?>
                             <li class="list-group-item d-flex justify-content-between align-items-center">
                                 <div><span class="fw-bold"><?php echo $e['nombre']; ?></span><span class="badge bg-secondary ms-2"><?php echo ucfirst($e['ambito']); ?></span></div>
-                                <div><i class="fas fa-pen text-primary action-btn" onclick="modalEditEstado(<?php echo $e['id_estado']; ?>, '<?php echo $e['nombre']; ?>', '<?php echo $e['ambito']; ?>')"></i><i class="fas fa-trash text-danger action-btn" onclick="delItem('del_estado', <?php echo $e['id_estado']; ?>)"></i></div>
+                                <div><i class="fas fa-pen text-primary action-btn" onclick="modalEditEstado(<?php echo $e['id_estado']; ?>, '<?php echo $e['nombre']; ?>', '<?php echo $e['id_tipo_bien']; ?>')"></i></div>
                             </li>
                             <?php endforeach; ?>
                         </ul>
@@ -303,29 +326,44 @@ $all_marcas_tel = getMarcas($pdo, 'telefono');
     <div class="modal fade" id="modSimple" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header bg-secondary text-white"><h5 class="modal-title">Editar</h5><button class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><input type="hidden" id="simp_accion"><input type="hidden" id="simp_tabla"><input type="hidden" id="simp_col_id"><input type="hidden" id="simp_col_val"><input type="hidden" id="simp_id"><input type="hidden" id="simp_ambito"><label>Valor:</label><input type="text" id="simp_val" class="form-control"></div><div class="modal-footer"><button class="btn btn-primary" onclick="saveSimple()">Guardar</button></div></div></div></div>
     
     <div class="modal fade" id="modEditarOpcion" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title">Editar Opción</h5>
-                <button class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <input type="hidden" id="edit_opc_id">
-                <input type="hidden" id="edit_opc_campo">
-                <label class="form-label fw-bold">Nombre de la Opción:</label>
-                <input type="text" id="edit_opc_val" class="form-control" onkeypress="if(event.keyCode==13) guardarOpcionEditada()">
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <button class="btn btn-primary" onclick="guardarOpcionEditada()">Guardar</button>
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">Editar Opción</h5>
+                    <button class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="edit_opc_id">
+                    <input type="hidden" id="edit_opc_campo">
+                    <label class="form-label fw-bold">Nombre de la Opción:</label>
+                    <input type="text" id="edit_opc_val" class="form-control" onkeypress="if(event.keyCode==13) guardarOpcionEditada()">
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button class="btn btn-primary" onclick="guardarOpcionEditada()">Guardar</button>
+                </div>
             </div>
         </div>
     </div>
-</div>
 
     <div class="modal fade" id="modModelo" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header bg-primary text-white"><h5 class="modal-title">Editar Modelo</h5><button class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><input type="hidden" id="mod_id"><input type="hidden" id="mod_ambito"><label>Modelo:</label><input type="text" id="mod_nom" class="form-control mb-2"><label>Marca:</label><select id="mod_marca" class="form-select"></select></div><div class="modal-footer"><button class="btn btn-primary" onclick="saveModelo()">Guardar</button></div></div></div></div>
     
-    <div class="modal fade" id="modEstado" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header bg-primary text-white"><h5 class="modal-title">Editar Estado</h5><button class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><input type="hidden" id="est_id"><label>Nombre:</label><input type="text" id="est_nom" class="form-control mb-2"><label>Ámbito:</label><select id="est_amb" class="form-select"><option value="general">General</option><option value="matafuego">Matafuego</option><option value="ambos">Ambos</option></select></div><div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button><button class="btn btn-primary" onclick="saveEstado()">Guardar</button></div></div></div></div>
+    <div class="modal fade" id="modEstado" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header bg-primary text-white"><h5 class="modal-title">Editar Estado</h5><button class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><input type="hidden" id="est_id"><label>Nombre:</label><input type="text" id="est_nom" class="form-control mb-2">
+    <label>Aplica a:</label>
+                    <select id="est_tipo" class="form-select">
+                        <option value="">General (Para todos)</option>
+                        <?php foreach($tipos_bien as $tb): ?>
+                            <option value="<?php echo $tb['id_tipo_bien']; ?>"><?php echo htmlspecialchars($tb['nombre']); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+        </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button class="btn btn-primary" onclick="saveEstado()">Guardar</button>
+            </div>
+         </div>
+        </div>
+    </div>
 
     <div class="modal fade" id="modFicha" tabindex="-1">
         <div class="modal-dialog">
@@ -346,14 +384,32 @@ $all_marcas_tel = getMarcas($pdo, 'telefono');
                         <div class="col-md-4">
                             <label class="fw-bold">Color Borde:</label>
                             <select id="fic_color" class="form-select">
-                                <option value="primary" class="text-primary fw-bold">Azul</option>
-                                <option value="secondary" class="text-secondary fw-bold">Gris</option>
-                                <option value="success" class="text-success fw-bold">Verde</option>
-                                <option value="danger" class="text-danger fw-bold">Rojo</option>
-                                <option value="warning" class="text-warning fw-bold">Amarillo</option>
-                                <option value="info" class="text-info fw-bold">Celeste</option>
-                                <option value="dark" class="text-dark fw-bold">Negro</option>
-                                <option value="indigo" class="text-indigo fw-bold">Violeta</option>
+                                <optgroup label="Estándar">
+                                    <option value="primary" class="text-primary fw-bold">Azul</option>
+                                    <option value="secondary" class="text-secondary fw-bold">Gris</option>
+                                    <option value="success" class="text-success fw-bold">Verde</option>
+                                    <option value="danger" class="text-danger fw-bold">Rojo</option>
+                                    <option value="warning" class="text-warning fw-bold">Amarillo</option>
+                                    <option value="info" class="text-info fw-bold">Celeste</option>
+                                    <option value="dark" class="text-dark fw-bold">Negro</option>
+                                    <option value="indigo" class="text-indigo fw-bold">Índigo</option>
+                                </optgroup>
+                                <optgroup label="Nuevos">
+                                    <option value="purple" class="text-purple fw-bold">Púrpura</option>
+                                    <option value="pink" class="text-pink fw-bold">Rosa</option>
+                                    <option value="orange" class="text-orange fw-bold">Naranja</option>
+                                    <option value="teal" class="text-teal fw-bold">Turquesa</option>
+                                    <option value="brown" class="text-brown fw-bold">Marrón</option>
+                                    <option value="blue-grey" class="text-blue-grey fw-bold">Gris Azulado</option>
+                                    <option value="navy" class="text-navy fw-bold">Azul Marino</option>
+                                    <option value="olive" class="text-olive fw-bold">Oliva</option>
+                                    <option value="maroon" class="text-maroon fw-bold">Bordó</option>
+                                    <option value="fuchsia" class="text-fuchsia fw-bold">Fucsia</option>
+                                    <option value="royal" class="text-royal fw-bold">Azul Real</option>
+                                    <option value="crimson" class="text-crimson fw-bold">Carmesí</option>
+                                    <option value="chocolate" class="text-chocolate fw-bold">Chocolate</option>
+                                    <option value="slate" class="text-slate fw-bold">Pizarra</option>
+                                </optgroup>
                             </select>
                         </div>
                     </div>
@@ -410,61 +466,49 @@ $all_marcas_tel = getMarcas($pdo, 'telefono');
     function filtrarIconos() { let filtro = document.getElementById('filtro_iconos').value.toLowerCase(); document.querySelectorAll('.icon-btn').forEach(btn => { btn.style.display = btn.querySelector('i').className.includes(filtro) ? 'block' : 'none'; }); }
 
     function cargarOpciones(idCampo) { 
-    $.post('ajax_opciones_dinamicas.php', { accion: 'listar', id_campo: idCampo }, function(data) { 
-        let html = ''; 
-        data.forEach(o => {
-            let valSafe = o.valor.replace(/'/g, "\\'"); // Evitar errores con comillas
-            html += `<li class="list-group-item d-flex justify-content-between align-items-center">
-                        ${o.valor}
-                        <div>
-                            <i class="fas fa-pen text-primary action-btn" onclick="editarOpcion(${o.id_opcion}, '${valSafe}', ${idCampo})"></i>
-                            <i class="fas fa-trash text-danger action-btn" onclick="borrarOpcion(${o.id_opcion}, ${idCampo})"></i>
-                        </div>
-                     </li>`; 
-        });
-        $('#lista_opc_' + idCampo).html(html || '<li class="list-group-item text-muted fst-italic">Sin opciones</li>'); 
-    }, 'json'); 
-}
-
-function editarOpcion(idOpcion, valorActual, idCampo) {
-    let nuevoValor = prompt("Editar opción:", valorActual);
-    if (nuevoValor && nuevoValor.trim() !== "") {
-        $.post('ajax_opciones_dinamicas.php', { accion: 'editar', id_opcion: idOpcion, valor: nuevoValor }, function(res) {
-            if (res.status === 'ok') {
-                cargarOpciones(idCampo);
-            } else {
-                alert('Error al editar');
-            }
-        }, 'json');
+        $.post('ajax_opciones_dinamicas.php', { accion: 'listar', id_campo: idCampo }, function(data) { 
+            let html = ''; 
+            data.forEach(o => {
+                let valSafe = o.valor.replace(/'/g, "\\'"); // Evitar errores con comillas
+                html += `<li class="list-group-item d-flex justify-content-between align-items-center">
+                            ${o.valor}
+                            <div>
+                                <i class="fas fa-pen text-primary action-btn" onclick="editarOpcion(${o.id_opcion}, '${valSafe}', ${idCampo})"></i>
+                                <i class="fas fa-trash text-danger action-btn" onclick="borrarOpcion(${o.id_opcion}, ${idCampo})"></i>
+                            </div>
+                         </li>`; 
+            });
+            $('#lista_opc_' + idCampo).html(html || '<li class="list-group-item text-muted fst-italic">Sin opciones</li>'); 
+        }, 'json'); 
     }
-}
-
+    
     function agregarOpcion(idCampo) { let valor = $('#input_opc_' + idCampo).val(); if(!valor) return; $.post('ajax_opciones_dinamicas.php', { accion: 'guardar', id_campo: idCampo, valor: valor }, function(res) { if(res.status === 'ok') { $('#input_opc_' + idCampo).val(''); cargarOpciones(idCampo); } }, 'json'); }
     function borrarOpcion(idOpcion, idCampo) { if(confirm('¿Borrar?')) $.post('ajax_opciones_dinamicas.php', { accion: 'eliminar', id_opcion: idOpcion }, function() { cargarOpciones(idCampo); }, 'json'); }
 
+    // --- NUEVAS FUNCIONES DE EDICIÓN CON MODAL ---
     function editarOpcion(idOpcion, valorActual, idCampo) {
-    $('#edit_opc_id').val(idOpcion);
-    $('#edit_opc_val').val(valorActual);
-    $('#edit_opc_campo').val(idCampo);
-    new bootstrap.Modal('#modEditarOpcion').show();
-    setTimeout(() => { $('#edit_opc_val').focus(); }, 500);
-}
+        $('#edit_opc_id').val(idOpcion);
+        $('#edit_opc_val').val(valorActual);
+        $('#edit_opc_campo').val(idCampo);
+        new bootstrap.Modal('#modEditarOpcion').show();
+        setTimeout(() => { $('#edit_opc_val').focus(); }, 500);
+    }
 
-function guardarOpcionEditada() {
-    let id = $('#edit_opc_id').val();
-    let val = $('#edit_opc_val').val();
-    let campo = $('#edit_opc_campo').val();
-    if(!val || val.trim() === '') return alert('Escriba un valor válido');
-
-    $.post('ajax_opciones_dinamicas.php', { accion: 'editar', id_opcion: id, valor: val }, function(res) {
-        if (res.status === 'ok') {
-            bootstrap.Modal.getInstance(document.getElementById('modEditarOpcion')).hide();
-            cargarOpciones(campo);
-        } else {
-            alert('Error al guardar la edición');
-        }
-    }, 'json');
-}
+    function guardarOpcionEditada() {
+        let id = $('#edit_opc_id').val();
+        let val = $('#edit_opc_val').val();
+        let campo = $('#edit_opc_campo').val();
+        if(!val || val.trim() === '') return alert('Escriba un valor válido');
+        
+        $.post('ajax_opciones_dinamicas.php', { accion: 'editar', id_opcion: id, valor: val }, function(res) {
+            if (res.status === 'ok') {
+                bootstrap.Modal.getInstance(document.getElementById('modEditarOpcion')).hide();
+                cargarOpciones(campo);
+            } else {
+                alert('Error al guardar la edición');
+            }
+        }, 'json');
+    }
 
     // --- FICHAS, ORDEN Y DEPENDENCIAS ---
     function modalAddFicha() { 
@@ -578,9 +622,34 @@ function guardarOpcionEditada() {
     function modalEditAgente(id, nom, vida) { $('#edit_age_id').val(id); $('#edit_age_nom').val(nom); $('#edit_age_vida').val(vida); new bootstrap.Modal('#modAgente').show(); }
     function saveAgente() { $.post('ajax_config_admin.php',{accion:'edit_agente',id:$('#edit_age_id').val(),valor:$('#edit_age_nom').val(),vida_util:$('#edit_age_vida').val()},res=>{ if(res.status=='ok') location.reload(); },'json'); }
     function addSimple(acc, inputId) { let val=$('#'+inputId).val(); if(!val) return; $.post('ajax_config_admin.php',{accion:acc,valor:val},res=>{ if(res.status=='ok') location.reload(); },'json'); }
-    function addEstado() { let n=$('#add_est_nom').val(), a=$('#add_est_amb').val(); if(!n) return; $.post('ajax_config_admin.php',{accion:'add_estado',valor:n,ambito:a},res=>{ if(res.status=='ok') location.reload(); },'json'); }
-    function modalEditEstado(id, nom, amb) { $('#est_id').val(id); $('#est_nom').val(nom); $('#est_amb').val(amb); new bootstrap.Modal('#modEstado').show(); }
-    function saveEstado() { $.post('ajax_config_admin.php',{accion:'edit_estado',id:$('#est_id').val(),valor:$('#est_nom').val(),ambito:$('#est_amb').val()},res=>{ if(res.status=='ok') location.reload(); },'json'); }
+    
+    // FUNCIONES JS ACTUALIZADAS PARA ESTADOS
+    function addEstado() { 
+        let n=$('#add_est_nom').val(), t=$('#add_est_tipo').val(); 
+        if(!n) return; 
+        $.post('ajax_config_admin.php',{accion:'add_estado', valor:n, id_tipo_bien:t}, res=>{ 
+            if(res.status=='ok') location.reload(); 
+        },'json'); 
+    }
+    
+    function modalEditEstado(id, nom, idTipo) { 
+        $('#est_id').val(id); 
+        $('#est_nom').val(nom); 
+        $('#est_tipo').val(idTipo || ''); // Selecciona la categoría o vacío (General)
+        new bootstrap.Modal('#modEstado').show(); 
+    }
+    
+    function saveEstado() { 
+        $.post('ajax_config_admin.php', {
+            accion:'edit_estado', 
+            id:$('#est_id').val(), 
+            valor:$('#est_nom').val(), 
+            id_tipo_bien:$('#est_tipo').val()
+        }, res=>{ 
+            if(res.status=='ok') location.reload(); 
+        },'json'); 
+    }
+
     function agregarCampoManual() { $('#lista_campos_manual').append(`<div class="input-group mb-2"><input type="text" name="campos[]" class="form-control" placeholder="Nombre Campo"><button type="button" class="btn btn-outline-danger" onclick="this.parentElement.remove()"><i class="fas fa-trash"></i></button></div>`); }
     if(document.getElementById('formCrearManual')) { document.getElementById('formCrearManual').addEventListener('submit', function(e) { e.preventDefault(); let nombre = document.getElementById('manual_nombre').value; let campos = []; document.querySelectorAll('input[name="campos[]"]').forEach(i => { if(i.value.trim()) campos.push(i.value.trim()); }); if(campos.length === 0 && !confirm("¿Crear vacía?")) return; $.post('ajax_crear_estructura_manual.php', {nombre_categoria: nombre, campos: campos}, function(res) { if(JSON.parse(res).status === 'ok') location.reload(); else alert('Error'); }); }); }
     </script>

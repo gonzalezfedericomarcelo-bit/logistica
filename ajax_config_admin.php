@@ -106,12 +106,24 @@ try {
         $pdo->prepare("UPDATE inventario_config_modelos SET nombre = ?, id_marca = ? WHERE id_modelo = ?")->execute([$_POST['valor'], $_POST['id_marca'], $_POST['id']]);
         $response = ['status'=>'ok'];
     }
+    // --- GESTIÓN DE ESTADOS (ACTUALIZADO) ---
     elseif ($accion == 'add_estado') {
-        $pdo->prepare("INSERT INTO inventario_estados (nombre, ambito) VALUES (?, ?)")->execute([$_POST['valor'], $_POST['ambito']]);
+        // Si viene un ID específico lo usamos, si es 'general' o vacío guardamos NULL
+        $id_tipo = (!empty($_POST['id_tipo_bien']) && is_numeric($_POST['id_tipo_bien'])) ? $_POST['id_tipo_bien'] : null;
+        
+        // Mantenemos 'ambito' para compatibilidad, pero la lógica real ahora es el ID
+        $ambito_legacy = $id_tipo ? 'especifico' : 'general'; 
+        
+        $pdo->prepare("INSERT INTO inventario_estados (nombre, ambito, id_tipo_bien) VALUES (?, ?, ?)")
+            ->execute([$_POST['valor'], $ambito_legacy, $id_tipo]);
         $response = ['status'=>'ok'];
     }
     elseif ($accion == 'edit_estado') {
-        $pdo->prepare("UPDATE inventario_estados SET nombre=?, ambito=? WHERE id_estado=?")->execute([$_POST['valor'], $_POST['ambito'], $_POST['id']]);
+        $id_tipo = (!empty($_POST['id_tipo_bien']) && is_numeric($_POST['id_tipo_bien'])) ? $_POST['id_tipo_bien'] : null;
+        $ambito_legacy = $id_tipo ? 'especifico' : 'general';
+
+        $pdo->prepare("UPDATE inventario_estados SET nombre=?, ambito=?, id_tipo_bien=? WHERE id_estado=?")
+            ->execute([$_POST['valor'], $ambito_legacy, $id_tipo, $_POST['id']]);
         $response = ['status'=>'ok'];
     }
     elseif (in_array($accion, ['add_clase', 'add_capacidad', 'add_tipo_it'])) {

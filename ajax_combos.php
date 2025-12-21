@@ -8,28 +8,28 @@ $accion = $_POST['accion'] ?? '';
 
 try {
     // --- ESTADOS (NUEVO) ---
+    // --- ESTADOS (INTELIGENTE) ---
     if ($accion === 'get_estados') {
-        $tipo_bien_id = $_POST['id_tipo_bien'] ?? 0;
+        $tipo_bien_id = isset($_POST['id_tipo_bien']) && is_numeric($_POST['id_tipo_bien']) ? $_POST['id_tipo_bien'] : 0;
         
-        // Detectar si es matafuego para filtrar
-        // (Asumimos ID 1 es matafuego, o buscamos por nombre en otra lógica, 
-        //  aquí usaremos el ambito de la tabla)
-        $ambito = 'general';
+        // Lógica: Traer estados asignados a ESTA categoría O estados Generales (NULL)
+        // Mantenemos compatibilidad con 'ambos'/'general' para los datos viejos que aún no actualices
+        $sql = "SELECT id_estado, nombre FROM inventario_estados 
+                WHERE id_tipo_bien = ? 
+                OR id_tipo_bien IS NULL 
+                OR (id_tipo_bien IS NULL AND ambito = 'ambos')
+                OR (id_tipo_bien IS NULL AND ambito = 'general')";
         
-        // Verificamos si el tipo de bien es "Matafuego" (ajusta el ID según tu DB real)
-        // O podrías pasar el nombre del tipo desde JS. 
-        // Por simplicidad: si piden estados para matafuegos, filtramos.
+        // Si es matafuego legacy, incluimos los viejos marcados como 'matafuego' aunque no tengan ID aún
         $es_matafuego = ($_POST['es_matafuego'] ?? 'false') === 'true';
-        
-        $sql = "SELECT id_estado, nombre FROM inventario_estados WHERE ambito = 'ambos' ";
-        
         if ($es_matafuego) {
-            $sql .= " OR ambito = 'matafuego'";
-        } else {
-            $sql .= " OR ambito = 'general'";
+            $sql .= " OR (ambito = 'matafuego' AND id_tipo_bien IS NULL)";
         }
+
+        $sql .= " ORDER BY nombre ASC";
         
-        $stmt = $pdo->query($sql . " ORDER BY nombre ASC");
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([$tipo_bien_id]);
         echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));
     }
 

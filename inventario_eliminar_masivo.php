@@ -4,41 +4,51 @@ session_start();
 include 'conexion.php';
 include 'funciones_permisos.php';
 
-// Verificación de seguridad básica
 if (!isset($_SESSION['usuario_id']) || !tiene_permiso('acceso_inventario', $pdo)) {
     die("Acceso denegado");
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ids']) && is_array($_POST['ids'])) {
-    $ids = $_POST['ids'];
-    
-    // Convertimos el array de IDs en un string seguro para la consulta (ej: "1,2,5")
-    // Usamos intval para asegurar que sean números y evitar inyecciones
-    $ids_seguros = array_map('intval', $ids);
-    $lista_ids = implode(',', $ids_seguros);
-    
-    if (!empty($lista_ids)) {
-        try {
-            $pdo->beginTransaction();
-            
-            // 1. Borrar los valores dinámicos asociados (Ficha técnica)
-            $sql1 = "DELETE FROM inventario_valores_dinamicos WHERE id_cargo IN ($lista_ids)";
-            $pdo->exec($sql1);
-            
-            // 2. Borrar los cargos (El bien en sí)
-            $sql2 = "DELETE FROM inventario_cargos WHERE id_cargo IN ($lista_ids)";
-            $pdo->exec($sql2);
-            
-            $pdo->commit();
-            header("Location: inventario_lista.php?msg=eliminados_ok");
-        } catch (Exception $e) {
-            $pdo->rollBack();
-            die("Error al eliminar: " . $e->getMessage());
+$accion = $_POST['accion'] ?? '';
+
+try {
+    $pdo->beginTransaction();
+
+    // 1. ELIMINAR SELECCIONADOS (Checkbox)
+    if ($accion === 'eliminar_seleccionados' && isset($_POST['ids']) && is_array($_POST['ids'])) {
+        $ids = array_map('intval', $_POST['ids']);
+        if (!empty($ids)) {
+            $lista = implode(',', $ids);
+            $pdo->exec("DELETE FROM inventario_valores_dinamicos WHERE id_cargo IN ($lista)");
+            $pdo->exec("DELETE FROM inventario_cargos WHERE id_cargo IN ($lista)");
         }
-    } else {
-        header("Location: inventario_lista.php");
+        $msg = "eliminados_ok";
     }
-} else {
-    header("Location: inventario_lista.php");
+
+    // 2. VACIAR CATEGORÍA COMPLETA (Botón Rojo)
+    elseif ($accion === 'vaciar_categoria' && isset($_POST['id_tipo_bien'])) {
+        $id_tipo = $_POST['id_tipo_bien'];
+        if ($id_tipo === 'todas') {
+            $pdo->exec("DELETE FROM inventario_valores_dinamicos");
+            $pdo->exec("DELETE FROM inventario_cargos");
+        } else {
+            // Primero buscamos los IDs para borrar sus hijos
+            $stmt = $pdo->prepare("SELECT id_cargo FROM inventario_cargos WHERE id_tipo_bien = ?");
+            $stmt->execute([$id_tipo]);
+            $ids = $stmt->fetchAll(PDO::FETCH_COLUMN);
+            if (!empty($ids)) {
+                $lista = implode(',', $ids);
+                $pdo->exec("DELETE FROM inventario_valores_dinamicos WHERE id_cargo IN ($lista)");
+                $pdo->exec("DELETE FROM inventario_cargos WHERE id_tipo_bien = '$id_tipo'");
+            }
+        }
+        $msg = "eliminados_ok";
+    }
+
+    $pdo->commit();
+    header("Location: inventario_lista.php?msg=$msg");
+
+} catch (Exception $e) {
+    $pdo->rollBack();
+    die("Error: " . $e->getMessage());
 }
 ?>
