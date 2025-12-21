@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1:3306
--- Tiempo de generación: 20-12-2025 a las 23:24:47
+-- Tiempo de generación: 21-12-2025 a las 02:58:40
 -- Versión del servidor: 11.8.3-MariaDB-log
 -- Versión de PHP: 7.2.34
 
@@ -1322,7 +1322,34 @@ INSERT INTO `inventario_campos_dinamicos` (`id_campo`, `id_tipo_bien`, `etiqueta
 (202, 37, 'Proveedor Service', 'text', 8, 6, NULL),
 (203, 38, 'Modelo', 'text', 1, 6, NULL),
 (205, 34, 'Marca', 'text', 1, 6, NULL),
-(206, 34, 'Modelo', 'text', 2, 6, NULL);
+(206, 34, 'Modelo', 'text', 2, 6, NULL),
+(207, 39, '1', 'text', 1, 6, NULL),
+(208, 39, '2', 'text', 2, 6, NULL),
+(212, 39, '3', 'text', 3, 6, NULL),
+(213, 40, '12', 'text', 1, 6, NULL),
+(214, 40, '123', 'text', 2, 6, NULL),
+(215, 40, '1234', 'text', 3, 6, NULL);
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `inventario_campos_opciones`
+--
+
+CREATE TABLE `inventario_campos_opciones` (
+  `id_opcion` int(11) NOT NULL,
+  `id_campo` int(11) NOT NULL,
+  `valor` varchar(255) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+
+--
+-- Volcado de datos para la tabla `inventario_campos_opciones`
+--
+
+INSERT INTO `inventario_campos_opciones` (`id_opcion`, `id_campo`, `valor`) VALUES
+(1, 213, '123'),
+(2, 214, '123123123'),
+(3, 215, '312312312312');
 
 -- --------------------------------------------------------
 
@@ -1596,7 +1623,8 @@ INSERT INTO `inventario_tipos_bien` (`id_tipo_bien`, `nombre`, `icono`, `descrip
 (34, 'Teléfono', 'fas fa-phone', 'Importada Excel', 2, 'General'),
 (35, 'Informatica', 'fas fa-desktop', 'Importada Excel', 2, 'General'),
 (37, 'Equipos medicos', 'fas fa-hospital', 'Importado masivamente', 2, 'General'),
-(38, 'Refrigeracion', 'fas fa-fan', 'Creado manualmente', 1, 'General');
+(38, 'Refrigeracion', 'fas fa-fan', 'Creado manualmente', 1, 'General'),
+(40, 'Prueba2', 'fas fa-box', 'Creado manualmente', 2, 'General');
 
 -- --------------------------------------------------------
 
@@ -3269,6 +3297,13 @@ ALTER TABLE `inventario_campos_dinamicos`
   ADD PRIMARY KEY (`id_campo`);
 
 --
+-- Indices de la tabla `inventario_campos_opciones`
+--
+ALTER TABLE `inventario_campos_opciones`
+  ADD PRIMARY KEY (`id_opcion`),
+  ADD KEY `id_campo` (`id_campo`);
+
+--
 -- Indices de la tabla `inventario_cargos`
 --
 ALTER TABLE `inventario_cargos`
@@ -3579,7 +3614,13 @@ ALTER TABLE `historial_movimientos`
 -- AUTO_INCREMENT de la tabla `inventario_campos_dinamicos`
 --
 ALTER TABLE `inventario_campos_dinamicos`
-  MODIFY `id_campo` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=207;
+  MODIFY `id_campo` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=216;
+
+--
+-- AUTO_INCREMENT de la tabla `inventario_campos_opciones`
+--
+ALTER TABLE `inventario_campos_opciones`
+  MODIFY `id_opcion` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT de la tabla `inventario_cargos`
@@ -3639,7 +3680,7 @@ ALTER TABLE `inventario_estados`
 -- AUTO_INCREMENT de la tabla `inventario_tipos_bien`
 --
 ALTER TABLE `inventario_tipos_bien`
-  MODIFY `id_tipo_bien` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=39;
+  MODIFY `id_tipo_bien` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=41;
 
 --
 -- AUTO_INCREMENT de la tabla `inventario_transferencias_pendientes`
