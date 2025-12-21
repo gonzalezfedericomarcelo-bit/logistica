@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1:3306
--- Tiempo de generación: 21-12-2025 a las 14:57:42
+-- Tiempo de generación: 21-12-2025 a las 15:25:08
 -- Versión del servidor: 11.8.3-MariaDB-log
 -- Versión de PHP: 7.2.34
 
@@ -1503,9 +1503,9 @@ INSERT INTO `inventario_config_marcas` (`id_marca`, `nombre`, `ambito`) VALUES
 (1, 'HIKVISION', 'camara'),
 (2, 'Panasonic', 'telefono'),
 (3, 'CORADIR', 'informatica'),
-(4, 'Samsung', 'informatica'),
+(4, 'SAMSUNG', 'informatica'),
 (5, 'HP', 'informatica'),
-(6, 'Dell', 'informatica'),
+(6, 'DELL', 'informatica'),
 (7, 'NIXZEN', 'camara'),
 (8, 'FOSCAM', 'camara'),
 (9, 'GENERICO', 'camara'),
@@ -1647,20 +1647,21 @@ CREATE TABLE `inventario_tipos_bien` (
   `icono` varchar(50) DEFAULT 'fas fa-box',
   `descripcion` varchar(255) DEFAULT NULL,
   `tiene_campos_tecnicos` tinyint(1) DEFAULT 0,
-  `categoria_agrupadora` varchar(50) DEFAULT 'General'
+  `categoria_agrupadora` varchar(50) DEFAULT 'General',
+  `color` varchar(20) DEFAULT 'primary'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
 
 --
 -- Volcado de datos para la tabla `inventario_tipos_bien`
 --
 
-INSERT INTO `inventario_tipos_bien` (`id_tipo_bien`, `nombre`, `icono`, `descripcion`, `tiene_campos_tecnicos`, `categoria_agrupadora`) VALUES
-(24, 'Matafuegos', 'fas fa-fire-extinguisher', 'Importada Excel', 2, 'General'),
-(33, 'Cámara de vigilancia', 'fas fa-video', 'Importada Excel', 2, 'General'),
-(34, 'Teléfono', 'fas fa-phone', 'Importada Excel', 2, 'General'),
-(35, 'Informatica', 'fas fa-desktop', 'Importada Excel', 2, 'General'),
-(37, 'Equipos medicos', 'fas fa-hospital', 'Importado masivamente', 2, 'General'),
-(38, 'Refrigeracion', 'fas fa-fan', 'Creado manualmente', 1, 'General');
+INSERT INTO `inventario_tipos_bien` (`id_tipo_bien`, `nombre`, `icono`, `descripcion`, `tiene_campos_tecnicos`, `categoria_agrupadora`, `color`) VALUES
+(24, 'Matafuegos', 'fas fa-fire-extinguisher', 'Importada Excel', 2, 'General', 'primary'),
+(33, 'Cámara de vigilancia', 'fas fa-video', 'Importada Excel', 2, 'General', 'primary'),
+(34, 'Teléfono', 'fas fa-phone', 'Importada Excel', 2, 'General', 'primary'),
+(35, 'Informatica', 'fas fa-desktop', 'Importada Excel', 2, 'General', 'primary'),
+(37, 'Equipos medicos', 'fas fa-hospital', 'Importado masivamente', 2, 'General', 'primary'),
+(38, 'Refrigeracion', 'fas fa-fan', 'Creado manualmente', 1, 'General', 'primary');
 
 -- --------------------------------------------------------
 
