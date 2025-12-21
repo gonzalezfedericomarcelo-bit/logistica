@@ -1,6 +1,5 @@
 <?php
 // Archivo: transferencia_externa_validar.php
-
 ob_start();
 session_start();
 error_reporting(E_ALL);
@@ -16,11 +15,12 @@ $token = $_POST['token'] ?? '';
 $respuesta = ['status' => 'error', 'msg' => 'Acción desconocida'];
 
 try {
-    // --- 1. ENVIAR CÓDIGO ---
+    // 1. ENVIAR OTP
     if ($accion == 'enviar_otp') {
         $email = trim($_POST['email']);
         $otp = rand(100000, 999999);
 
+        // Validar que el token existe y está pendiente
         $stmt = $pdo->prepare("SELECT id_token FROM inventario_transferencias_pendientes WHERE token_hash = ? AND estado='pendiente'");
         $stmt->execute([$token]);
         
@@ -29,74 +29,27 @@ try {
             $stmtUpd->execute([$email, $otp, $token]);
 
             $asunto = "Codigo de Validacion - Transferencia";
-            $cuerpo = "<div style='padding:20px; background:#f4f4f4;'><div style='background:#fff; padding:20px;'><h2>Código: $otp</h2><p>Ingrese este código para validar la transferencia.</p></div></div>";
+            $cuerpo = "<div style='font-family:Arial; padding:20px; background:#f4f4f4;'><div style='background:#fff; padding:30px; border-radius:10px; text-align:center;'><h2>Código: <span style='color:#0d6efd;'>$otp</span></h2><p>Ingrese este código para firmar la entrega del bien.</p></div></div>";
 
             $envio = enviarCorreoNativo($email, $asunto, $cuerpo);
 
             if ($envio === true) {
                 $respuesta = ['status' => 'ok'];
             } else {
-                $respuesta = ['status' => 'error', 'msg' => 'Fallo envío: ' . $envio];
+                $respuesta = ['status' => 'error', 'msg' => 'Error enviando correo: ' . $envio];
             }
         } else {
-            $respuesta = ['status' => 'error', 'msg' => 'Enlace expirado.'];
+            $respuesta = ['status' => 'error', 'msg' => 'El enlace ha expirado o no existe.'];
         }
     }
 
-    // --- 2. CONFIRMAR Y GUARDAR ---
-    if ($accion == 'confirmar') {
+    // 2. SOLO VERIFICAR OTP (NO CONFIRMAR AÚN)
+    if ($accion == 'verificar_otp_only') {
         $otp = $_POST['otp'];
-        
-        $stmt = $pdo->prepare("SELECT * FROM inventario_transferencias_pendientes WHERE token_hash = ? AND token_otp = ? AND estado='pendiente'");
+        $stmt = $pdo->prepare("SELECT id_token FROM inventario_transferencias_pendientes WHERE token_hash = ? AND token_otp = ? AND estado='pendiente'");
         $stmt->execute([$token, $otp]);
-        $trans = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        if ($trans) {
-            // Datos del bien antes de moverlo
-            $bien = $pdo->query("SELECT * FROM inventario_cargos WHERE id_cargo = " . $trans['id_bien'])->fetch(PDO::FETCH_ASSOC);
-            
-            // --- CONSTRUIR UBICACIONES COMPLETAS (Destino + Área) ---
-            $origen_completo = trim(($bien['destino_principal'] ?? '') . ' - ' . ($bien['servicio_ubicacion'] ?? ''));
-            $destino_completo = trim(($trans['nuevo_destino_nombre'] ?? '') . ' - ' . ($trans['nueva_area_nombre'] ?? ''));
-            
-            // Texto para observaciones
-            $obs_detalle = "TRANSFERENCIA EXTERNA COMPLETADA.\n";
-            $obs_detalle .= "Desde: $origen_completo (" . $bien['nombre_responsable'] . ")\n";
-            $obs_detalle .= "Hacia: $destino_completo (" . $trans['nuevo_responsable_nombre'] . ")\n";
-            $obs_detalle .= "Motivo: " . $trans['motivo_transferencia'];
-
-            // INSERTAR HISTORIAL (Con las ubicaciones completas)
-            $sqlH = "INSERT INTO historial_movimientos 
-                    (id_bien, tipo_movimiento, ubicacion_anterior, ubicacion_nueva, usuario_registro, observacion_movimiento, fecha_movimiento) 
-                    VALUES (?, 'Transferencia', ?, ?, ?, ?, NOW())";
-            
-            $pdo->prepare($sqlH)->execute([
-                $trans['id_bien'],
-                $origen_completo, 
-                $destino_completo,
-                $trans['creado_por'],
-                $obs_detalle
-            ]);
-
-            // MOVER EL BIEN
-            $sqlUpd = "UPDATE inventario_cargos SET 
-                       destino_principal = ?, 
-                       servicio_ubicacion = ?, 
-                       nombre_responsable = ?, 
-                       nombre_jefe_servicio = ? 
-                       WHERE id_cargo = ?";
-            
-            $pdo->prepare($sqlUpd)->execute([
-                $trans['nuevo_destino_nombre'], 
-                $trans['nueva_area_nombre'],
-                $trans['nuevo_responsable_nombre'],
-                $trans['nuevo_jefe_nombre'],
-                $trans['id_bien']
-            ]);
-
-            // CERRAR TOKEN
-            $pdo->prepare("UPDATE inventario_transferencias_pendientes SET estado='confirmado' WHERE id_token = ?")->execute([$trans['id_token']]);
-
+        
+        if ($stmt->fetch()) {
             $respuesta = ['status' => 'ok'];
         } else {
             $respuesta = ['status' => 'error', 'msg' => 'Código incorrecto.'];
