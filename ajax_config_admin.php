@@ -1,10 +1,9 @@
 <?php
-// Archivo: ajax_config_admin.php (CON LIMPIEZA DE BUFFER PARA EVITAR ERRORES DE CARGA)
-ob_start(); // Inicia captura de salida
+// Archivo: ajax_config_admin.php (CORREGIDO LÓGICA DE GUARDADO)
+ob_start(); 
 session_start();
 include 'conexion.php';
 
-// Ocultar errores visuales para no romper el JSON
 ini_set('display_errors', 0);
 error_reporting(E_ALL);
 
@@ -16,13 +15,13 @@ $accion = $_POST['accion'] ?? '';
 $response = ['status'=>'error','msg'=>'Accion no valida'];
 
 try {
-    // --- GESTIÓN DE FICHAS Y ESTRUCTURA ---
+    // --- 1. GESTIÓN DE FICHAS Y ESTRUCTURA (EL FIX ESTÁ AQUÍ) ---
     if ($accion == 'get_ficha_campos') {
         $stmt = $pdo->prepare("SELECT id_campo, etiqueta FROM inventario_campos_dinamicos WHERE id_tipo_bien = ? ORDER BY orden ASC");
         $stmt->execute([$_POST['id']]);
         $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
-        ob_end_clean(); // Limpiar cualquier texto basura antes de enviar
+        ob_end_clean(); 
         header('Content-Type: application/json');
         echo json_encode($data);
         exit;
@@ -38,45 +37,46 @@ try {
         $pdo->beginTransaction();
         $id_tipo = $_POST['id'];
 
-        // 1. Datos Básicos
+        // Actualizar Info Básica
         $pdo->prepare("UPDATE inventario_tipos_bien SET nombre=?, icono=?, descripcion=? WHERE id_tipo_bien=?")
             ->execute([trim($_POST['nombre']), $_POST['icono'], $_POST['descripcion'], $id_tipo]);
 
-        // 2. Estructura (Columnas)
-        $campos_enviados = isset($_POST['campos']) ? $_POST['campos'] : [];
-        
-        // ¡IMPORTANTE! Si no envía campos, NO borramos todo ciegamente. 
-        // Solo procesamos si el array existe.
+        // Procesar Columnas
         if (isset($_POST['campos'])) {
-            $ids_mantener = [];
+            $ids_mantener = []; // Lista blanca de IDs para no borrar
             
-            // Obtener orden
+            // Obtener último orden
             $stmtOrd = $pdo->prepare("SELECT MAX(orden) FROM inventario_campos_dinamicos WHERE id_tipo_bien = ?");
             $stmtOrd->execute([$id_tipo]);
             $orden = ($stmtOrd->fetchColumn() ?: 0) + 1;
 
-            foreach ($campos_enviados as $c) {
+            foreach ($_POST['campos'] as $c) {
                 $etiqueta = trim($c['valor']);
                 if(empty($etiqueta)) continue;
 
-                if (isset($c['id']) && is_numeric($c['id'])) {
+                if (isset($c['id']) && is_numeric($c['id']) && $c['id'] > 0) {
+                    // ACTUALIZAR EXISTENTE
                     $pdo->prepare("UPDATE inventario_campos_dinamicos SET etiqueta = ? WHERE id_campo = ?")
                         ->execute([$etiqueta, $c['id']]);
                     $ids_mantener[] = $c['id'];
                 } else {
-                    $pdo->prepare("INSERT INTO inventario_campos_dinamicos (id_tipo_bien, etiqueta, tipo_input, orden) VALUES (?, ?, 'text', ?)")
-                        ->execute([$id_tipo, $etiqueta, $orden++]);
+                    // INSERTAR NUEVO
+                    $stmtIns = $pdo->prepare("INSERT INTO inventario_campos_dinamicos (id_tipo_bien, etiqueta, tipo_input, orden) VALUES (?, ?, 'text', ?)");
+                    $stmtIns->execute([$id_tipo, $etiqueta, $orden++]);
+                    
+                    // ¡¡¡AQUÍ ESTABA EL ERROR!!! 
+                    // Guardamos el ID del recién nacido para que el DELETE de abajo no lo mate
+                    $ids_mantener[] = $pdo->lastInsertId();
                 }
             }
 
-            // Solo borramos los que NO vinieron en la lista (pero la lista debe haber cargado primero)
+            // Borrar solo lo que NO esté en la lista de mantener
             if (!empty($ids_mantener)) {
                 $inQuery = implode(',', array_fill(0, count($ids_mantener), '?'));
                 $pdo->prepare("DELETE FROM inventario_campos_dinamicos WHERE id_tipo_bien = ? AND id_campo NOT IN ($inQuery)")
                     ->execute(array_merge([$id_tipo], $ids_mantener));
-            } elseif (count($campos_enviados) == 0) {
-                // Si la lista vino vacía explícitamente (el usuario borró todo), borramos todo.
-                // PERO el JS ahora previene enviar esto si fue un error de carga.
+            } else {
+                // Si borró todo visualmente, limpiamos todo en BD
                 $pdo->prepare("DELETE FROM inventario_campos_dinamicos WHERE id_tipo_bien = ?")->execute([$id_tipo]);
             }
         }
@@ -85,7 +85,9 @@ try {
         $response = ['status'=>'ok'];
     }
     
-    // --- Resto de acciones (Matafuegos, etc) se mantienen igual ---
+    // --- 2. CONFIGURACIONES SIMPLES (AGREGAR ESTO QUE FALTABA) ---
+    
+    // Matafuegos
     elseif ($accion == 'add_agente') {
         $pdo->prepare("INSERT INTO inventario_config_matafuegos (tipo_carga, vida_util) VALUES (?, ?)")->execute([$_POST['valor'], $_POST['vida_util']]);
         $response = ['status'=>'ok'];
@@ -94,8 +96,67 @@ try {
         $pdo->prepare("UPDATE inventario_config_matafuegos SET tipo_carga=?, vida_util=? WHERE id_config=?")->execute([$_POST['valor'], $_POST['vida_util'], $_POST['id']]);
         $response = ['status'=>'ok'];
     }
+
+    // Marcas (Generales)
+    elseif ($accion == 'add_marca') {
+        $pdo->prepare("INSERT INTO inventario_config_marcas (nombre, ambito) VALUES (?, ?)")->execute([$_POST['valor'], $_POST['ambito']]);
+        $response = ['status'=>'ok'];
+    }
+    elseif ($accion == 'edit_marca') {
+        $pdo->prepare("UPDATE inventario_config_marcas SET nombre = ? WHERE id_marca = ?")->execute([$_POST['valor'], $_POST['id']]);
+        $response = ['status'=>'ok'];
+    }
+
+    // Modelos
+    elseif ($accion == 'add_modelo') {
+        $pdo->prepare("INSERT INTO inventario_config_modelos (nombre, id_marca) VALUES (?, ?)")->execute([$_POST['valor'], $_POST['id_marca']]);
+        $response = ['status'=>'ok'];
+    }
+    elseif ($accion == 'edit_modelo') {
+        $pdo->prepare("UPDATE inventario_config_modelos SET nombre = ?, id_marca = ? WHERE id_modelo = ?")->execute([$_POST['valor'], $_POST['id_marca'], $_POST['id']]);
+        $response = ['status'=>'ok'];
+    }
+
+    // Estados
+    elseif ($accion == 'add_estado') {
+        $pdo->prepare("INSERT INTO inventario_estados (nombre, ambito) VALUES (?, ?)")->execute([$_POST['valor'], $_POST['ambito']]);
+        $response = ['status'=>'ok'];
+    }
+    elseif ($accion == 'edit_estado') {
+        $pdo->prepare("UPDATE inventario_estados SET nombre=?, ambito=? WHERE id_estado=?")->execute([$_POST['valor'], $_POST['ambito'], $_POST['id']]);
+        $response = ['status'=>'ok'];
+    }
+
+    // Genéricos (Clases, Capacidades, Tipos IT)
+    elseif (in_array($accion, ['add_clase', 'add_capacidad', 'add_tipo_it'])) {
+        $tablas = [
+            'add_clase' => ['inventario_config_clases', 'nombre'],
+            'add_capacidad' => ['inventario_config_capacidades', 'capacidad'],
+            'add_tipo_it' => ['inventario_config_tipos_it', 'nombre']
+        ];
+        $t = $tablas[$accion];
+        $pdo->prepare("INSERT INTO {$t[0]} ({$t[1]}) VALUES (?)")->execute([$_POST['valor']]);
+        $response = ['status'=>'ok'];
+    }
+    elseif ($accion == 'edit_simple') {
+        // Edición genérica segura
+        $tablas_permitidas = ['inventario_config_clases', 'inventario_config_capacidades', 'inventario_config_tipos_it'];
+        $tabla = $_POST['tabla'];
+        $campo_id = $_POST['campo_id'];
+        $campo_val = $_POST['campo_val']; // ej: 'nombre' o 'capacidad'
+        
+        if (in_array($tabla, $tablas_permitidas)) {
+            // Validamos nombres de columnas para evitar inyección
+            if (preg_match('/^[a-zA-Z0-9_]+$/', $campo_val) && preg_match('/^[a-zA-Z0-9_]+$/', $campo_id)) {
+                $sql = "UPDATE $tabla SET $campo_val = ? WHERE $campo_id = ?";
+                $pdo->prepare($sql)->execute([$_POST['valor'], $_POST['id']]);
+                $response = ['status'=>'ok'];
+            }
+        }
+    }
+
+    // Eliminaciones
     elseif (strpos($accion, 'del_') === 0) {
-        // Mapeo simple de borrado
         $tablas = [
             'del_ficha' => ['inventario_tipos_bien', 'id_tipo_bien'],
             'del_agente' => ['inventario_config_matafuegos', 'id_config'],
@@ -111,14 +172,13 @@ try {
             $response = ['status'=>'ok'];
         }
     }
-    // Agrega aquí los add/edit simples si faltan, pero lo crítico es lo de arriba.
 
 } catch (Exception $e) {
     if($pdo->inTransaction()) $pdo->rollBack();
     $response = ['status'=>'error', 'msg'=>$e->getMessage()];
 }
 
-ob_end_clean(); // Limpieza final
+ob_end_clean(); 
 header('Content-Type: application/json');
 echo json_encode($response);
 ?>

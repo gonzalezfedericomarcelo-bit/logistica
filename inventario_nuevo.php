@@ -396,9 +396,22 @@ foreach($tipos_bien as $tb) {
                             input = crearSelectDB(name, 'get_tipos_it', 'select-tipo-it input-autoname');
                         }
                         // DEFECTO
+                        // DEFECTO (Y LOGICA DESPLEGABLES DINÁMICOS)
                         else {
-                            var type = c.tipo_entrada === 'date' ? 'date' : 'text';
-                            input = `<input type="${type}" name="${name}" class="form-control">`;
+                            // SI TIENE OPCIONES PREDEFINIDAS, USAMOS UN SELECT
+                            if (c.opciones && c.opciones.length > 0) {
+                                input = `<select name="${name}" class="form-select input-autoname">
+                                            <option value="">-- Seleccionar --</option>`;
+                                c.opciones.forEach(op => {
+                                    input += `<option value="${op}">${op}</option>`;
+                                });
+                                input += `</select>`;
+                            } 
+                            // SI NO TIENE OPCIONES, USAMOS INPUT DE TEXTO NORMAL
+                            else {
+                                var type = c.tipo_entrada === 'date' ? 'date' : 'text';
+                                input = `<input type="${type}" name="${name}" class="form-control">`;
+                            }
                         }
 
                         html += `<div class="col-md-6"><label class="small fw-bold text-muted">${c.etiqueta}</label>${input}</div>`;
