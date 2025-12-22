@@ -1,5 +1,5 @@
 <?php
-// Archivo: inventario_config.php (CORREGIDO: Nombres de colores en la tabla)
+// Archivo: inventario_config.php (CORREGIDO Y SIN SQL NUEVO)
 session_start();
 include 'conexion.php';
 include 'funciones_permisos.php';
@@ -8,7 +8,29 @@ if (!isset($_SESSION['usuario_id']) || !tiene_permiso('configuracion_acceso', $p
     header("Location: dashboard.php"); exit();
 }
 
-// --- HELPERS DB ---
+// --- NUEVA LÓGICA: GUARDAR MEMBRETE EN ARCHIVO (SIN SQL) ---
+$archivo_pdf_conf = 'config_pdf.json';
+
+// Si se envía el formulario para cambiar el texto del PDF
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion_membrete'])) {
+    $nuevo_titulo = trim($_POST['texto_membrete']);
+    // Guardamos esto en un archivo JSON local para no tocar la BD
+    file_put_contents($archivo_pdf_conf, json_encode(['titulo' => $nuevo_titulo]));
+    // Recargamos para ver cambios
+    header("Location: inventario_config.php"); exit();
+}
+
+// Leemos la configuración actual (si existe)
+$titulo_actual = "Reporte de Inventario"; // Valor por defecto
+if (file_exists($archivo_pdf_conf)) {
+    $data_conf = json_decode(file_get_contents($archivo_pdf_conf), true);
+    if (isset($data_conf['titulo'])) {
+        $titulo_actual = $data_conf['titulo'];
+    }
+}
+// ------------------------------------------------------------
+
+// --- HELPERS DB (Tus funciones originales) ---
 function getTable($pdo, $table, $order='nombre') {
     try { return $pdo->query("SELECT * FROM $table ORDER BY $order ASC")->fetchAll(PDO::FETCH_ASSOC); } 
     catch (PDOException $e) { return []; }
@@ -65,12 +87,7 @@ $all_marcas_tel = getMarcas($pdo, 'telefono');
         .icon-btn:hover { background: #f0f0f0; transform: scale(1.1); border-color: #0d6efd; }
 
         /* --- PALETA EXTENDIDA (20+ COLORES) --- */
-        /* Definimos Borde, Fondo y Texto para cada color nuevo */
-        
-        /* Bootstrap Base */
         .text-indigo { color: #6610f2 !important; } .bg-indigo { background-color: #6610f2 !important; } .border-indigo { border-color: #6610f2 !important; } .btn-indigo { background-color: #6610f2; color: white; }
-        
-        /* Nuevos Colores */
         .text-purple { color: #6f42c1 !important; } .bg-purple { background-color: #6f42c1 !important; } .border-purple { border-color: #6f42c1 !important; } .btn-purple { background-color: #6f42c1; color: white; }
         .text-pink { color: #d63384 !important; } .bg-pink { background-color: #d63384 !important; } .border-pink { border-color: #d63384 !important; } .btn-pink { background-color: #d63384; color: white; }
         .text-orange { color: #fd7e14 !important; } .bg-orange { background-color: #fd7e14 !important; } .border-orange { border-color: #fd7e14 !important; } .btn-orange { background-color: #fd7e14; color: white; }
@@ -115,7 +132,6 @@ $all_marcas_tel = getMarcas($pdo, 'telefono');
                             <thead class="table-light"><tr><th>Icono</th><th>Nombre</th><th>Descripción</th><th>Color</th><th>Acción</th></tr></thead>
                             <tbody>
                                 <?php foreach ($tipos_bien as $t): 
-                                    // MAPA COMPLETO DE COLORES (Aquí estaba el error)
                                     $coloresMap = [
                                         'primary'=>'Azul', 'secondary'=>'Gris', 'success'=>'Verde', 'danger'=>'Rojo', 'warning'=>'Amarillo', 'info'=>'Celeste', 'dark'=>'Negro', 'indigo'=>'Índigo',
                                         'purple'=>'Púrpura', 'pink'=>'Rosa', 'orange'=>'Naranja', 'teal'=>'Turquesa', 'brown'=>'Marrón', 'blue-grey'=>'Gris Azulado',
@@ -149,7 +165,6 @@ $all_marcas_tel = getMarcas($pdo, 'telefono');
                 $esCamara = (strpos($nombre, 'cámara') !== false || strpos($nombre, 'camara') !== false);
                 $esTelefono = (strpos($nombre, 'teléfono') !== false || strpos($nombre, 'telefono') !== false);
                 
-                // Usamos el color de la BD para el borde de la tarjeta
                 $color = $dt['color'] ?? 'info';
             ?>
             <div class="tab-pane fade" id="dyn_<?php echo $dt['id_tipo_bien']; ?>">
@@ -280,6 +295,20 @@ $all_marcas_tel = getMarcas($pdo, 'telefono');
             </div>
 
             <div class="tab-pane fade" id="herramientas">
+                <div class="card border-dark mb-4 shadow-sm">
+                    <div class="card-header bg-dark text-white fw-bold"><i class="fas fa-file-pdf me-2"></i> Título del Reporte PDF</div>
+                    <div class="card-body">
+                        <form method="POST">
+                            <input type="hidden" name="accion_membrete" value="guardar">
+                            <div class="input-group">
+                                <span class="input-group-text">Título / Año:</span>
+                                <input type="text" name="texto_membrete" class="form-control fw-bold" value="<?php echo htmlspecialchars($titulo_actual); ?>" placeholder="Ej: Inventario 2025">
+                                <button type="submit" class="btn btn-success">Guardar</button>
+                            </div>
+                            <small class="text-muted">Esto cambiará el título principal en tus reportes PDF.</small>
+                        </form>
+                    </div>
+                 </div>
                  <div class="card border-primary mb-4 shadow-sm">
                     <div class="card-header bg-primary text-white fw-bold"><i class="fas fa-magic me-2"></i> Creador Manual</div>
                     <div class="card-body">

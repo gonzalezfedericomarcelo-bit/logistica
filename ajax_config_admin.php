@@ -1,5 +1,5 @@
 <?php
-// Archivo: ajax_config_admin.php (SOPORTE PARA COLORES DINÁMICOS)
+// Archivo: ajax_config_admin.php (CON GESTIÓN DE MEMBRETES ANUALES)
 ob_start(); 
 session_start();
 include 'conexion.php';
@@ -28,7 +28,6 @@ try {
     }
 
     elseif ($accion == 'add_ficha') {
-        // AHORA GUARDAMOS EL COLOR
         $color = $_POST['color'] ?? 'primary';
         $pdo->prepare("INSERT INTO inventario_tipos_bien (nombre, icono, descripcion, color, tiene_campos_tecnicos) VALUES (?, ?, ?, ?, 2)")
             ->execute([trim($_POST['nombre']), $_POST['icono'], $_POST['descripcion'], $color]);
@@ -40,11 +39,9 @@ try {
         $id_tipo = $_POST['id'];
         $color = $_POST['color'] ?? 'primary';
 
-        // Actualizar Info Básica INCLUYENDO COLOR
         $pdo->prepare("UPDATE inventario_tipos_bien SET nombre=?, icono=?, descripcion=?, color=? WHERE id_tipo_bien=?")
             ->execute([trim($_POST['nombre']), $_POST['icono'], $_POST['descripcion'], $color, $id_tipo]);
 
-        // Procesar Columnas y Dependencias
         if (isset($_POST['campos'])) {
             $ids_mantener = [];
             $stmtOrd = $pdo->prepare("SELECT MAX(orden) FROM inventario_campos_dinamicos WHERE id_tipo_bien = ?");
@@ -81,7 +78,7 @@ try {
         $response = ['status'=>'ok'];
     }
     
-    // --- 2. CONFIGURACIONES SIMPLES (Mantiene todo lo anterior) ---
+    // --- 2. CONFIGURACIONES SIMPLES ---
     elseif ($accion == 'add_agente') {
         $pdo->prepare("INSERT INTO inventario_config_matafuegos (tipo_carga, vida_util) VALUES (?, ?)")->execute([$_POST['valor'], $_POST['vida_util']]);
         $response = ['status'=>'ok'];
@@ -106,14 +103,9 @@ try {
         $pdo->prepare("UPDATE inventario_config_modelos SET nombre = ?, id_marca = ? WHERE id_modelo = ?")->execute([$_POST['valor'], $_POST['id_marca'], $_POST['id']]);
         $response = ['status'=>'ok'];
     }
-    // --- GESTIÓN DE ESTADOS (ACTUALIZADO) ---
     elseif ($accion == 'add_estado') {
-        // Si viene un ID específico lo usamos, si es 'general' o vacío guardamos NULL
         $id_tipo = (!empty($_POST['id_tipo_bien']) && is_numeric($_POST['id_tipo_bien'])) ? $_POST['id_tipo_bien'] : null;
-        
-        // Mantenemos 'ambito' para compatibilidad, pero la lógica real ahora es el ID
         $ambito_legacy = $id_tipo ? 'especifico' : 'general'; 
-        
         $pdo->prepare("INSERT INTO inventario_estados (nombre, ambito, id_tipo_bien) VALUES (?, ?, ?)")
             ->execute([$_POST['valor'], $ambito_legacy, $id_tipo]);
         $response = ['status'=>'ok'];
@@ -121,7 +113,6 @@ try {
     elseif ($accion == 'edit_estado') {
         $id_tipo = (!empty($_POST['id_tipo_bien']) && is_numeric($_POST['id_tipo_bien'])) ? $_POST['id_tipo_bien'] : null;
         $ambito_legacy = $id_tipo ? 'especifico' : 'general';
-
         $pdo->prepare("UPDATE inventario_estados SET nombre=?, ambito=?, id_tipo_bien=? WHERE id_estado=?")
             ->execute([$_POST['valor'], $ambito_legacy, $id_tipo, $_POST['id']]);
         $response = ['status'=>'ok'];
@@ -155,12 +146,22 @@ try {
             'del_tipo_it' => ['inventario_config_tipos_it', 'id_tipo_it'],
             'del_marca' => ['inventario_config_marcas', 'id_marca'],
             'del_modelo' => ['inventario_config_modelos', 'id_modelo'],
-            'del_estado' => ['inventario_estados', 'id_estado']
+            'del_estado' => ['inventario_estados', 'id_estado'],
+            'del_membrete' => ['inventario_config_membretes', 'anio'] // <--- NUEVO: Para borrar membretes
         ];
         if(isset($tablas[$accion])) {
             $pdo->prepare("DELETE FROM {$tablas[$accion][0]} WHERE {$tablas[$accion][1]} = ?")->execute([$_POST['id']]);
             $response = ['status'=>'ok'];
         }
+    }
+
+    // --- 3. GESTIÓN DE MEMBRETES (NUEVO) ---
+    elseif ($accion == 'add_membrete') {
+        $anio = (int)$_POST['anio'];
+        $texto = trim($_POST['texto']);
+        // REPLACE INTO funciona como "Insertar o Actualizar si ya existe la clave primaria (año)"
+        $pdo->prepare("REPLACE INTO inventario_config_membretes (anio, texto) VALUES (?, ?)")->execute([$anio, $texto]);
+        $response = ['status'=>'ok'];
     }
 
 } catch (Exception $e) {

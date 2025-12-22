@@ -1,5 +1,5 @@
 <?php
-// Archivo: inventario_nuevo.php (IOSFA AGREGADO + ETIQUETAS CORRECTAS)
+// Archivo: inventario_nuevo.php (SISTEMA DE FIRMAS HD INTEGRADO)
 session_start();
 include 'conexion.php';
 include 'funciones_permisos.php'; 
@@ -39,10 +39,43 @@ foreach($tipos_bien as $tb) {
         .preview-firma { height: 100px; border: 2px dashed #ccc; display: flex; align-items: center; justify-content: center; cursor: pointer; background: #fff; transition: 0.2s; }
         .preview-firma:hover { border-color: #0d6efd; background-color: #f0f8ff; }
         .preview-firma img { max-height: 100%; max-width: 100%; }
-        #canvasContainer { width: 98%; height: 85vh; background: #fff; margin: auto; border: 2px solid #ccc; box-shadow: 0 4px 10px rgba(0,0,0,0.1); position: relative; }
-        @media (min-width: 768px) { #canvasContainer { width: 95%; margin: auto; height: 70vh; } }
-        .firma-linea { position: absolute; bottom: 80px; left: 5%; right: 5%; border-bottom: 2px solid #000; z-index: 1; pointer-events: none; }
-        .sign-instruction { position: absolute; bottom: 20px; width: 100%; text-align: center; color: #555; font-weight: bold; font-size: 1.2rem; pointer-events: none; text-transform: uppercase; }
+        
+        /* ESTILOS DE FIRMA MEJORADOS (IGUAL A PERFIL) */
+        #canvasContainer { 
+            width: 95%; 
+            height: 70vh; /* Altura cómoda vertical */
+            background: #fff; 
+            margin: auto; 
+            border: 2px solid #ccc; 
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1); 
+            position: relative; 
+            border-radius: 8px;
+        }
+        
+        .firma-linea { 
+            position: absolute; 
+            top: 70%; 
+            left: 10%; 
+            right: 10%; 
+            border-bottom: 2px solid #333; 
+            z-index: 1; 
+            pointer-events: none; 
+            opacity: 0.5;
+        }
+        
+        .sign-instruction { 
+            position: absolute; 
+            top: 75%; 
+            width: 100%; 
+            text-align: center; 
+            color: #777; 
+            font-weight: bold; 
+            font-size: 0.9rem; 
+            pointer-events: none; 
+            text-transform: uppercase; 
+            letter-spacing: 2px;
+        }
+        
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
     </style>
 </head>
@@ -150,7 +183,29 @@ foreach($tipos_bien as $tb) {
     </div>
 
     <div class="modal fade" id="modalFirma" tabindex="-1" data-bs-backdrop="static">
-        <div class="modal-dialog modal-fullscreen"> <div class="modal-content"> <div class="modal-header bg-dark text-white py-2"><h6 class="modal-title">Firmar: <span id="lblRolFirma"></span></h6><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div><div class="modal-body bg-light d-flex align-items-center justify-content-center p-0"><div id="canvasContainer"><canvas id="signaturePad" style="width:100%; height:100%; display:block;"></canvas><div class="firma-linea"></div><div class="sign-instruction">FIRME SOBRE LA LÍNEA</div></div></div><div class="modal-footer justify-content-center"><button class="btn btn-outline-danger px-4 me-3" onclick="limpiarFirma()">Borrar</button><button class="btn btn-success px-5 fw-bold" onclick="guardarFirma()">ACEPTAR</button></div></div></div>
+        <div class="modal-dialog modal-fullscreen"> 
+            <div class="modal-content"> 
+                <div class="modal-header bg-dark text-white py-2 shadow">
+                    <h6 class="modal-title">Firmar: <span id="lblRolFirma"></span></h6>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body bg-light d-flex align-items-center justify-content-center p-0">
+                    <div id="canvasContainer">
+                        <canvas id="signaturePad" style="width:100%; height:100%; display:block; touch-action: none;"></canvas>
+                        <div class="firma-linea"></div>
+                        <div class="sign-instruction">FIRME SOBRE LA LÍNEA</div>
+                    </div>
+                </div>
+                <div class="modal-footer justify-content-center bg-white">
+                    <button class="btn btn-outline-danger px-4 me-3 rounded-pill" onclick="limpiarFirma()">
+                        <i class="fas fa-eraser me-2"></i>Borrar
+                    </button>
+                    <button class="btn btn-success px-5 fw-bold rounded-pill shadow" onclick="guardarFirma()">
+                        <i class="fas fa-check me-2"></i>ACEPTAR
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
@@ -238,7 +293,6 @@ foreach($tipos_bien as $tb) {
         }
 
         // ... RESTO DE TU JS INTACTO (Combos, Firmas, Reset) ...
-        // (Copio las funciones base para que funcione todo)
         function crearSelectDB(name, accion, classes, extraData={}) {
             let tempId = 'sel_' + Math.random().toString(36).substr(2, 9);
             setTimeout(() => {
@@ -343,16 +397,58 @@ foreach($tipos_bien as $tb) {
 
         $('.select2').select2({ theme: 'bootstrap-5' });
         inicializarLogicaCombos();
-        let signaturePad = null; let rolActivo = '';
+
+        // --- SISTEMA DE FIRMAS MEJORADO (HIGH DPI) ---
+        let signaturePad = null; 
+        let rolActivo = '';
         const modalFirma = new bootstrap.Modal(document.getElementById('modalFirma'));
-        function abrirFirma(rol, titulo) { rolActivo = rol; $('#lblRolFirma').text(titulo); modalFirma.show(); }
-        document.getElementById('modalFirma').addEventListener('shown.bs.modal', function() { let canvas = document.getElementById('signaturePad'); canvas.width = canvas.parentElement.offsetWidth; canvas.height = canvas.parentElement.offsetHeight; signaturePad = new SignaturePad(canvas); });
-        function limpiarFirma() { signaturePad.clear(); }
+
+        function abrirFirma(rol, titulo) { 
+            rolActivo = rol; 
+            $('#lblRolFirma').text(titulo); 
+            modalFirma.show(); 
+        }
+
+        // Evento al abrir modal: INICIALIZACIÓN HD (Igual que Perfil)
+        document.getElementById('modalFirma').addEventListener('shown.bs.modal', function() { 
+            let canvas = document.getElementById('signaturePad');
+            let container = document.getElementById('canvasContainer');
+            
+            // CÁLCULO DE DPI (ESTO ES LO QUE DA LA NITIDEZ)
+            var ratio = Math.max(window.devicePixelRatio || 1, 1);
+            
+            canvas.width = container.offsetWidth * ratio;
+            canvas.height = container.offsetHeight * ratio;
+            canvas.getContext("2d").scale(ratio, ratio);
+            
+            if (signaturePad) signaturePad.clear();
+            
+            signaturePad = new SignaturePad(canvas, {
+                minWidth: 1,
+                maxWidth: 2.5,
+                penColor: "rgb(0, 0, 0)",
+                velocityFilterWeight: 0.7
+            });
+        });
+
+        function limpiarFirma() { 
+            if(signaturePad) signaturePad.clear(); 
+        }
+
         function guardarFirma() {
-            if (signaturePad.isEmpty()) return alert('Debe firmar sobre la línea');
-            let data = signaturePad.toDataURL();
+            if (!signaturePad || signaturePad.isEmpty()) {
+                return alert('Debe firmar sobre la línea para aceptar.');
+            }
+            // Guardar PNG Alta Definición
+            let data = signaturePad.toDataURL('image/png');
+            
+            // Asignar al input oculto correspondiente según el rol activo
             $('#base64_' + rolActivo).val(data);
-            $('#preview_' + rolActivo).html(`<img src="${data}" style="max-height:100%; max-width:100%;">`);
+            
+            // Mostrar Preview
+            $('#preview_' + rolActivo).html(`<img src="${data}" style="max-height:100%; max-width:100%;">`)
+                                      .css({'background-color': '#e8f5e9', 'border-color': '#28a745'});
+            
             modalFirma.hide();
         }
     </script>
