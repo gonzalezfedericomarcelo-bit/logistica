@@ -1,5 +1,6 @@
 <?php
-// Archivo: inventario_nuevo.php (CON SELECCIÓN DE USUARIOS DE SISTEMA)
+// Archivo: inventario_nuevo.php
+// OBJETIVO: Permitir selección de usuarios de sistema O firma remota para generar token después.
 session_start();
 include 'conexion.php';
 include 'funciones_permisos.php'; 
@@ -29,7 +30,7 @@ foreach($tipos_bien as $tb) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nuevo Item</title>
+    <title>Nuevo Item | Inventario</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
     <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
@@ -44,16 +45,10 @@ foreach($tipos_bien as $tb) {
         .preview-firma img { max-height: 100%; max-width: 100%; }
         .firma-disabled { background-color: #e9ecef; cursor: not-allowed; border-color: #adb5bd; color: #6c757d; }
         
-        /* ESTILOS DE FIRMA MEJORADOS */
         #canvasContainer { 
-            width: 95%; 
-            height: 70vh; 
-            background: #fff; 
-            margin: auto; 
-            border: 2px solid #ccc; 
-            box-shadow: 0 10px 25px rgba(0,0,0,0.1); 
-            position: relative; 
-            border-radius: 8px;
+            width: 95%; height: 70vh; background: #fff; margin: auto; 
+            border: 2px solid #ccc; box-shadow: 0 10px 25px rgba(0,0,0,0.1); 
+            position: relative; border-radius: 8px;
         }
         .firma-linea { position: absolute; top: 70%; left: 10%; right: 10%; border-bottom: 2px solid #333; z-index: 1; pointer-events: none; opacity: 0.5; }
         .sign-instruction { position: absolute; top: 75%; width: 100%; text-align: center; color: #777; font-weight: bold; font-size: 0.9rem; pointer-events: none; text-transform: uppercase; letter-spacing: 2px; }
@@ -145,9 +140,13 @@ foreach($tipos_bien as $tb) {
                                 <div class="col-md-4">
                                     <div class="btn-group w-100" role="group">
                                         <input type="radio" class="btn-check" name="modo_responsable" id="resp_manual" value="manual" checked onchange="toggleMode('responsable', 'manual')">
-                                        <label class="btn btn-outline-secondary btn-sm" for="resp_manual">Manual / Externo</label>
+                                        <label class="btn btn-outline-secondary btn-sm" for="resp_manual">Manual</label>
+                                        
                                         <input type="radio" class="btn-check" name="modo_responsable" id="resp_sistema" value="sistema" onchange="toggleMode('responsable', 'sistema')">
                                         <label class="btn btn-outline-secondary btn-sm" for="resp_sistema">Usuario Sistema</label>
+
+                                        <input type="radio" class="btn-check" name="modo_responsable" id="resp_remoto" value="remoto" onchange="toggleMode('responsable', 'remoto')">
+                                        <label class="btn btn-outline-secondary btn-sm" for="resp_remoto">Firma Remota</label>
                                     </div>
                                 </div>
                                 <div class="col-md-6">
@@ -159,7 +158,10 @@ foreach($tipos_bien as $tb) {
                                                 <option value="<?php echo $u['id_usuario']; ?>"><?php echo htmlspecialchars($u['nombre_completo']); ?></option>
                                             <?php endforeach; ?>
                                         </select>
-                                        <small class="text-info"><i class="fas fa-info-circle"></i> Se enviará notificación para firmar.</small>
+                                        <small class="text-info"><i class="fas fa-bell"></i> Se enviará notificación para firmar.</small>
+                                    </div>
+                                    <div id="msg_responsable_remoto" style="display:none;" class="text-warning small">
+                                        <i class="fas fa-link"></i> Se generará un link para firmar externamente.
                                     </div>
                                 </div>
                             </div>
@@ -169,9 +171,13 @@ foreach($tipos_bien as $tb) {
                                 <div class="col-md-4">
                                     <div class="btn-group w-100" role="group">
                                         <input type="radio" class="btn-check" name="modo_jefe" id="jefe_manual" value="manual" checked onchange="toggleMode('jefe', 'manual')">
-                                        <label class="btn btn-outline-secondary btn-sm" for="jefe_manual">Manual / Externo</label>
+                                        <label class="btn btn-outline-secondary btn-sm" for="jefe_manual">Manual</label>
+                                        
                                         <input type="radio" class="btn-check" name="modo_jefe" id="jefe_sistema" value="sistema" onchange="toggleMode('jefe', 'sistema')">
                                         <label class="btn btn-outline-secondary btn-sm" for="jefe_sistema">Usuario Sistema</label>
+
+                                        <input type="radio" class="btn-check" name="modo_jefe" id="jefe_remoto" value="remoto" onchange="toggleMode('jefe', 'remoto')">
+                                        <label class="btn btn-outline-secondary btn-sm" for="jefe_remoto">Firma Remota</label>
                                     </div>
                                 </div>
                                 <div class="col-md-6">
@@ -183,7 +189,10 @@ foreach($tipos_bien as $tb) {
                                                 <option value="<?php echo $u['id_usuario']; ?>"><?php echo htmlspecialchars($u['nombre_completo']); ?></option>
                                             <?php endforeach; ?>
                                         </select>
-                                        <small class="text-info"><i class="fas fa-info-circle"></i> Se enviará notificación para firmar.</small>
+                                        <small class="text-info"><i class="fas fa-bell"></i> Se enviará notificación para firmar.</small>
+                                    </div>
+                                    <div id="msg_jefe_remoto" style="display:none;" class="text-warning small">
+                                        <i class="fas fa-link"></i> Se generará un link para firmar externamente.
                                     </div>
                                 </div>
                             </div>
@@ -281,19 +290,26 @@ foreach($tipos_bien as $tb) {
 
         // --- LÓGICA DE MODO RESPONSABLE/JEFE ---
         function toggleMode(rol, modo) {
+            $('#input_nombre_' + rol).hide();
+            $('#select_' + rol + '_wrapper').hide();
+            $('#msg_' + rol + '_remoto').hide();
+            
             if (modo === 'manual') {
                 $('#input_nombre_' + rol).show();
-                $('#select_' + rol + '_wrapper').hide();
-                // Habilitar firma
                 $('#preview_' + rol).removeClass('firma-disabled').attr('onclick', "abrirFirma('"+rol+"', '"+(rol==='jefe'?'Jefe Servicio':'Responsable')+"')");
                 $('#preview_' + rol).html('<small class="text-muted">Click para firmar</small>');
-            } else {
-                $('#input_nombre_' + rol).hide();
+            
+            } else if (modo === 'sistema') {
                 $('#select_' + rol + '_wrapper').show();
-                // Deshabilitar firma
                 $('#preview_' + rol).addClass('firma-disabled').removeAttr('onclick');
-                $('#preview_' + rol).html('<small class="text-muted"><i class="fas fa-clock"></i> Firma diferida (Notificación)</small>');
-                $('#base64_' + rol).val(''); // Limpiar firma si cambia a sistema
+                $('#preview_' + rol).html('<small class="text-muted"><i class="fas fa-bell"></i> Notificación a Usuario</small>');
+                $('#base64_' + rol).val(''); 
+
+            } else if (modo === 'remoto') {
+                $('#msg_' + rol + '_remoto').show();
+                $('#preview_' + rol).addClass('firma-disabled').removeAttr('onclick');
+                $('#preview_' + rol).html('<small class="text-muted"><i class="fas fa-link"></i> Link Remoto</small>');
+                $('#base64_' + rol).val(''); 
             }
         }
         
@@ -312,6 +328,12 @@ foreach($tipos_bien as $tb) {
                     campos.forEach(function(c) {
                         var label = c.etiqueta.toUpperCase();
                         if (label.includes('IOSFA') || label.includes('PATRIMONIAL')) return;
+                        
+                        // --- CORRECCIÓN SOLICITADA: Renombrar etiqueta N° Serie ---
+                        if (label === 'N° SERIE' || label === 'NUMERO SERIE' || label === 'NO. SERIE') {
+                            c.etiqueta = "N° Serie Fabrica";
+                        }
+                        // --------------------------------------------------------
 
                         var name = 'dinamico[' + c.id_campo + ']';
                         var input = '';
@@ -457,7 +479,6 @@ foreach($tipos_bien as $tb) {
         const modalFirma = new bootstrap.Modal(document.getElementById('modalFirma'));
 
         function abrirFirma(rol, titulo) { 
-            // Si está deshabilitado no abrir
             if ($('#preview_' + rol).hasClass('firma-disabled')) return;
             rolActivo = rol; 
             $('#lblRolFirma').text(titulo); 
