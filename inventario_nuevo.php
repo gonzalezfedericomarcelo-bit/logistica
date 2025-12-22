@@ -1,5 +1,5 @@
 <?php
-// Archivo: inventario_nuevo.php (SISTEMA DE FIRMAS HD INTEGRADO)
+// Archivo: inventario_nuevo.php (CON SELECCIÓN DE USUARIOS DE SISTEMA)
 session_start();
 include 'conexion.php';
 include 'funciones_permisos.php'; 
@@ -8,9 +8,12 @@ if (!isset($_SESSION['usuario_id']) || !tiene_permiso('acceso_inventario', $pdo)
     header("Location: dashboard.php"); exit();
 }
 
+// Cargas de datos
 $tipos_bien = $pdo->query("SELECT * FROM inventario_tipos_bien ORDER BY id_tipo_bien ASC")->fetchAll(PDO::FETCH_ASSOC);
 $destinos = $pdo->query("SELECT * FROM destinos_internos ORDER BY nombre ASC")->fetchAll(PDO::FETCH_ASSOC);
 $relevador = $pdo->query("SELECT nombre_completo FROM usuarios WHERE id_usuario = {$_SESSION['usuario_id']}")->fetch(PDO::FETCH_ASSOC);
+// Lista de usuarios para el select
+$usuarios_sistema = $pdo->query("SELECT id_usuario, nombre_completo FROM usuarios ORDER BY nombre_completo ASC")->fetchAll(PDO::FETCH_ASSOC);
 
 $mapa_tipos = [];
 foreach($tipos_bien as $tb) {
@@ -39,11 +42,12 @@ foreach($tipos_bien as $tb) {
         .preview-firma { height: 100px; border: 2px dashed #ccc; display: flex; align-items: center; justify-content: center; cursor: pointer; background: #fff; transition: 0.2s; }
         .preview-firma:hover { border-color: #0d6efd; background-color: #f0f8ff; }
         .preview-firma img { max-height: 100%; max-width: 100%; }
+        .firma-disabled { background-color: #e9ecef; cursor: not-allowed; border-color: #adb5bd; color: #6c757d; }
         
-        /* ESTILOS DE FIRMA MEJORADOS (IGUAL A PERFIL) */
+        /* ESTILOS DE FIRMA MEJORADOS */
         #canvasContainer { 
             width: 95%; 
-            height: 70vh; /* Altura cómoda vertical */
+            height: 70vh; 
             background: #fff; 
             margin: auto; 
             border: 2px solid #ccc; 
@@ -51,31 +55,8 @@ foreach($tipos_bien as $tb) {
             position: relative; 
             border-radius: 8px;
         }
-        
-        .firma-linea { 
-            position: absolute; 
-            top: 70%; 
-            left: 10%; 
-            right: 10%; 
-            border-bottom: 2px solid #333; 
-            z-index: 1; 
-            pointer-events: none; 
-            opacity: 0.5;
-        }
-        
-        .sign-instruction { 
-            position: absolute; 
-            top: 75%; 
-            width: 100%; 
-            text-align: center; 
-            color: #777; 
-            font-weight: bold; 
-            font-size: 0.9rem; 
-            pointer-events: none; 
-            text-transform: uppercase; 
-            letter-spacing: 2px;
-        }
-        
+        .firma-linea { position: absolute; top: 70%; left: 10%; right: 10%; border-bottom: 2px solid #333; z-index: 1; pointer-events: none; opacity: 0.5; }
+        .sign-instruction { position: absolute; top: 75%; width: 100%; text-align: center; color: #777; font-weight: bold; font-size: 0.9rem; pointer-events: none; text-transform: uppercase; letter-spacing: 2px; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
     </style>
 </head>
@@ -151,30 +132,91 @@ foreach($tipos_bien as $tb) {
                         <div class="row g-3 mb-4">
                             <div class="col-md-8"><label class="fw-bold small text-muted">NOMBRE / DESCRIPCIÓN (Auto)</label><input type="text" name="elemento" id="elemento" class="form-control fw-bold" required></div>
                             <div class="col-md-4"><label class="fw-bold small text-muted">ESTADO OPERATIVO</label><select name="id_estado" id="id_estado" class="form-select"><option>Cargando estados...</option></select></div>
-                            
-                            <div class="col-md-6">
-                                <label class="fw-bold small text-muted">N° CARGO PATRIMONIAL</label>
-                                <input type="text" name="codigo_inventario" class="form-control" placeholder="Ej: 43361">
-                            </div>
-                            <div class="col-md-6">
-                                <label class="fw-bold small text-primary">N° IOSFA SISTEMAS</label>
-                                <input type="text" name="n_iosfa" class="form-control border-primary" placeholder="Ej: 12972">
-                            </div>
-                            
+                            <div class="col-md-6"><label class="fw-bold small text-muted">N° CARGO PATRIMONIAL</label><input type="text" name="codigo_inventario" class="form-control" placeholder="Ej: 43361"></div>
+                            <div class="col-md-6"><label class="fw-bold small text-primary">N° IOSFA SISTEMAS</label><input type="text" name="n_iosfa" class="form-control border-primary" placeholder="Ej: 12972"></div>
                             <div class="col-12"><label class="fw-bold small text-muted">OBSERVACIONES</label><input type="text" name="observaciones" class="form-control"></div>
                         </div>
 
-                        <div class="border-top pt-3">
-                            <div class="row g-3">
-                                <div class="col-md-6"><label class="fw-bold small">Responsable</label><input type="text" name="nombre_responsable" class="form-control" placeholder="Nombre Apellido"></div>
-                                <div class="col-md-6"><label class="fw-bold small">Jefe de Servicio</label><input type="text" name="nombre_jefe_servicio" class="form-control" placeholder="Nombre Apellido"></div>
+                        <div class="border-top pt-3 bg-light p-3 rounded">
+                            <h6 class="text-primary fw-bold mb-3"><i class="fas fa-users me-2"></i>Asignación de Responsables</h6>
+                            
+                            <div class="row g-3 align-items-center mb-3">
+                                <div class="col-md-2"><label class="fw-bold small">Responsable:</label></div>
+                                <div class="col-md-4">
+                                    <div class="btn-group w-100" role="group">
+                                        <input type="radio" class="btn-check" name="modo_responsable" id="resp_manual" value="manual" checked onchange="toggleMode('responsable', 'manual')">
+                                        <label class="btn btn-outline-secondary btn-sm" for="resp_manual">Manual / Externo</label>
+                                        <input type="radio" class="btn-check" name="modo_responsable" id="resp_sistema" value="sistema" onchange="toggleMode('responsable', 'sistema')">
+                                        <label class="btn btn-outline-secondary btn-sm" for="resp_sistema">Usuario Sistema</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <input type="text" name="nombre_responsable" id="input_nombre_responsable" class="form-control" placeholder="Nombre Apellido (Firma ahora)">
+                                    <div id="select_responsable_wrapper" style="display:none;">
+                                        <select name="id_responsable_sistema" id="id_responsable_sistema" class="form-select select2">
+                                            <option value="">-- Buscar Usuario --</option>
+                                            <?php foreach($usuarios_sistema as $u): ?>
+                                                <option value="<?php echo $u['id_usuario']; ?>"><?php echo htmlspecialchars($u['nombre_completo']); ?></option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                        <small class="text-info"><i class="fas fa-info-circle"></i> Se enviará notificación para firmar.</small>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="row mt-3 text-center">
-                                <div class="col-md-4"><div class="card h-100"><div class="card-header py-1 small">Firma Responsable</div><div class="card-body d-flex justify-content-center align-items-center p-2"><div class="preview-firma w-100" id="preview_responsable" onclick="abrirFirma('responsable', 'Responsable')"><small class="text-muted">Click para firmar</small></div><input type="hidden" name="base64_responsable" id="base64_responsable"></div></div></div>
-                                <div class="col-md-4"><div class="card h-100"><div class="card-header py-1 small">Firma Jefe</div><div class="card-body d-flex justify-content-center align-items-center p-2"><div class="preview-firma w-100" id="preview_jefe" onclick="abrirFirma('jefe', 'Jefe Servicio')"><small class="text-muted">Click para firmar</small></div><input type="hidden" name="base64_jefe" id="base64_jefe"></div></div></div>
-                                <div class="col-md-4 d-flex align-items-center justify-content-center"><div class="text-muted small">Relevador: <strong><?php echo $relevador['nombre_completo']; ?></strong><br>Fecha: <?php echo date('d/m/Y'); ?></div></div>
+
+                            <div class="row g-3 align-items-center mb-3">
+                                <div class="col-md-2"><label class="fw-bold small">Jefe Servicio:</label></div>
+                                <div class="col-md-4">
+                                    <div class="btn-group w-100" role="group">
+                                        <input type="radio" class="btn-check" name="modo_jefe" id="jefe_manual" value="manual" checked onchange="toggleMode('jefe', 'manual')">
+                                        <label class="btn btn-outline-secondary btn-sm" for="jefe_manual">Manual / Externo</label>
+                                        <input type="radio" class="btn-check" name="modo_jefe" id="jefe_sistema" value="sistema" onchange="toggleMode('jefe', 'sistema')">
+                                        <label class="btn btn-outline-secondary btn-sm" for="jefe_sistema">Usuario Sistema</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <input type="text" name="nombre_jefe_servicio" id="input_nombre_jefe" class="form-control" placeholder="Nombre Apellido (Firma ahora)">
+                                    <div id="select_jefe_wrapper" style="display:none;">
+                                        <select name="id_jefe_sistema" id="id_jefe_sistema" class="form-select select2">
+                                            <option value="">-- Buscar Jefe --</option>
+                                            <?php foreach($usuarios_sistema as $u): ?>
+                                                <option value="<?php echo $u['id_usuario']; ?>"><?php echo htmlspecialchars($u['nombre_completo']); ?></option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                        <small class="text-info"><i class="fas fa-info-circle"></i> Se enviará notificación para firmar.</small>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row mt-4 text-center">
+                                <div class="col-md-4">
+                                    <div class="card h-100">
+                                        <div class="card-header py-1 small">Firma Responsable</div>
+                                        <div class="card-body d-flex justify-content-center align-items-center p-2">
+                                            <div class="preview-firma w-100" id="preview_responsable" onclick="abrirFirma('responsable', 'Responsable')">
+                                                <small class="text-muted">Click para firmar</small>
+                                            </div>
+                                            <input type="hidden" name="base64_responsable" id="base64_responsable">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="card h-100">
+                                        <div class="card-header py-1 small">Firma Jefe</div>
+                                        <div class="card-body d-flex justify-content-center align-items-center p-2">
+                                            <div class="preview-firma w-100" id="preview_jefe" onclick="abrirFirma('jefe', 'Jefe Servicio')">
+                                                <small class="text-muted">Click para firmar</small>
+                                            </div>
+                                            <input type="hidden" name="base64_jefe" id="base64_jefe">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4 d-flex align-items-center justify-content-center">
+                                    <div class="text-muted small">Relevador: <strong><?php echo $relevador['nombre_completo']; ?></strong><br>Fecha: <?php echo date('d/m/Y'); ?></div>
+                                </div>
                             </div>
                         </div>
+
                         <div class="d-grid mt-4"><button type="submit" class="btn btn-success btn-lg fw-bold">GUARDAR FICHA</button></div>
                     </div>
                 </div>
@@ -236,8 +278,25 @@ foreach($tipos_bien as $tb) {
                 cargarCamposDinamicos(idTipo);
             }
         }
+
+        // --- LÓGICA DE MODO RESPONSABLE/JEFE ---
+        function toggleMode(rol, modo) {
+            if (modo === 'manual') {
+                $('#input_nombre_' + rol).show();
+                $('#select_' + rol + '_wrapper').hide();
+                // Habilitar firma
+                $('#preview_' + rol).removeClass('firma-disabled').attr('onclick', "abrirFirma('"+rol+"', '"+(rol==='jefe'?'Jefe Servicio':'Responsable')+"')");
+                $('#preview_' + rol).html('<small class="text-muted">Click para firmar</small>');
+            } else {
+                $('#input_nombre_' + rol).hide();
+                $('#select_' + rol + '_wrapper').show();
+                // Deshabilitar firma
+                $('#preview_' + rol).addClass('firma-disabled').removeAttr('onclick');
+                $('#preview_' + rol).html('<small class="text-muted"><i class="fas fa-clock"></i> Firma diferida (Notificación)</small>');
+                $('#base64_' + rol).val(''); // Limpiar firma si cambia a sistema
+            }
+        }
         
-        // --- EVITAR DUPLICADOS DE CAMPOS ESTÁTICOS ---
         function cargarCamposDinamicos(idTipo) {
             $.ajax({
                 url: 'ajax_obtener_campos_dinamicos.php',
@@ -252,8 +311,6 @@ foreach($tipos_bien as $tb) {
 
                     campos.forEach(function(c) {
                         var label = c.etiqueta.toUpperCase();
-                        
-                        // SI YA TENEMOS INPUT ESTÁTICO PARA ESTO, NO LO MOSTRAMOS
                         if (label.includes('IOSFA') || label.includes('PATRIMONIAL')) return;
 
                         var name = 'dinamico[' + c.id_campo + ']';
@@ -285,14 +342,12 @@ foreach($tipos_bien as $tb) {
                         }
                         html += `<div class="col-md-6"><label class="small fw-bold text-muted">${c.etiqueta}</label>${input}</div>`;
                     });
-                    
                     $('#render-campos').html(html);
                     inicializarLogicaCombos();
                 }
             });
         }
 
-        // ... RESTO DE TU JS INTACTO (Combos, Firmas, Reset) ...
         function crearSelectDB(name, accion, classes, extraData={}) {
             let tempId = 'sel_' + Math.random().toString(36).substr(2, 9);
             setTimeout(() => {
@@ -352,7 +407,6 @@ foreach($tipos_bien as $tb) {
                     }
                 }
             });
-            // Auto-nombre
             $(document).on('change input', '.input-autoname, #panel-matafuegos select', function() {
                 let nombre = '';
                 if ($('#panel-matafuegos').is(':visible')) {
@@ -398,57 +452,35 @@ foreach($tipos_bien as $tb) {
         $('.select2').select2({ theme: 'bootstrap-5' });
         inicializarLogicaCombos();
 
-        // --- SISTEMA DE FIRMAS MEJORADO (HIGH DPI) ---
         let signaturePad = null; 
         let rolActivo = '';
         const modalFirma = new bootstrap.Modal(document.getElementById('modalFirma'));
 
         function abrirFirma(rol, titulo) { 
+            // Si está deshabilitado no abrir
+            if ($('#preview_' + rol).hasClass('firma-disabled')) return;
             rolActivo = rol; 
             $('#lblRolFirma').text(titulo); 
             modalFirma.show(); 
         }
 
-        // Evento al abrir modal: INICIALIZACIÓN HD (Igual que Perfil)
         document.getElementById('modalFirma').addEventListener('shown.bs.modal', function() { 
             let canvas = document.getElementById('signaturePad');
             let container = document.getElementById('canvasContainer');
-            
-            // CÁLCULO DE DPI (ESTO ES LO QUE DA LA NITIDEZ)
             var ratio = Math.max(window.devicePixelRatio || 1, 1);
-            
             canvas.width = container.offsetWidth * ratio;
             canvas.height = container.offsetHeight * ratio;
             canvas.getContext("2d").scale(ratio, ratio);
-            
             if (signaturePad) signaturePad.clear();
-            
-            signaturePad = new SignaturePad(canvas, {
-                minWidth: 1,
-                maxWidth: 2.5,
-                penColor: "rgb(0, 0, 0)",
-                velocityFilterWeight: 0.7
-            });
+            signaturePad = new SignaturePad(canvas, { minWidth: 1, maxWidth: 2.5, penColor: "rgb(0, 0, 0)", velocityFilterWeight: 0.7 });
         });
 
-        function limpiarFirma() { 
-            if(signaturePad) signaturePad.clear(); 
-        }
-
+        function limpiarFirma() { if(signaturePad) signaturePad.clear(); }
         function guardarFirma() {
-            if (!signaturePad || signaturePad.isEmpty()) {
-                return alert('Debe firmar sobre la línea para aceptar.');
-            }
-            // Guardar PNG Alta Definición
+            if (!signaturePad || signaturePad.isEmpty()) return alert('Debe firmar sobre la línea para aceptar.');
             let data = signaturePad.toDataURL('image/png');
-            
-            // Asignar al input oculto correspondiente según el rol activo
             $('#base64_' + rolActivo).val(data);
-            
-            // Mostrar Preview
-            $('#preview_' + rolActivo).html(`<img src="${data}" style="max-height:100%; max-width:100%;">`)
-                                      .css({'background-color': '#e8f5e9', 'border-color': '#28a745'});
-            
+            $('#preview_' + rolActivo).html(`<img src="${data}" style="max-height:100%; max-width:100%;">`).css({'background-color': '#e8f5e9', 'border-color': '#28a745'});
             modalFirma.hide();
         }
     </script>
