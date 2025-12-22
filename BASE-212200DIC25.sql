@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1:3306
--- Tiempo de generación: 21-12-2025 a las 23:55:53
+-- Tiempo de generación: 22-12-2025 a las 11:22:01
 -- Versión del servidor: 11.8.3-MariaDB-log
 -- Versión de PHP: 7.2.34
 
@@ -1171,6 +1171,24 @@ INSERT INTO `configuracion_sistema` (`id_config`, `clave`, `valor`) VALUES
 -- --------------------------------------------------------
 
 --
+-- Estructura de tabla para la tabla `config_membretes`
+--
+
+CREATE TABLE `config_membretes` (
+  `anio` int(11) NOT NULL,
+  `texto_membrete` varchar(255) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Volcado de datos para la tabla `config_membretes`
+--
+
+INSERT INTO `config_membretes` (`anio`, `texto_membrete`) VALUES
+(2025, '2025 - Año de la reconstrucción Argentina');
+
+-- --------------------------------------------------------
+
+--
 -- Estructura de tabla para la tabla `conversaciones`
 --
 
@@ -1463,7 +1481,7 @@ INSERT INTO `inventario_cargos` (`id_cargo`, `id_tipo_bien`, `id_usuario_relevad
 (583, 35, 2, '2025-12-21 14:26:37', 'CPU GFAST DX ATX-600-5836', '1', NULL, 'DEPÓSITO INFORMÁTICA', 'Importación Masiva.', 'SG Federico González', 'SM Marcelo Cañete', NULL, NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
 (584, 35, 2, '2025-12-21 14:26:37', 'CPU LG AX 540', '1', NULL, 'DEPÓSITO INFORMÁTICA', 'Importación Masiva.', 'SG Federico González', 'SM Marcelo Cañete', NULL, NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '35650', NULL),
 (585, 35, 2, '2025-12-21 14:26:37', 'CPU LG 10212', '1', NULL, 'DEPÓSITO INFORMÁTICA', 'Importación Masiva.', 'SG Federico González', 'SM Marcelo Cañete', NULL, NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-(586, 35, 2, '2025-12-21 20:52:15', 'CPU HP 123465', '1', NULL, 'ASCENSOR DIRECCION', '', 'Juan Pepito', 'CR Arturo Pinguli', 'uploads/firmas/resp_17663611356948882f45fd9.png', 'uploads/firmas/jefe_17663611356948882f4626d.png', NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'PAT3242', 'IOSFA123', NULL);
+(588, 35, 2, '2025-12-21 22:16:37', 'MONITOR DELL MARCA PRIMERO', '1', NULL, 'COCINA DIRECCION', '', 'Juan Pepito', 'CR Arturo Pinguli', 'uploads/firmas/resp_176636619769489bf54fb81.png', 'uploads/firmas/jefe_176636619769489bf54fcee.png', NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'PAT-1683wqe', 'IOSFA123', NULL);
 
 -- --------------------------------------------------------
 
@@ -1582,6 +1600,24 @@ INSERT INTO `inventario_config_matafuegos` (`id_config`, `tipo_carga`, `vida_uti
 (7, 'CO2', 20, 20),
 (10, 'Haloclean', 20, 20),
 (11, '123', 20, 20);
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `inventario_config_membretes`
+--
+
+CREATE TABLE `inventario_config_membretes` (
+  `anio` int(11) NOT NULL,
+  `texto` varchar(255) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Volcado de datos para la tabla `inventario_config_membretes`
+--
+
+INSERT INTO `inventario_config_membretes` (`anio`, `texto`) VALUES
+(2025, '\"2025 - AÑO DE LA RECONSTRUCCIÓN DE LA NACIÓN ARGENTINA\"');
 
 -- --------------------------------------------------------
 
@@ -2211,7 +2247,15 @@ INSERT INTO `inventario_valores_dinamicos` (`id_valor`, `id_cargo`, `id_campo`, 
 (2825, 584, 182, 'LG'),
 (2826, 584, 183, 'AX 540'),
 (2827, 585, 182, 'LG'),
-(2828, 585, 183, '10212');
+(2828, 585, 183, '10212'),
+(2829, 587, 181, 'MONITOR'),
+(2830, 587, 182, 'SAMSUNG'),
+(2831, 587, 183, ''),
+(2832, 587, 184, 'mon3243252'),
+(2833, 588, 181, 'MONITOR'),
+(2834, 588, 182, 'DELL'),
+(2835, 588, 183, ''),
+(2836, 588, 184, 'mon3243252');
 
 -- --------------------------------------------------------
 
@@ -3317,7 +3361,7 @@ CREATE TABLE `usuarios` (
 --
 
 INSERT INTO `usuarios` (`id_usuario`, `nombre_completo`, `grado`, `usuario`, `password`, `email`, `telefono`, `genero`, `rol`, `foto_perfil`, `firma_imagen_path`, `fecha_creacion`, `activo`, `reset_pendiente`, `chat_notificacion_leida`, `fecha_nacimiento`, `ultimo_saludo_cumple`) VALUES
-(2, 'Administrador', NULL, 'admin', '$2y$10$QkTMXnNEyoei0ySlLVd8NO8Yp1hER5Ke59oRlqURb1Dm7OJ21CWT6', 'gonzalezmarcelo159@gmail.com', '1166116861', 'masculino', 'admin', 'avatar_2_1764062292.png', 'firma_2_1766267853.png', '2025-11-02 22:39:21', 1, 0, 0, '1991-07-09', 0),
+(2, 'Administrador', NULL, 'admin', '$2y$10$QkTMXnNEyoei0ySlLVd8NO8Yp1hER5Ke59oRlqURb1Dm7OJ21CWT6', 'gonzalezmarcelo159@gmail.com', '1166116861', 'masculino', 'admin', 'avatar_2_1764062292.png', 'firma_2_1766366264.png', '2025-11-02 22:39:21', 1, 0, 0, '1991-07-09', 0),
 (6, 'Marcelo Cañete', 'SM', 'mcanete', '$2y$10$f5.pqoxvAFN/d5F8plvTteV8VmX8LwZMdDIskQNKcL4ou0JFdmMrq', 'marcelo.caniete@iosfa.gob.ar', '', 'masculino', 'encargado', 'user_6_1761797833.png', 'firma_6_1762175616.png', '2025-11-02 22:39:21', 1, 0, 0, '1974-03-09', 2025),
 (7, 'Alejandro Batista', 'AC', 'abatista', '$2y$10$Jfqe/VxnFXtePIbJsTFR6.R5h/S6AbpSM4i662zjVtSq1bValyA36', 'alejandro.batista@iosfa.gob.ar', '', 'masculino', 'encargado', 'user_7_1761797963.png', 'firma_7_1762175675.png', '2025-11-02 22:39:21', 1, 0, 0, NULL, 0),
 (8, 'Ezequiel Paz', 'SG', 'epaz', '$2y$10$pZHakqGgyFJPaZSNlDcfbuMyW0jHoVuvmOi14pDf9L8X.J8XfRlSO', 'epaz@gmail.com', '11 6848-4970', 'masculino', 'empleado', 'default.png', 'firma_8_1762353970.png', '2025-11-02 22:39:21', 1, 0, 0, NULL, 0),
@@ -3325,7 +3369,7 @@ INSERT INTO `usuarios` (`id_usuario`, `nombre_completo`, `grado`, `usuario`, `pa
 (10, 'Luana Villa', 'VS', 'lvilla', '$2y$10$yMbR3zlsAchEfYwUxgdNH.aZ1GAgVr26Rb.w9kn1SKctNbcGkwCUq', 'luana.villa@iosfa.gob.ar', '11 3932-4067', 'femenino', 'auxiliar', 'avatar_10_1763638904.png', 'firma_10_1762175583.png', '2025-11-02 22:39:21', 1, 0, 0, '2021-06-14', 0),
 (11, 'Constanza Pihuala', 'VS', 'cpihuala', '$2y$10$9vCBZlqr/7gM4i7H4XKNF.Qv.DVSkuc0stum.Ib7FKy2Ghm8TeUlW', 'constanza.pihuela@iosfa.gob.ar', '11 2670-1182', 'femenino', 'auxiliar', 'avatar_11_1763639136.png', 'firma_11_1762345413.png', '2025-11-02 22:39:21', 1, 0, 0, '2002-12-15', 2025),
 (13, 'Sebastian Lazzari', 'VS', 'slazzari', '$2y$10$aOLzGIurui9PcT.LDWNmUuGcGSDBRPSMx8KtV973jxz8FEUzltkQi', 'sebastian.lazzari@iosfa.gob.ar', '11 3197-6540', 'masculino', 'empleado', 'avatar_13_1764589808.png', 'firma_13_1766156797.png', '2025-11-02 22:39:21', 1, 0, 0, '2004-10-18', 0),
-(15, 'Federico González', 'SG', 'fgonzalez', '$2y$10$kmhmW5Z8xY7dPzYYN9uLHe7worrWpYmZENdfiDD3ejmCgrYuDkgVy', 'gonzalezfedericomarcelo@gmail.com', '', 'masculino', 'admin', 'avatar_15_1764868292.png', 'firma_15_1762519277.png', '2025-11-02 22:39:21', 1, 0, 0, '2025-12-15', 0),
+(15, 'Federico González', 'SG', 'fgonzalez', '$2y$10$kmhmW5Z8xY7dPzYYN9uLHe7worrWpYmZENdfiDD3ejmCgrYuDkgVy', 'gonzalezfedericomarcelo@gmail.com', '', 'masculino', 'cargopatrimonial', 'avatar_15_1764868292.png', 'firma_15_1766365229.png', '2025-11-02 22:39:21', 1, 0, 0, '2025-12-15', 0),
 (17, 'Ariel Benso', 'VS', 'abenso', '$2y$10$fY4QxyNxhQDc.8iXtcsX5uvI0Iq9PYXkH/CJz4kNdMmM13VdZbJdu', 'airel.benzo@iosfa.gob.ar', '11 2496-3156', 'masculino', 'empleado', 'avatar_17_1764775672.png', 'firma_17_1764775616.png', '2025-11-02 22:39:21', 1, 0, 0, '2002-05-08', 0),
 (18, 'Rocco Bonfiglioli', 'VS', 'rbonfiglioli', '$2y$10$h2g5KIbYnnwocuEH32wsdO.yKW0nqLL3APARV1Uf0l/Tnh6/LCB9i', 'rocco.bonfiglioli@iosfa.gob.ar', '11 3930-6011', 'masculino', 'empleado', 'perfil_18_1762442251.png', 'firma_18_1762442071.png', '2025-11-02 22:39:21', 1, 0, 0, '2005-12-26', 0),
 (19, 'Juan Pablo Hernandez', 'AC', 'jphernandez', '$2y$10$0QRuOwFpRVdyYMwzOJgTJeLcc.iJFAMkVEZ6L4VnVVrV7HPKx1F3e', 'juan.hernandez@iosfa.gob.ar', '1125999143', 'masculino', 'empleado', 'default.png', NULL, '2025-11-02 22:39:21', 1, 0, 0, NULL, 0),
@@ -3481,6 +3525,12 @@ ALTER TABLE `configuracion_sistema`
   ADD UNIQUE KEY `clave` (`clave`);
 
 --
+-- Indices de la tabla `config_membretes`
+--
+ALTER TABLE `config_membretes`
+  ADD PRIMARY KEY (`anio`);
+
+--
 -- Indices de la tabla `conversaciones`
 --
 ALTER TABLE `conversaciones`
@@ -3554,6 +3604,12 @@ ALTER TABLE `inventario_config_marcas`
 --
 ALTER TABLE `inventario_config_matafuegos`
   ADD PRIMARY KEY (`id_config`);
+
+--
+-- Indices de la tabla `inventario_config_membretes`
+--
+ALTER TABLE `inventario_config_membretes`
+  ADD PRIMARY KEY (`anio`);
 
 --
 -- Indices de la tabla `inventario_config_modelos`
@@ -3847,7 +3903,7 @@ ALTER TABLE `inventario_campos_opciones`
 -- AUTO_INCREMENT de la tabla `inventario_cargos`
 --
 ALTER TABLE `inventario_cargos`
-  MODIFY `id_cargo` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=587;
+  MODIFY `id_cargo` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=589;
 
 --
 -- AUTO_INCREMENT de la tabla `inventario_config_capacidades`
@@ -3913,7 +3969,7 @@ ALTER TABLE `inventario_transferencias_pendientes`
 -- AUTO_INCREMENT de la tabla `inventario_valores_dinamicos`
 --
 ALTER TABLE `inventario_valores_dinamicos`
-  MODIFY `id_valor` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2829;
+  MODIFY `id_valor` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2837;
 
 --
 -- AUTO_INCREMENT de la tabla `mensajes`
