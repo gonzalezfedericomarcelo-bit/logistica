@@ -1,6 +1,6 @@
 <?php
 // Archivo: transferencia_externa.php
-// OBJETIVO: Vista de Acta Digital + Firma "Profesional" (Estilo Perfil)
+// OBJETIVO: Vista de Acta Digital + Firma Estilo Perfil + Mensaje Final Profesional.
 session_start();
 include 'conexion.php';
 
@@ -42,33 +42,28 @@ if ($token) {
         .detail-label { font-weight: bold; font-size: 0.85rem; color: #6c757d; text-transform: uppercase; display: block; margin-bottom: 3px; }
         .detail-value { font-size: 1.1rem; color: #000; font-weight: 500; }
         
-        /* ESTILOS DE FIRMA (IDÉNTICOS A PERFIL.PHP) */
+        /* --- ESTILOS DE FIRMA IDÉNTICOS A PERFIL.PHP --- */
         #canvasContainer {
             width: 95%; 
-            height: 60vh; /* Altura cómoda */
+            height: 60vh; 
             background: #fff; 
-            margin: 0 auto;
+            margin: auto; 
             border: 2px solid #ccc; 
-            position: relative; 
             box-shadow: 0 10px 25px rgba(0,0,0,0.1); 
+            position: relative; 
             border-radius: 8px;
         }
         .firma-linea {
-            position: absolute;
-            top: 70%; left: 10%; right: 10%;
-            border-bottom: 2px solid #333;
-            z-index: 1;
-            pointer-events: none; opacity: 0.5;
+            position: absolute; top: 70%; left: 10%; right: 10%;
+            border-bottom: 2px solid #333; z-index: 1; pointer-events: none; opacity: 0.5;
         }
         .firma-texto {
-            position: absolute;
-            top: 75%; width: 100%;
-            text-align: center; color: #777;
-            font-weight: bold; font-size: 0.9rem;
+            position: absolute; top: 75%; width: 100%; text-align: center;
+            color: #777; font-weight: bold; font-size: 0.9rem;
             pointer-events: none; text-transform: uppercase; letter-spacing: 2px;
         }
         
-        /* Modal Steps */
+        /* Pasos del Modal */
         .modal-step { display: none; }
         .modal-step.active { display: block; animation: fadeIn 0.3s; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
@@ -83,12 +78,37 @@ if ($token) {
             <p><?php echo $error; ?></p>
         </div>
     <?php elseif ($yaConfirmado): ?>
+        
         <div class="paper text-center">
-            <i class="fas fa-check-circle text-success fa-5x mb-3"></i>
-            <h2 class="text-success fw-bold">Transferencia Completada</h2>
-            <p class="lead">Esta acta ya ha sido firmada y procesada correctamente.</p>
-            <a href="#" onclick="location.reload()" class="btn btn-outline-primary mt-3">Recargar</a>
+            <div class="mb-4">
+                <i class="fas fa-check-circle text-success fa-5x"></i>
+            </div>
+            <h2 class="text-success fw-bold mb-3">¡Transferencia Exitosa!</h2>
+            
+            <p class="lead text-dark mb-4">
+                La operación ha sido registrada y validada correctamente en nuestro sistema.
+            </p>
+
+            <div class="alert alert-light border shadow-sm d-inline-block text-start p-4" style="max-width: 600px;">
+                <div class="d-flex">
+                    <div class="me-3">
+                        <i class="fas fa-envelope-open-text fa-2x text-primary"></i>
+                    </div>
+                    <div>
+                        <h5 class="fw-bold mb-1">Documentación Enviada</h5>
+                        <p class="mb-0 text-muted">
+                            Se ha enviado una copia del <strong>Acta de Transferencia</strong> y la <strong>Constancia de Movimiento</strong> a su correo electrónico.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-5">
+                <p class="text-muted small mb-1">Cualquier duda o consulta, por favor contacte con administración.</p>
+                <h6 class="fw-bold text-secondary">Saludos, Equipo de Logística</h6>
+            </div>
         </div>
+
     <?php else: ?>
         
         <div class="paper" id="vistaActa">
@@ -211,12 +231,19 @@ if ($token) {
                     <div class="modal-body p-5">
                         <i class="fas fa-check-circle text-success fa-5x mb-3"></i>
                         <h2 class="fw-bold text-success">¡Transferencia Exitosa!</h2>
-                        <p class="lead mb-4">El acta ha sido firmada y procesada correctamente.</p>
-                        <p class="text-muted small">Se ha enviado una copia a su correo electrónico.</p>
-                        <a id="btnDescargaPDF" href="#" class="btn btn-primary btn-lg w-100 mb-3 fw-bold shadow">
-                            <i class="fas fa-file-pdf me-2"></i> DESCARGAR ACTA AHORA
-                        </a>
-                        <button class="btn btn-outline-secondary w-100" onclick="location.reload()">Cerrar</button>
+                        <p class="lead mb-4">La transferencia ha sido completada.</p>
+                        <p class="text-muted small">Puede descargar sus comprobantes:</p>
+                        
+                        <div class="d-grid gap-2">
+                            <a id="btnDescargaActa" href="#" target="_blank" download class="btn btn-primary btn-lg fw-bold shadow">
+                                <i class="fas fa-file-contract me-2"></i> DESCARGAR ACTA
+                            </a>
+                            <a id="btnDescargaConstancia" href="#" target="_blank" download class="btn btn-secondary btn-lg fw-bold shadow">
+                                <i class="fas fa-file-pdf me-2"></i> DESCARGAR CONSTANCIA (ANEXO 4)
+                            </a>
+                        </div>
+
+                        <button class="btn btn-outline-secondary w-100 mt-4" onclick="location.reload()">Cerrar</button>
                     </div>
                 </div>
             </div>
@@ -230,7 +257,6 @@ if ($token) {
     let modal, signaturePad;
     let emailUsuario = ""; 
 
-    // LÓGICA DEL CHECKBOX
     document.getElementById('checkAcepto')?.addEventListener('change', function() {
         document.getElementById('btnIniciarFirma').disabled = !this.checked;
     });
@@ -243,7 +269,6 @@ if ($token) {
     function enviarOTP() {
         let email = document.getElementById('email_input').value;
         if(!email.includes('@')) return alert("Ingrese un email válido.");
-        
         emailUsuario = email; 
         let btn = document.getElementById('btnEnviar');
         btn.disabled = true; btn.innerText = "Enviando...";
@@ -274,40 +299,35 @@ if ($token) {
         document.getElementById('step-2').style.display = 'none';
         document.getElementById('step-3').style.display = 'block';
         
-        // CAMBIAR MODAL A FULLSCREEN PARA FIRMAR CÓMODAMENTE
+        // ACTIVAR FULLSCREEN PARA FIRMAR
         document.getElementById('modalDialog').classList.remove('modal-dialog-centered');
         document.getElementById('modalDialog').classList.add('modal-fullscreen');
 
-        // INICIAR CANVAS CON LÓGICA "PERFIL" (Alta Definición)
+        // INICIAR CANVAS ALTA DEFINICIÓN
         setTimeout(() => {
             let canvas = document.getElementById('signaturePad');
             let container = document.getElementById('canvasContainer');
             
-            // Nitidez
             var ratio = Math.max(window.devicePixelRatio || 1, 1);
             canvas.width = container.offsetWidth * ratio;
             canvas.height = container.offsetHeight * ratio;
             canvas.getContext("2d").scale(ratio, ratio);
             
             signaturePad = new SignaturePad(canvas, {
-                minWidth: 1, 
-                maxWidth: 2.5, 
-                penColor: "rgb(0, 0, 0)", 
-                velocityFilterWeight: 0.7
+                minWidth: 1, maxWidth: 2.5, penColor: "rgb(0, 0, 0)", velocityFilterWeight: 0.7
             });
         }, 300);
     }
 
-    function limpiarFirma() { if(signaturePad) signaturePad.clear(); }
+    function limpiarFirma() { if (signaturePad) signaturePad.clear(); }
 
     function confirmarTransferencia() {
-        if(!signaturePad || signaturePad.isEmpty()) return alert("Debe firmar sobre la línea.");
-        
+        if(signaturePad.isEmpty()) return alert("Debe firmar.");
         let btn = document.getElementById('btnFinal');
         btn.disabled = true; btn.innerText = "PROCESANDO...";
 
         let otp = document.getElementById('otp_input').value;
-        let firma = signaturePad.toDataURL('image/png');
+        let firma = signaturePad.toDataURL('image/png'); 
         let nombre = "<?php echo $datos['nuevo_responsable_nombre'] ?? 'Usuario Externo'; ?>";
 
         let formData = new FormData();
@@ -323,7 +343,9 @@ if ($token) {
         .then(res => {
             if(res.status === 'ok') {
                 modal.hide();
-                document.getElementById('btnDescargaPDF').href = res.pdf_url;
+                // ASIGNAR URLS A LOS BOTONES
+                document.getElementById('btnDescargaActa').href = res.pdf_acta_url;
+                document.getElementById('btnDescargaConstancia').href = res.pdf_constancia_url;
                 new bootstrap.Modal(document.getElementById('modalExito')).show();
             } else {
                 alert("Error al guardar: " + res.msg);

@@ -1,7 +1,8 @@
 <?php
 // Archivo: envio_correo_hostinger.php
+// MODIFICADO: Ahora soporta Reply-To para que las respuestas vayan al usuario
 
-function enviarCorreoNativo($destinatario, $asunto, $cuerpoHTML) {
+function enviarCorreoNativo($destinatario, $asunto, $cuerpoHTML, $replyTo = null) {
     // --- TUS DATOS REALES ---
     $usuario_mail = 'info@federicogonzalez.net'; 
     $password_mail = 'Fmg35911@'; 
@@ -48,9 +49,16 @@ function enviarCorreoNativo($destinatario, $asunto, $cuerpoHTML) {
     escribir($socket, "RCPT TO: <$destinatario>");
     escribir($socket, "DATA");
 
+    // --- CONSTRUCCIÓN DE CABECERAS ---
     $headers  = "MIME-Version: 1.0\r\n";
     $headers .= "Content-Type: text/html; charset=UTF-8\r\n";
-    $headers .= "From: Sistema Logistica <$usuario_mail>\r\n";
+    $headers .= "From: Sistema Logistica <$usuario_mail>\r\n"; // El remitente SIEMPRE debe ser el autenticado
+    
+    // AQUÍ ESTÁ LA MAGIA: Si pasamos un email de respuesta, lo agregamos
+    if ($replyTo && filter_var($replyTo, FILTER_VALIDATE_EMAIL)) {
+        $headers .= "Reply-To: $replyTo\r\n";
+    }
+
     $headers .= "To: $destinatario\r\n";
     $headers .= "Subject: $asunto\r\n";
     $headers .= "Date: " . date("r") . "\r\n";
@@ -67,3 +75,4 @@ function enviarCorreoNativo($destinatario, $asunto, $cuerpoHTML) {
         return "Error SMTP: " . $resultado;
     }
 }
+?>

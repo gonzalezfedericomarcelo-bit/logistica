@@ -20,4 +20,4 @@ include 'conexion.php';
 // Después de esta inclusión, ya tendrá disponibles:
 // - $_SESSION con los datos del usuario.
 // - La variable $pdo (para consultas a la BD).
-?>fede
+?>

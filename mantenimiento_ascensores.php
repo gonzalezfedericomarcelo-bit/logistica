@@ -1,209 +1,210 @@
 <?php
 // Archivo: mantenimiento_ascensores.php
-// ESTADO: Navegación OK | Borrado Masivo OK | Reportar Falla -> Redirecciona (Sin Modal)
+// OBJETIVO: Diseño con paleta del sistema (Dark/Red/Primary) y más info visual.
 session_start();
 require_once 'conexion.php';
 require_once 'funciones_permisos.php';
 
-// 1. Verificar Acceso
 if (!isset($_SESSION['usuario_id']) || !tiene_permiso('acceso_ascensores', $pdo)) {
-    header("Location: dashboard.php"); exit;
-}
-$id_usuario = $_SESSION['usuario_id'];
-
-// 2. Verificar si es Admin
-$es_admin = tiene_permiso('admin_ascensores', $pdo) || ($_SESSION['usuario_rol'] ?? '') === 'admin';
-
-// --- LÓGICA DE ELIMINACIÓN INDIVIDUAL (GET) ---
-if (isset($_GET['borrar_id']) && $es_admin) {
-    $id_borrar = (int)$_GET['borrar_id'];
-    try {
-        // Borramos en orden para mantener integridad
-        $pdo->prepare("DELETE FROM ascensor_visitas_tecnicas WHERE id_incidencia = ?")->execute([$id_borrar]);
-        try { $pdo->prepare("DELETE FROM ascensor_historial WHERE id_incidencia = ?")->execute([$id_borrar]); } catch (Exception $e) {}
-        $pdo->prepare("DELETE FROM ascensor_incidencias WHERE id_incidencia = ?")->execute([$id_borrar]);
-        
-        header("Location: mantenimiento_ascensores.php?msg=borrado");
-        exit;
-    } catch (Exception $e) {
-        $error = "Error al eliminar: " . $e->getMessage();
-    }
+    header("Location: dashboard.php");
+    exit;
 }
 
-// --- LÓGICA DE ELIMINACIÓN MASIVA (POST) ---
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'borrar_masivo') {
-    if ($es_admin && isset($_POST['ids']) && is_array($_POST['ids'])) {
-        $ids = $_POST['ids'];
-        $placeholders = implode(',', array_fill(0, count($ids), '?'));
-        
-        try {
-            $pdo->beginTransaction();
-            $stmt = $pdo->prepare("DELETE FROM ascensor_visitas_tecnicas WHERE id_incidencia IN ($placeholders)");
-            $stmt->execute($ids);
-            
-            try {
-                $stmt = $pdo->prepare("DELETE FROM ascensor_historial WHERE id_incidencia IN ($placeholders)");
-                $stmt->execute($ids);
-            } catch (Exception $e) {}
-
-            $stmt = $pdo->prepare("DELETE FROM ascensor_incidencias WHERE id_incidencia IN ($placeholders)");
-            $stmt->execute($ids);
-            
-            $pdo->commit();
-            header("Location: mantenimiento_ascensores.php?msg=borrado_masivo");
-            exit;
-        } catch (Exception $e) {
-            $pdo->rollBack();
-            $error = "Error al borrar masivamente: " . $e->getMessage();
-        }
-    }
-}
-
-// --- DATOS VISTA ---
-$lista_ascensores = $pdo->query("SELECT a.*, e.nombre as empresa_nombre FROM ascensores a LEFT JOIN empresas_mantenimiento e ON a.id_empresa = e.id_empresa WHERE a.estado != 'inactivo'")->fetchAll(PDO::FETCH_ASSOC);
-
-$sql_incidencias = "SELECT i.*, a.nombre as nombre_ascensor, e.nombre as nombre_empresa, u.nombre_completo as usuario_reporta FROM ascensor_incidencias i JOIN ascensores a ON i.id_ascensor = a.id_ascensor LEFT JOIN empresas_mantenimiento e ON i.id_empresa = e.id_empresa JOIN usuarios u ON i.id_usuario_reporta = u.id_usuario ORDER BY FIELD(i.estado, 'reportado', 'reclamo_enviado', 'visita_programada', 'en_reparacion', 'resuelto'), i.fecha_reporte DESC";
-$incidencias = $pdo->query($sql_incidencias)->fetchAll(PDO::FETCH_ASSOC);
+$sql = "SELECT a.*, 
+        e.nombre as nombre_empresa,
+        (SELECT COUNT(*) FROM ascensor_incidencias WHERE id_ascensor = a.id_ascensor AND estado != 'resuelto') as fallas_activas,
+        (SELECT MAX(fecha_reporte) FROM ascensor_incidencias WHERE id_ascensor = a.id_ascensor) as ultima_falla
+        FROM ascensores a 
+        LEFT JOIN empresas_mantenimiento e ON a.id_empresa = e.id_empresa 
+        ORDER BY a.nombre ASC";
+$ascensores = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC);
 ?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <?php include 'head.php'; ?>
-    <title>Mantenimiento de Ascensores</title>
+    <title>Gestión de Ascensores</title>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        .card-ascensor {
+            border: none;
+            border-radius: 10px; /* Bordes menos redondeados, más serio */
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            transition: transform 0.2s;
+            overflow: hidden;
+        }
+        .card-ascensor:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+        }
+        /* Header oscuro estilo sistema */
+        .card-header-custom {
+            background-color: #343a40; /* bg-dark */
+            color: white;
+            padding: 15px;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .info-row {
+            display: flex; justify-content: space-between;
+            padding: 10px 0; border-bottom: 1px solid #eee;
+            font-size: 0.9rem;
+        }
+        .info-row:last-child { border-bottom: none; }
+        .label-custom { font-weight: 600; color: #6c757d; }
+        
+        .btn-action { width: 100%; border-radius: 6px; font-weight: 500; }
+    </style>
 </head>
-<body>
+<body class="bg-light">
     <?php include 'navbar.php'; ?>
     
-    <div class="container mt-4 pb-5">
-        
-        <div class="d-flex justify-content-between align-items-center mb-4 p-3 bg-white rounded shadow-sm">
-            <h2 class="mb-0 text-primary"><i class="fas fa-elevator"></i> Gestión de Ascensores</h2>
+    <div class="container py-5">
+        <div class="d-flex justify-content-between align-items-center mb-5">
+            <div>
+                <h2 class="fw-bold text-dark mb-1"><i class="fas fa-elevator text-danger"></i> Parque de Ascensores</h2>
+                <p class="text-muted mb-0">Gestión de unidades y mantenimiento técnico.</p>
+            </div>
             <div class="d-flex gap-2">
-                <?php if($es_admin): ?>
-                    <a href="admin_ascensores.php" class="btn btn-outline-secondary"><i class="fas fa-cogs"></i> Unidades</a>
-                    <a href="admin_empresas.php" class="btn btn-outline-secondary"><i class="fas fa-building"></i> Empresas</a>
-                <?php endif; ?>
-                
-                <a href="ascensor_crear_incidencia.php" class="btn btn-danger">
-                    <i class="fas fa-exclamation-circle"></i> Reportar Falla
+                <a href="ascensor_estadisticas.php" class="btn btn-dark shadow-sm">
+                    <i class="fas fa-chart-bar me-2"></i> Reportes
                 </a>
+                <?php if (tiene_permiso('admin_ascensores', $pdo)): ?>
+                    <a href="admin_ascensores.php" class="btn btn-outline-secondary" title="Configuración"><i class="fas fa-cog"></i></a>
+                <?php endif; ?>
             </div>
         </div>
 
-        <?php if(isset($_GET['msg'])): ?>
-            <div class="alert alert-success alert-dismissible fade show">
-                <?php 
-                if ($_GET['msg'] == 'borrado') echo 'Reclamo eliminado.';
-                elseif ($_GET['msg'] == 'borrado_masivo') echo 'Se eliminaron los reclamos seleccionados.';
-                else echo 'Operación exitosa.';
-                ?>
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            </div>
-        <?php endif; ?>
-        <?php if(isset($error)): ?>
-            <div class="alert alert-danger"><?php echo $error; ?></div>
+        <?php if (isset($_SESSION['mensaje'])): ?>
+            <script>
+                Swal.fire({
+                    icon: '<?php echo $_SESSION['tipo_mensaje'] == "success" ? "success" : "warning"; ?>',
+                    title: '<?php echo $_SESSION['tipo_mensaje'] == "success" ? "Operación Exitosa" : "Atención"; ?>',
+                    html: '<?php echo $_SESSION['mensaje']; ?>',
+                    confirmButtonColor: '#dc3545'
+                });
+            </script>
+            <?php unset($_SESSION['mensaje'], $_SESSION['tipo_mensaje']); ?>
         <?php endif; ?>
 
-        <div class="row mb-4">
-            <?php foreach ($lista_ascensores as $asc): ?>
-                <div class="col-md-3 mb-2">
-                    <div class="card h-100 border-<?php echo ($asc['estado'] == 'activo') ? 'success' : 'warning'; ?> shadow-sm">
-                        <div class="card-body p-2 text-center">
-                            <h6 class="card-title mb-1"><?php echo htmlspecialchars($asc['nombre']); ?></h6>
-                            <small class="text-muted"><?php echo htmlspecialchars($asc['ubicacion']); ?></small>
-                            <div class="mt-1">
-                                <span class="badge bg-<?php echo ($asc['estado'] == 'activo') ? 'success' : 'warning'; ?> text-dark">
-                                    <?php echo ucfirst($asc['estado']); ?>
-                                </span>
+        <div class="row g-4">
+            <?php if (empty($ascensores)): ?>
+                <div class="col-12 text-center py-5">
+                    <div class="alert alert-light border shadow-sm d-inline-block px-5">
+                        <i class="fas fa-info-circle fa-2x mb-2 text-primary"></i>
+                        <p class="mb-0">No hay ascensores cargados.</p>
+                    </div>
+                </div>
+            <?php else: ?>
+                <?php foreach($ascensores as $asc): ?>
+                    <div class="col-md-6 col-lg-4">
+                        <div class="card card-ascensor h-100">
+                            <div class="card-header-custom">
+                                <h5 class="mb-0 fw-bold text-truncate pe-2">
+                                    <i class="fas fa-elevator me-2 text-white-50"></i><?php echo htmlspecialchars($asc['nombre']); ?>
+                                </h5>
+                                <?php if($asc['fallas_activas'] > 0): ?>
+                                    <span class="badge bg-danger rounded-pill shadow-sm">
+                                        <i class="fas fa-exclamation-circle"></i> <?php echo $asc['fallas_activas']; ?>
+                                    </span>
+                                <?php else: ?>
+                                    <span class="badge bg-success rounded-pill shadow-sm">
+                                        <i class="fas fa-check"></i> OK
+                                    </span>
+                                <?php endif; ?>
+                            </div>
+
+                            <div class="card-body">
+                                <div class="info-row">
+                                    <span class="label-custom">Estado Operativo</span>
+                                    <span class="badge <?php echo $asc['estado']=='activo'?'bg-success':($asc['estado']=='inactivo'?'bg-danger':'bg-warning text-dark'); ?>">
+                                        <?php echo strtoupper($asc['estado']); ?>
+                                    </span>
+                                </div>
+                                <div class="info-row">
+                                    <span class="label-custom">Ubicación</span>
+                                    <span class="text-dark fw-bold"><?php echo htmlspecialchars($asc['ubicacion']); ?></span>
+                                </div>
+                                <div class="info-row">
+                                    <span class="label-custom">Empresa</span>
+                                    <span class="text-secondary text-truncate" style="max-width: 150px;">
+                                        <?php echo $asc['nombre_empresa'] ? htmlspecialchars($asc['nombre_empresa']) : '<span class="text-muted fw-normal">--</span>'; ?>
+                                    </span>
+                                </div>
+                                <div class="info-row">
+                                    <span class="label-custom">Último Incidente</span>
+                                    <span class="text-dark">
+                                        <?php echo $asc['ultima_falla'] ? date('d/m/y', strtotime($asc['ultima_falla'])) : 'Sin registros'; ?>
+                                    </span>
+                                </div>
+
+                                <div class="mt-4 row g-2">
+                                    <div class="col-7">
+                                        <button onclick="abrirModalReporte(<?php echo $asc['id_ascensor']; ?>, '<?php echo htmlspecialchars($asc['nombre']); ?>')" 
+                                                class="btn btn-danger btn-action shadow-sm">
+                                            <i class="fas fa-exclamation-triangle"></i> Reportar Falla
+                                        </button>
+                                    </div>
+                                    <div class="col-5">
+                                        <a href="ascensor_detalle.php?id=<?php echo $asc['id_ascensor']; ?>" class="btn btn-outline-dark btn-action">
+                                            <i class="fas fa-history"></i> Bitácora
+                                        </a>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
-            <?php endforeach; ?>
+                <?php endforeach; ?>
+            <?php endif; ?>
         </div>
+    </div>
 
-        <div class="card shadow">
-            <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">Tablero de Reclamos</h5>
-                <?php if($es_admin): ?>
-                    <button type="submit" form="formBorrarMasivo" class="btn btn-sm btn-danger" onclick="return confirm('¿Eliminar TODOS los seleccionados? Esta acción no se deshace.');">
-                        <i class="fas fa-trash"></i> Eliminar Seleccionados
-                    </button>
-                <?php endif; ?>
-            </div>
-            <div class="card-body p-0">
-                <form id="formBorrarMasivo" method="POST">
-                    <input type="hidden" name="action" value="borrar_masivo">
-                    <div class="table-responsive">
-                        <table class="table table-hover table-striped mb-0 align-middle">
-                            <thead class="table-light">
-                                <tr>
-                                    <?php if($es_admin): ?>
-                                        <th style="width: 40px;"><input type="checkbox" id="checkTodos" class="form-check-input"></th>
-                                    <?php endif; ?>
-                                    <th>ID</th>
-                                    <th>Ascensor</th>
-                                    <th>Empresa</th>
-                                    <th>Fecha</th>
-                                    <th>Prioridad</th>
-                                    <th>Estado</th>
-                                    <th class="text-end">Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php if (count($incidencias) > 0): ?>
-                                    <?php foreach($incidencias as $row): ?>
-                                    <tr>
-                                        <?php if($es_admin): ?>
-                                            <td><input type="checkbox" name="ids[]" value="<?php echo $row['id_incidencia']; ?>" class="form-check-input check-item"></td>
-                                        <?php endif; ?>
-                                        
-                                        <td>#<?php echo $row['id_incidencia']; ?></td>
-                                        <td class="fw-bold"><?php echo htmlspecialchars($row['nombre_ascensor']); ?></td>
-                                        <td><?php echo htmlspecialchars($row['nombre_empresa'] ?? 'N/A'); ?></td>
-                                        <td><?php echo date('d/m H:i', strtotime($row['fecha_reporte'])); ?></td>
-                                        <td>
-                                            <?php $bg = ($row['prioridad']=='emergencia')?'dark':(($row['prioridad']=='alta')?'danger':'warning'); ?>
-                                            <span class="badge bg-<?php echo $bg; ?>"><?php echo strtoupper($row['prioridad']); ?></span>
-                                        </td>
-                                        <td>
-                                            <span class="badge bg-<?php echo ($row['estado']=='resuelto')?'success':'primary'; ?>">
-                                                <?php echo strtoupper(str_replace('_', ' ', $row['estado'])); ?>
-                                            </span>
-                                        </td>
-                                        <td class="text-end">
-                                            <a href="ascensor_detalle.php?id=<?php echo $row['id_incidencia']; ?>" class="btn btn-sm btn-info text-white" title="Ver">
-                                                <i class="fas fa-eye"></i>
-                                            </a>
-                                            <?php if ($es_admin): ?>
-                                                <a href="mantenimiento_ascensores.php?borrar_id=<?php echo $row['id_incidencia']; ?>" class="btn btn-sm btn-danger ms-1" onclick="return confirm('¿Eliminar este reclamo?');">
-                                                    <i class="fas fa-trash-alt"></i>
-                                                </a>
-                                            <?php endif; ?>
-                                        </td>
-                                    </tr>
-                                    <?php endforeach; ?>
-                                <?php else: ?>
-                                    <tr><td colspan="<?php echo $es_admin ? '8' : '7'; ?>" class="text-center py-3 text-muted">Sin reclamos activos.</td></tr>
-                                <?php endif; ?>
-                            </tbody>
-                        </table>
+    <div class="modal fade" id="modalReporte" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header bg-dark text-white">
+                    <h5 class="modal-title fw-bold"><i class="fas fa-file-alt text-danger"></i> Generar Reporte</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <form action="ascensor_crear_incidencia.php" method="POST">
+                    <div class="modal-body p-4">
+                        <input type="hidden" name="id_ascensor" id="modal_id_ascensor">
+                        <div class="alert alert-light border mb-3">
+                            <strong>Equipo:</strong> <span id="modal_nombre_ascensor">...</span>
+                        </div>
+                        <div class="form-floating mb-3">
+                            <input type="text" name="titulo" class="form-control" id="fInput" placeholder="Título" required>
+                            <label for="fInput">Título del Problema</label>
+                        </div>
+                        <div class="form-floating mb-3">
+                            <textarea name="descripcion" class="form-control" id="fText" placeholder="Desc" style="height: 100px" required></textarea>
+                            <label for="fText">Descripción Detallada</label>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold text-muted">NIVEL DE PRIORIDAD</label>
+                            <select name="prioridad" class="form-select">
+                                <option value="baja">Baja</option>
+                                <option value="media" selected>Media</option>
+                                <option value="alta">Alta</option>
+                                <option value="emergencia">Emergencia</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="modal-footer bg-light">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-danger px-4">Confirmar Reporte</button>
                     </div>
                 </form>
             </div>
         </div>
     </div>
 
-    <?php include 'footer.php'; ?>
-    
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        document.getElementById('checkTodos')?.addEventListener('change', function() {
-            var checkboxes = document.querySelectorAll('.check-item');
-            for (var checkbox of checkboxes) {
-                checkbox.checked = this.checked;
-            }
-        });
+        function abrirModalReporte(id, nombre) {
+            document.getElementById('modal_id_ascensor').value = id;
+            document.getElementById('modal_nombre_ascensor').textContent = nombre;
+            new bootstrap.Modal(document.getElementById('modalReporte')).show();
+        }
     </script>
 </body>
 </html>

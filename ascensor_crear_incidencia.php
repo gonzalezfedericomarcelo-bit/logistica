@@ -1,162 +1,96 @@
 <?php
-// Archivo: ascensor_crear_incidencia.php
+// Archivo: ascensor_crear_incidencia.php (FINAL)
 session_start();
-include 'conexion.php';
-include 'funciones_permisos.php';
+require_once 'conexion.php';
+require_once 'funciones_permisos.php';
+require_once 'envio_correo_hostinger.php'; 
 
-// 1. Verificar sesión
-if (!isset($_SESSION['usuario_id']) || !tiene_permiso('crear_incidencia_ascensor', $pdo)) {
-    header("Location: dashboard.php");
-    exit();
-}
-
-$mensaje = '';
-$tipo_alerta = '';
-
-// 2. Cargar ascensores
-try {
-    $stmt_asc = $pdo->query("SELECT id_ascensor, nombre, ubicacion FROM ascensores WHERE estado = 'activo' ORDER BY nombre");
-    $ascensores = $stmt_asc->fetchAll(PDO::FETCH_ASSOC);
-} catch (PDOException $e) {
-    die("Error DB: " . $e->getMessage());
+if (!isset($_SESSION['usuario_id']) || !tiene_permiso('acceso_ascensores', $pdo)) {
+    header("Location: index.php");
+    exit;
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (!empty($_POST['website_check'])) die(); 
-    
-    if (!isset($_POST['soy_humano'])) {
-        $mensaje = "Confirma que no eres un robot.";
-        $tipo_alerta = "warning";
-    } else {
-        $id_ascensor = $_POST['id_ascensor'];
-        $titulo = trim($_POST['titulo']);
-        $descripcion = trim($_POST['descripcion']);
-        $id_usuario = $_SESSION['usuario_id'];
+    $id_ascensor = filter_input(INPUT_POST, 'id_ascensor', FILTER_VALIDATE_INT);
+    $titulo = trim($_POST['titulo']);
+    $descripcion = trim($_POST['descripcion']);
+    $prioridad = $_POST['prioridad'];
+    $usuario_id = $_SESSION['usuario_id'];
 
-        if (empty($id_ascensor) || empty($titulo) || empty($descripcion)) {
-            $mensaje = "Faltan datos obligatorios.";
-            $tipo_alerta = "danger";
-        } else {
-            try {
-                // A) DATOS
-                $sql_datos = "
-                    SELECT 
-                        a.id_empresa, a.nombre as asc_nombre, a.ubicacion,
-                        e.nombre as emp_nombre, e.email_contacto as emp_email,
-                        u.email as user_email, u.nombre_completo as user_nombre
-                    FROM ascensores a 
-                    JOIN empresas_mantenimiento e ON a.id_empresa = e.id_empresa
-                    JOIN usuarios u ON u.id_usuario = :id_user
-                    WHERE a.id_ascensor = :id_asc
-                ";
-                $stmt_datos = $pdo->prepare($sql_datos);
-                $stmt_datos->execute([':id_asc' => $id_ascensor, ':id_user' => $id_usuario]);
-                $datos = $stmt_datos->fetch(PDO::FETCH_ASSOC);
+    if (!$id_ascensor || empty($titulo) || empty($descripcion)) {
+        $_SESSION['mensaje'] = "Por favor complete todos los campos.";
+        $_SESSION['tipo_mensaje'] = "warning";
+        header("Location: mantenimiento_ascensores.php");
+        exit;
+    }
 
-                if (!$datos) throw new Exception("Error datos ascensor.");
+    try {
+        // A. Datos del Usuario (Reply-To)
+        $stmt_user = $pdo->prepare("SELECT nombre_completo, email FROM usuarios WHERE id_usuario = ?");
+        $stmt_user->execute([$usuario_id]);
+        $user_data = $stmt_user->fetch(PDO::FETCH_ASSOC);
+        $nombre_usuario = $user_data['nombre_completo'] ?? 'Usuario Sistema';
+        $email_usuario = $user_data['email'] ?? '';
 
-                // B) INSERTAR
-                $problema_completo = $titulo . " - " . $descripcion;
-                $sql_insert = "INSERT INTO ascensor_incidencias (id_ascensor, id_empresa, id_usuario_reporta, descripcion_problema, prioridad, estado, fecha_reporte) VALUES (?, ?, ?, ?, 'media', 'reportado', NOW())";
-                $stmt = $pdo->prepare($sql_insert);
-                $stmt->execute([$id_ascensor, $datos['id_empresa'], $id_usuario, $problema_completo]);
-                
-                $mensaje = "Reclamo guardado correctamente.";
-                $tipo_alerta = "success";
+        // B. Datos Ascensor
+        $sql_datos = "SELECT a.nombre as nombre_ascensor, a.ubicacion, e.id_empresa, e.email_contacto, e.nombre as nombre_empresa 
+                      FROM ascensores a 
+                      LEFT JOIN empresas_mantenimiento e ON a.id_empresa = e.id_empresa 
+                      WHERE a.id_ascensor = ?";
+        $stmt_datos = $pdo->prepare($sql_datos);
+        $stmt_datos->execute([$id_ascensor]);
+        $info = $stmt_datos->fetch(PDO::FETCH_ASSOC);
 
-                // C) ENVIAR CORREO (SIN PARAMETRO -f QUE BLOQUEA)
-                if (!empty($datos['emp_email'])) {
-                    $para = $datos['emp_email'];
-                    $asunto = "RECLAMO: " . $datos['asc_nombre'];
-                    
-                    // CUENTA REAL OBLIGATORIA
-                    $remitente_real = "ascensores_actis@federicogonzalez.net"; 
-                    
-                    // Reply-To dinámico: Si el usuario tiene mail, se usa. Si no, usa el del sistema.
-                    $reply_to = (!empty($datos['user_email'])) ? $datos['user_email'] : $remitente_real;
+        if (!$info) throw new Exception("Error datos ascensor.");
 
-                    $cuerpo  = "Estimados " . $datos['emp_nombre'] . ",\n\n";
-                    $cuerpo .= "Solicitud de asistencia:\n";
-                    $cuerpo .= "Equipo: " . $datos['asc_nombre'] . " (" . $datos['ubicacion'] . ")\n";
-                    $cuerpo .= "Falla: " . $titulo . "\n";
-                    $cuerpo .= "Detalle: " . $descripcion . "\n";
-                    $cuerpo .= "Solicita: " . $datos['user_nombre'];
+        // C. Insertar
+        $sql_insert = "INSERT INTO ascensor_incidencias 
+                       (id_ascensor, id_empresa, id_usuario_reporta, titulo, descripcion_problema, prioridad, estado, fecha_reporte) 
+                       VALUES (?, ?, ?, ?, ?, ?, 'reportado', NOW())";
+        $stmt_insert = $pdo->prepare($sql_insert);
+        $stmt_insert->execute([$id_ascensor, $info['id_empresa'], $usuario_id, $titulo, $descripcion, $prioridad]);
+        $id_incidencia = $pdo->lastInsertId();
 
-                    // CABECERAS LIMPIAS (Sin -f)
-                    $headers = "From: " . $remitente_real . "\r\n" .
-                               "Reply-To: " . $reply_to . "\r\n" .
-                               "X-Mailer: PHP/" . phpversion();
-
-                    // Envío estándar. Si el SPF está bien, esto debe salir.
-                    if(mail($para, $asunto, $cuerpo, $headers)) {
-                        $mensaje .= " Y enviado a la empresa.";
-                    } else {
-                        // Si falla aquí, logueamos el error técnico real.
-                        $error = error_get_last()['message'] ?? 'Desconocido';
-                        $mensaje .= " (Error envío: $error)";
-                    }
-                }
-
-            } catch (Exception $e) {
-                $mensaje = "Error: " . $e->getMessage();
-                $tipo_alerta = "danger";
+        // D. Enviar Correo
+        $aviso_correo = " (Correo no configurado en empresa)";
+        if (!empty($info['email_contacto'])) {
+            $asunto = "URGENTE: Falla Reportada (Orden #$id_incidencia) - " . $info['nombre_ascensor'];
+            $cuerpoHTML = "
+            <html>
+            <body style='font-family: Arial, sans-serif;'>
+                <div style='background-color: #f8f9fa; padding: 20px; border: 1px solid #ddd;'>
+                    <h2 style='color: #d9534f;'>Reporte de Falla #$id_incidencia</h2>
+                    <p>Estimados <strong>{$info['nombre_empresa']}</strong>,</p>
+                    <p>Nueva incidencia reportada por <strong>$nombre_usuario</strong>.</p>
+                    <table style='width: 100%; border-collapse: collapse; background: #fff;'>
+                        <tr><td style='padding:10px;border:1px solid #eee;'><strong>Equipo:</strong></td><td style='padding:10px;border:1px solid #eee;'>{$info['nombre_ascensor']}</td></tr>
+                        <tr><td style='padding:10px;border:1px solid #eee;'><strong>Falla:</strong></td><td style='padding:10px;border:1px solid #eee;'>{$titulo}</td></tr>
+                        <tr><td style='padding:10px;border:1px solid #eee;'><strong>Prioridad:</strong></td><td style='padding:10px;border:1px solid #eee;color:red;'><strong>".strtoupper($prioridad)."</strong></td></tr>
+                    </table>
+                    <p style='margin-top:10px'>Puede responder este correo para contactar al usuario.</p>
+                </div>
+            </body>
+            </html>";
+            
+            $resultado_envio = enviarCorreoNativo($info['email_contacto'], $asunto, $cuerpoHTML, $email_usuario);
+            if ($resultado_envio === true) {
+                $pdo->prepare("UPDATE ascensor_incidencias SET estado = 'reclamo_enviado', fecha_reclamo_enviado = NOW() WHERE id_incidencia = ?")->execute([$id_incidencia]);
+                $aviso_correo = " y notificado por email.";
+            } else {
+                $aviso_correo = ". Falló envío email: " . $resultado_envio;
             }
         }
+
+        // MENSAJE FINAL CON BOTÓN PDF
+        $_SESSION['mensaje'] = "Incidencia #$id_incidencia creada$aviso_correo. <br><br> <a href='ascensor_orden_pdf.php?id=$id_incidencia' target='_blank' class='btn btn-warning btn-sm text-dark fw-bold'><i class='fas fa-file-pdf'></i> Descargar Orden de Trabajo</a>";
+        $_SESSION['tipo_mensaje'] = "success";
+
+    } catch (Exception $e) {
+        $_SESSION['mensaje'] = "Error: " . $e->getMessage();
+        $_SESSION['tipo_mensaje'] = "danger";
     }
+
+    header("Location: mantenimiento_ascensores.php");
+    exit;
 }
 ?>
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <?php include 'head.php'; ?>
-    <title>Reportar Falla</title>
-    <style> .website-check-field { display: none; } </style>
-</head>
-<body style="background-color: #f8f9fa;">
-    <?php include 'navbar.php'; ?>
-    <div class="container mt-5">
-        <div class="row justify-content-center">
-            <div class="col-md-6">
-                <div class="card shadow">
-                    <div class="card-header bg-danger text-white"><h4>Reportar Falla</h4></div>
-                    <div class="card-body">
-                        <?php if($mensaje): ?>
-                            <div class="alert alert-<?php echo $tipo_alerta; ?>"><?php echo $mensaje; ?></div>
-                        <?php endif; ?>
-                        
-                        <form method="POST">
-                            <input type="text" name="website_check" class="website-check-field">
-                            
-                            <div class="mb-3">
-                                <label>Ascensor</label>
-                                <select name="id_ascensor" class="form-select" required>
-                                    <option value="">Seleccionar...</option>
-                                    <?php foreach($ascensores as $a): ?>
-                                        <option value="<?php echo $a['id_ascensor']; ?>">
-                                            <?php echo htmlspecialchars($a['nombre'] . ' - ' . $a['ubicacion']); ?>
-                                        </option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
-                            <div class="mb-3">
-                                <label>Título</label>
-                                <input type="text" name="titulo" class="form-control" required>
-                            </div>
-                            <div class="mb-3">
-                                <label>Descripción</label>
-                                <textarea name="descripcion" class="form-control" rows="3" required></textarea>
-                            </div>
-                            <div class="mb-3 form-check">
-                                <input type="checkbox" class="form-check-input" name="soy_humano" required id="chkBot">
-                                <label class="form-check-label" for="chkBot">No soy un robot</label>
-                            </div>
-                            <button type="submit" class="btn btn-danger w-100">Enviar</button>
-                        </form>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    <?php include 'footer.php'; ?>
-</body>
-</html>

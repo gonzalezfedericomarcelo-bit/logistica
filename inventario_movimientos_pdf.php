@@ -1,354 +1,373 @@
 <?php
-// Archivo: inventario_movimientos_pdf.php
-// OBJETIVO: Generar/Mostrar Constancia de Movimiento (Acceso Público si ya existe)
+// Archivo: inventario_movimientos.php
 session_start();
-require('fpdf/fpdf.php');
 include 'conexion.php';
 include 'funciones_permisos.php';
 
-// ==============================================================================
-// 1. LÓGICA DE ACCESO PÚBLICO (Bypass de Login si el archivo ya existe)
-// ==============================================================================
-if (!empty($_GET['id']) && is_numeric($_GET['id'])) {
-    $id_publico = $_GET['id'];
-    
-    // Definir rutas públicas
-    $ruta_publica_rel = 'pdfs_publicos/inventario_constancia/';
-    $nombre_archivo = 'Constancia_Movimiento_' . $id_publico . '.pdf';
-    $ruta_archivo_abs = __DIR__ . '/' . $ruta_publica_rel . $nombre_archivo;
-    
-    // Si el archivo ya fue generado, redirigir DIRECTAMENTE al PDF público (Sin Login)
-    if (file_exists($ruta_archivo_abs)) {
-        // Detectar protocolo para la redirección URL
-        $protocolo = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? "https" : "http";
-        $url_final = "$protocolo://{$_SERVER['HTTP_HOST']}" . dirname($_SERVER['PHP_SELF']) . "/$ruta_publica_rel" . $nombre_archivo;
-        
-        header("Location: " . $url_final);
-        exit();
-    }
+if (!isset($_SESSION['usuario_id']) || !tiene_permiso('inventario_historial', $pdo)) {
+    header("Location: inventario_lista.php"); exit();
 }
 
-// ==============================================================================
-// 2. SEGURIDAD (Solo si hay que generar el reporte o es el listado global)
-// ==============================================================================
-if (!isset($_SESSION['usuario_id']) || (!tiene_permiso('inventario_historial', $pdo) && !tiene_permiso('inventario_ver_transferencias', $pdo))) {
-    // Si no está logueado y el archivo no existía, mandar al login
-    header("Location: index.php"); exit();
+$puede_editar = tiene_permiso('inventario_historial_editar', $pdo);
+$puede_eliminar = tiene_permiso('inventario_historial_eliminar', $pdo);
+
+if (isset($_GET['delete']) && $puede_eliminar) {
+    $stmtDel = $pdo->prepare("DELETE FROM historial_movimientos WHERE id_movimiento = ?");
+    $stmtDel->execute([$_GET['delete']]);
+    header("Location: inventario_movimientos.php?msg=eliminado"); exit();
 }
 
-// =======================================================
-// MODO 1: GENERAR CONSTANCIA INDIVIDUAL (SI NO EXISTÍA)
-// =======================================================
-if (!empty($_GET['id']) && is_numeric($_GET['id'])) {
-    
-    $id = $_GET['id'];
-    
-    // Consulta de datos
-    $sql = "SELECT h.*, 
-                   i.elemento, i.codigo_inventario, i.mat_numero_grabado, 
-                   u.nombre_completo as usuario_nombre, u.firma_imagen_path as usuario_firma
-            FROM historial_movimientos h 
-            LEFT JOIN inventario_cargos i ON h.id_bien = i.id_cargo 
-            LEFT JOIN usuarios u ON h.usuario_registro = u.id_usuario 
-            WHERE h.id_movimiento = ?";
-            
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute([$id]);
-    $mov = $stmt->fetch(PDO::FETCH_ASSOC);
-
-    if (!$mov) die("Error: Movimiento no encontrado.");
-
-    // Datos extra de Transferencia
-    $sqlTransf = "SELECT motivo_transferencia, observaciones, nuevo_responsable_nombre, firma_nuevo_responsable_path 
-                  FROM inventario_transferencias_pendientes 
-                  WHERE id_bien = ? AND estado = 'confirmado' 
-                  ORDER BY id_token DESC LIMIT 1";
-    $stmtT = $pdo->prepare($sqlTransf);
-    $stmtT->execute([$mov['id_bien']]);
-    $transfData = $stmtT->fetch(PDO::FETCH_ASSOC);
-
-    // Procesar Datos
-    $motivo_raw = $transfData ? $transfData['motivo_transferencia'] : $mov['observacion_movimiento'];
-    $plazo_mostrar = "Inmediato";
-
-    if (preg_match('/\[EJECUCIÓN.*?:(.*?)\]/', $motivo_raw, $matches)) {
-        $plazo_mostrar = trim($matches[1]);
-        $motivo_raw = trim(str_replace($matches[0], '', $motivo_raw));
-    }
-
-    $partes_motivo = explode(' - ', $motivo_raw);
-    if (count($partes_motivo) == 2 && trim($partes_motivo[0]) == trim($partes_motivo[1])) {
-        $motivo_mostrar = trim($partes_motivo[0]);
-    } else {
-        $motivo_mostrar = $motivo_raw;
-    }
-
-    class PDF_Anexo4 extends FPDF {
-        function Header() {
-            $this->SetMargins(15, 15, 15);
-            $this->SetAutoPageBreak(true, 10);
-            
-            // --- MEMBRETE ---
-            $x = 15; $y = 15;
-            $w_total = 180; $w_logo = 40; $w_texto = $w_total - $w_logo; 
-            $h_fila1 = 25; $h_fila2 = 8;   
-
-            // 1. LOGO
-            $this->Rect($x, $y, $w_logo, $h_fila1);
-            $logo = './assets/iosfa.png'; 
-            if (file_exists($logo)) { $this->ImageFit($logo, $x + 3, $y + 3, $w_logo - 6, $h_fila1 - 6); }
-
-            // 2. TÍTULO
-            $this->Rect($x + $w_logo, $y, $w_texto, $h_fila1);
-            $y_texto = $y + 8; 
-            $this->SetXY($x + $w_logo, $y_texto);
-            $this->SetFont('Arial', 'B', 11);
-            $this->Cell($w_texto, 5, utf8_decode('PROCEDIMIENTO PARA LA ADMINISTRACIÓN DE BIENES'), 0, 1, 'C');
-            $this->SetX($x + $w_logo);
-            $this->Cell($w_texto, 5, utf8_decode('PATRIMONIALES'), 0, 1, 'C');
-
-            // 3. VERSIÓN
-            $this->Rect($x, $y + $h_fila1, $w_total, $h_fila2);
-            $this->SetXY($x, $y + $h_fila1 + 1.5);
-            $this->SetFont('Arial', '', 9);
-            $this->Cell($w_total, 5, utf8_decode('Versión: 1.0.0.'), 0, 1, 'C');
-
-            // --- TÍTULOS ---
-            $this->Ln(12);
-            $this->SetFont('Arial', 'B', 10);
-            $this->Cell(0, 6, utf8_decode('ANEXO 4 - PLANILLA REGISTRO DE TRANSFERENCIAS'), 0, 1, 'R');
-            $this->Ln(5);
-            $this->SetFont('Arial', 'B', 12);
-            $this->Cell(0, 6, utf8_decode('TRANSFERENCIA DE BIENES MUEBLES'), 0, 1, 'C');
-            $this->Ln(8);
-        }
-
-        function Footer() {
-            $this->SetY(-30);
-            $this->SetFont('Arial', '', 8);
-            $this->Cell(0, 5, utf8_decode('1) Firma del Titular de la Dependencia que entrega el BIEN.'), 0, 1, 'L');
-            $this->Cell(0, 5, utf8_decode('2) Firma del Titular de la Dependencia que recepciona el BIEN.'), 0, 1, 'L');
-        }
-        
-        function ImageFit($file, $x, $y, $w, $h) {
-            if (!file_exists($file)) return;
-            list($width, $height) = getimagesize($file);
-            if ($width == 0 || $height == 0) return;
-            $ratioImg = $width / $height; $ratioBox = $w / $h;
-            if ($ratioImg > $ratioBox) { $newW = $w; $newH = $w / $ratioImg; $newY = $y + ($h - $newH) / 2; $this->Image($file, $x, $newY, $newW, $newH); } 
-            else { $newH = $h; $newW = $h * $ratioImg; $newX = $x + ($w - $newW) / 2; $this->Image($file, $newX, $y, $newW, $newH); }
-        }
-        
-        function VCell($w, $h, $txt, $border=0, $align='C', $fill=false) {
-            if($w==0) $w = $this->w - $this->rMargin - $this->x;
-            $s = str_replace("\r", '', $txt); $nb = strlen($s);
-            if($nb > 0 && $s[$nb-1] == "\n") $nb--;
-            $cw = &$this->CurrentFont['cw'];
-            $wmax = ($w - 2 * $this->cMargin) * 1000 / $this->FontSize;
-            $i = 0; $nl = 1; $sep = -1; $j = 0; $l = 0; $ns = 0;
-            while($i < $nb) {
-                $c = $s[$i];
-                if($c == "\n") { $i++; $sep = -1; $j = $i; $l = 0; $ns = 0; $nl++; continue; }
-                if($c == ' ') { $sep = $i; $ns++; }
-                $l += $cw[ord($c)];
-                if($l > $wmax) { if($sep == -1) { if($i == $j) $i++; } else $i = $sep + 1; $sep = -1; $j = $i; $l = 0; $ns = 0; $nl++; } else $i++;
-            }
-            $h_txt = $nl * 5; $y_offset = ($h - $h_txt) / 2;
-            $x = $this->GetX(); $y = $this->GetY();
-            if($border) $this->Rect($x, $y, $w, $h);
-            $this->SetXY($x, $y + $y_offset);
-            $this->MultiCell($w, 5, $txt, 0, $align, $fill);
-            $this->SetXY($x + $w, $y);
-        }
-    }
-
-    $pdf = new PDF_Anexo4('P','mm','A4');
-    $pdf->AddPage();
-
-    // --- DATOS ---
-    $pdf->SetFont('Arial', 'B', 10);
-    $pdf->Write(6, utf8_decode('INSTANCIA QUE ORDENA / PROPONE LA TRANSFERENCIA: '));
-    $pdf->SetFont('Arial', '', 10);
-    $pdf->Write(6, utf8_decode(strtoupper($mov['usuario_nombre'] ?? 'SISTEMA')));
-    $pdf->Ln(8);
-
-    $pdf->SetFont('Arial', 'B', 10);
-    $pdf->Write(6, utf8_decode('FUNDAMENTACIÓN: '));
-    $pdf->SetFont('Arial', '', 10);
-    $pdf->Write(6, utf8_decode($motivo_mostrar));
-    $pdf->Ln(8);
-
-    $pdf->SetFont('Arial', 'B', 10);
-    $pdf->Write(6, utf8_decode('PLAZO DE EJECUCIÓN: '));
-    $pdf->SetFont('Arial', '', 10);
-    $pdf->Write(6, utf8_decode($plazo_mostrar));
-    $pdf->Ln(15);
-
-    // --- TABLA ---
-    $pdf->SetFillColor(230, 230, 230);
-    $pdf->SetFont('Arial', 'B', 9);
-    $w1 = 35; $w2 = 90; $w3 = 55; $h_header = 10;
-    
-    $pdf->Cell($w1, $h_header, utf8_decode('N° INVENTARIO'), 1, 0, 'C', true);
-    $pdf->Cell($w2, $h_header, utf8_decode('DETALLE DEL BIEN'), 1, 0, 'C', true);
-    $pdf->Cell($w3, $h_header, utf8_decode('DEPENDENCIA RECEPTORA'), 1, 1, 'C', true);
-    
-    $pdf->SetX(15);
-    $pdf->SetFont('Arial', '', 9);
-    $h_fila = 18;
-    
-    $pdf->VCell($w1, $h_fila, utf8_decode($mov['codigo_inventario']), 1, 'C');
-    $pdf->VCell($w2, $h_fila, utf8_decode($mov['elemento']), 1, 'C');
-    $destino = !empty($mov['ubicacion_nueva']) ? $mov['ubicacion_nueva'] : '-';
-    if(strlen($destino) > 40) $destino = substr($destino, 0, 40) . '...';
-    $pdf->VCell($w3, $h_fila, utf8_decode($destino), 1, 'C');
-
-    $pdf->Ln($h_fila + 15);
-
-    // --- FIRMAS ---
-    $yFirmas = $pdf->GetY();
-    $anchoFirma = 80; $margenIzq = 15; $separacion = 10;
-
-    // ENTREGA
-    $x1 = $margenIzq;
-    if (!empty($mov['usuario_firma'])) {
-        $rutaFirma1 = 'uploads/firmas/' . $mov['usuario_firma'];
-        if(!file_exists($rutaFirma1)) $rutaFirma1 = __DIR__ . '/uploads/firmas/' . $mov['usuario_firma'];
-        if (file_exists($rutaFirma1)) $pdf->ImageFit($rutaFirma1, $x1 + 10, $yFirmas, 60, 25);
-    }
-    $pdf->SetXY($x1, $yFirmas + 28);
-    $pdf->SetFont('Arial', '', 9);
-    $pdf->MultiCell($anchoFirma, 5, utf8_decode($mov['usuario_nombre']), 0, 'C');
-    $pdf->SetXY($x1, $pdf->GetY()); 
-    $pdf->SetFont('Arial', 'B', 11);
-    $pdf->Cell($anchoFirma, 6, '(1)', 0, 0, 'C');
-
-    // RECEPCIONA
-    $x2 = $margenIzq + $anchoFirma + $separacion;
-    $firma2_path = $transfData ? $transfData['firma_nuevo_responsable_path'] : null;
-    $nombre2 = $transfData ? $transfData['nuevo_responsable_nombre'] : ($mov['nombre_responsable'] ?? '-');
-
-    if (!empty($firma2_path)) {
-        if(!file_exists($firma2_path)) $firma2_path = __DIR__ . '/' . $firma2_path;
-        if (file_exists($firma2_path)) $pdf->ImageFit($firma2_path, $x2 + 10, $yFirmas, 60, 25);
-    }
-    $pdf->SetXY($x2, $yFirmas + 28);
-    $pdf->SetFont('Arial', '', 9);
-    $pdf->MultiCell($anchoFirma, 5, utf8_decode($nombre2), 0, 'C');
-    $pdf->SetXY($x2, $pdf->GetY());
-    $pdf->SetFont('Arial', 'B', 11);
-    $pdf->Cell($anchoFirma, 6, '(2)', 0, 0, 'C');
-
-    // --- GUARDADO AUTOMÁTICO EN CARPETA PÚBLICA ---
-    $ruta_publica_rel = 'pdfs_publicos/inventario_constancia/';
-    $ruta_publica_abs = __DIR__ . '/' . $ruta_publica_rel;
-    if (!file_exists($ruta_publica_abs)) mkdir($ruta_publica_abs, 0777, true);
-
-    $nombre_archivo = 'Constancia_Movimiento_' . $id . '.pdf';
-    $ruta_archivo_final = $ruta_publica_abs . $nombre_archivo;
-
-    // Guardar en disco
-    $pdf->Output('F', $ruta_archivo_final);
-
-    // Redirigir al archivo público
-    $protocolo = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? "https" : "http";
-    $url_final = "$protocolo://{$_SERVER['HTTP_HOST']}" . dirname($_SERVER['PHP_SELF']) . "/$ruta_publica_rel" . $nombre_archivo;
-    
-    header("Location: " . $url_final);
-    exit;
+if (isset($_GET['cancelar_pendiente']) && $puede_eliminar) {
+    $stmtCan = $pdo->prepare("DELETE FROM inventario_transferencias_pendientes WHERE id_token = ? AND estado = 'pendiente'");
+    $stmtCan->execute([$_GET['cancelar_pendiente']]);
+    header("Location: inventario_movimientos.php?msg=cancelado"); exit();
 }
 
-// =======================================================
-// MODO 2: REPORTE GLOBAL (LISTADO)
-// =======================================================
-// ... (Se mantiene el código del listado intacto) ...
-$where = "1=1";
-$params = [];
-$texto_filtros = "";
+// --- FILTROS ---
+$filtro_estado = $_GET['estado'] ?? 'todos';
+$filtro_q = $_GET['q'] ?? '';
+$whereHist = "1=1";
+$wherePend = "t.estado = 'pendiente'"; 
+$paramsHist = [];
+$paramsPend = [];
 
-if (!empty($_GET['fecha_desde'])) {
-    $where .= " AND DATE(h.fecha_movimiento) >= ?";
-    $params[] = $_GET['fecha_desde'];
-    $texto_filtros .= " Desde: " . date('d/m/Y', strtotime($_GET['fecha_desde']));
-}
-if (!empty($_GET['fecha_hasta'])) {
-    $where .= " AND DATE(h.fecha_movimiento) <= ?";
-    $params[] = $_GET['fecha_hasta'];
-    $texto_filtros .= " Hasta: " . date('d/m/Y', strtotime($_GET['fecha_hasta']));
-}
-if (!empty($_GET['tipo_movimiento'])) {
-    $where .= " AND h.tipo_movimiento LIKE ?";
-    $params[] = "%" . $_GET['tipo_movimiento'] . "%";
-    $texto_filtros .= " Tipo: " . $_GET['tipo_movimiento'];
-}
-if (!empty($_GET['q'])) {
-    $term = "%" . $_GET['q'] . "%";
-    $where .= " AND (i.elemento LIKE ? OR u.nombre_completo LIKE ? OR h.observacion_movimiento LIKE ?)";
-    $params[] = $term; $params[] = $term; $params[] = $term;
-    $texto_filtros .= " Busq: " . $_GET['q'];
+if ($filtro_q) {
+    $term = "%$filtro_q%";
+    $whereHist .= " AND (i.elemento LIKE ? OR u.nombre_completo LIKE ? OR h.observacion_movimiento LIKE ?)";
+    $paramsHist = [$term, $term, $term];
+    $wherePend .= " AND (i.elemento LIKE ? OR u.nombre_completo LIKE ? OR t.observaciones LIKE ?)";
+    $paramsPend = [$term, $term, $term];
 }
 
-$sql = "SELECT h.*, i.elemento, u.nombre_completo as usuario 
-        FROM historial_movimientos h 
-        LEFT JOIN inventario_cargos i ON h.id_bien = i.id_cargo 
-        LEFT JOIN usuarios u ON h.usuario_registro = u.id_usuario 
-        WHERE $where 
-        ORDER BY h.fecha_movimiento DESC LIMIT 1000";
+// 1. HISTORIAL
+$historial = [];
+if ($filtro_estado !== 'pendientes') {
+    $sqlH = "SELECT h.id_movimiento as id_unico, 'finalizado' as tipo_dato,
+                    h.fecha_movimiento as fecha, 
+                    h.tipo_movimiento as accion, 
+                    h.observacion_movimiento as detalle, 
+                    h.ubicacion_anterior, h.ubicacion_nueva, h.id_bien,
+                    i.elemento, i.servicio_ubicacion, 
+                    u.nombre_completo as usuario,
+                    NULL as token_hash, NULL as firma_patrimonial, NULL as firma_responsable
+             FROM historial_movimientos h 
+             LEFT JOIN inventario_cargos i ON h.id_bien = i.id_cargo 
+             LEFT JOIN usuarios u ON h.usuario_registro = u.id_usuario 
+             WHERE $whereHist
+             ORDER BY h.fecha_movimiento DESC LIMIT 300";
+    $stmtH = $pdo->prepare($sqlH);
+    $stmtH->execute($paramsHist);
+    $historial = $stmtH->fetchAll(PDO::FETCH_ASSOC);
+}
 
-$stmt = $pdo->prepare($sql);
-$stmt->execute($params);
-$datos = $stmt->fetchAll(PDO::FETCH_ASSOC);
+// 2. PENDIENTES
+$pendientes = [];
+if ($filtro_estado !== 'finalizados') {
+    // Traemos también firma_nuevo_responsable_path para saber si el externo firmó
+    $sqlP = "SELECT t.id_token as id_unico, 'pendiente' as tipo_dato,
+                    t.fecha_creacion as fecha, 
+                    'Solicitud Transferencia' as accion, 
+                    t.observaciones as detalle, 
+                    i.destino_principal as ubicacion_anterior, 
+                    t.nuevo_destino_nombre as ubicacion_nueva,
+                    t.id_bien,
+                    i.elemento, i.servicio_ubicacion, 
+                    u.nombre_completo as usuario,
+                    t.token_hash, 
+                    t.firma_patrimonial_path as firma_patrimonial,
+                    t.firma_nuevo_responsable_path as firma_responsable
+             FROM inventario_transferencias_pendientes t
+             LEFT JOIN inventario_cargos i ON t.id_bien = i.id_cargo 
+             LEFT JOIN usuarios u ON t.creado_por = u.id_usuario 
+             WHERE $wherePend
+             ORDER BY t.fecha_creacion DESC";
+    $stmtP = $pdo->prepare($sqlP);
+    $stmtP->execute($paramsPend);
+    $pendientes = $stmtP->fetchAll(PDO::FETCH_ASSOC);
+}
 
-class PDF_Listado extends FPDF {
-    function Header() {
-        global $texto_filtros;
-        $this->SetFont('Arial','B',14);
-        $this->Cell(0,10, utf8_decode('Reporte de Movimientos'),0,1,'C');
-        if($texto_filtros) {
-            $this->SetFont('Arial','I',8);
-            $this->Cell(0,5, utf8_decode($texto_filtros),0,1,'C');
-        }
-        $this->Ln(5);
-        $this->SetFillColor(230,230,230);
-        $this->SetFont('Arial','B',8);
-        $this->Cell(30,6, 'Fecha',1,0,'C',true);
-        $this->Cell(60,6, 'Bien',1,0,'C',true);
-        $this->Cell(30,6, utf8_decode('Acción'),1,0,'C',true);
-        $this->Cell(30,6, 'Usuario',1,0,'C',true);
-        $this->Cell(127,6, 'Detalle',1,1,'C',true); 
+$todos = array_merge($pendientes, $historial);
+
+$protocol = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? "https://" : "http://";
+$base_url = $protocol . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_SELF']) . "/";
+
+function buscar_acta_reciente($id_bien) {
+    $patron = __DIR__ . '/pdfs_publicos/inventario_pdf/Acta_Transferencia_' . $id_bien . '_*.pdf';
+    $archivos = glob($patron);
+    if ($archivos && count($archivos) > 0) {
+        usort($archivos, function($a, $b) { return filemtime($b) - filemtime($a); });
+        return 'pdfs_publicos/inventario_pdf/' . basename($archivos[0]);
     }
-    function Footer() {
-        $this->SetY(-15);
-        $this->SetFont('Arial','I',8);
-        $this->Cell(0,10, utf8_decode('Pág ').$this->PageNo(),0,0,'C');
-    }
+    return false;
 }
 
-$pdf = new PDF_Listado('L','mm','A4');
-$pdf->AliasNbPages();
-$pdf->AddPage();
-$pdf->SetFont('Arial','',8);
-
-foreach ($datos as $fila) {
-    $fecha = date('d/m/y H:i', strtotime($fila['fecha_movimiento']));
-    $bien = utf8_decode(substr($fila['elemento'] ?? 'Eliminado', 0, 35));
-    $tipo = utf8_decode($fila['tipo_movimiento']);
-    $user = utf8_decode(substr($fila['usuario'] ?? '-', 0, 18));
-    
-    $detalle = $fila['observacion_movimiento'];
-    if(stripos($fila['tipo_movimiento'], 'Transferencia') !== false) {
-        $origen = $fila['ubicacion_anterior'] ?: '?';
-        $destino = $fila['ubicacion_nueva'] ?: '?';
-        $detalle = "De: $origen -> A: $destino";
-    }
-    
-    $pdf->Cell(30,6, $fecha, 1);
-    $pdf->Cell(60,6, $bien, 1);
-    $pdf->Cell(30,6, $tipo, 1, 0, 'C');
-    $pdf->Cell(30,6, $user, 1);
-    $pdf->Cell(127,6, substr(utf8_decode($detalle), 0, 85), 1);
-    $pdf->Ln();
+// Helper para limpiar nombres de ubicación (si vienen IDs)
+function limpiar_ubicacion($texto) {
+    if (is_numeric($texto)) return "Destino ID: " . $texto; // O podrías poner "Sin nombre"
+    return $texto;
 }
-
-$pdf->Output('I', 'Reporte_Global.pdf');
 ?>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Control de Movimientos</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css">
+    <style>
+        /* ESTÉTICA MEJORADA */
+        .fila-pendiente { background-color: #fff9e6 !important; border-left: 4px solid #ffc107; }
+        .fila-finalizada { border-left: 4px solid #198754; }
+        
+        .badge-soft {
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 0.75rem;
+            letter-spacing: 0.5px;
+        }
+        .badge-soft-success { background-color: #d1e7dd; color: #0f5132; }
+        .badge-soft-warning { background-color: #fff3cd; color: #664d03; }
+        .badge-soft-danger  { background-color: #f8d7da; color: #842029; }
+        .badge-soft-info    { background-color: #cff4fc; color: #055160; }
+
+        /* Iconos de estado en columna */
+        .status-icon-ok { color: #198754; font-size: 1.1rem; }
+        .status-icon-wait { color: #ffc107; font-size: 1.1rem; }
+        
+        /* Detalles de pasos */
+        .paso-item { font-size: 0.8rem; margin-bottom: 2px; display: flex; align-items: center; gap: 5px; }
+    </style>
+</head>
+<body>
+    <?php include 'navbar.php'; ?>
+    
+    <div class="container-fluid px-4 mt-4 mb-5">
+        
+        <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+            <div>
+                <h3 class="mb-0 fw-bold text-dark"><i class="fas fa-tasks me-2 text-primary"></i>Centro de Movimientos</h3>
+                <small class="text-muted">Gestión integral de transferencias y asignaciones</small>
+            </div>
+            
+            <form class="d-flex gap-2" method="GET">
+                <select name="estado" class="form-select w-auto shadow-sm border-0" onchange="this.form.submit()">
+                    <option value="todos" <?php echo $filtro_estado=='todos'?'selected':''; ?>>Ver Todo</option>
+                    <option value="pendientes" <?php echo $filtro_estado=='pendientes'?'selected':''; ?>>⏳ En Proceso</option>
+                    <option value="finalizados" <?php echo $filtro_estado=='finalizados'?'selected':''; ?>>✅ Completados</option>
+                </select>
+            </form>
+        </div>
+
+        <?php if(isset($_GET['msg']) && $_GET['msg']=='cancelado'): ?>
+            <div class="alert alert-warning shadow-sm border-0"><i class="fas fa-info-circle me-2"></i>La solicitud ha sido cancelada correctamente.</div>
+        <?php endif; ?>
+
+        <div class="card shadow-sm border-0 rounded-3 overflow-hidden">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table id="tablaUnificada" class="table table-hover align-middle w-100 mb-0">
+                        <thead class="bg-light text-uppercase small fw-bold text-secondary">
+                            <tr>
+                                <th style="width: 180px;">Estado / Progreso</th>
+                                <th>Fecha</th>
+                                <th>Bien Patrimonial</th>
+                                <th>Origen <i class="fas fa-arrow-right mx-1 text-muted"></i> Destino</th>
+                                <th>Gestión</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach($todos as $fila): 
+                                $es_pendiente = ($fila['tipo_dato'] === 'pendiente');
+                                $clase_fila = $es_pendiente ? 'fila-pendiente' : 'fila-finalizada';
+                                $link_firma = $es_pendiente ? $base_url . "transferencia_externa.php?token=" . $fila['token_hash'] : '';
+                                
+                                $ruta_acta = (!$es_pendiente && stripos($fila['accion'], 'Transferencia') !== false) 
+                                             ? buscar_acta_reciente($fila['id_bien']) : false;
+                                             
+                                // Limpieza visual de ubicación (evitar números sueltos)
+                                $ubi_ant = limpiar_ubicacion($fila['ubicacion_anterior']);
+                                $ubi_nue = limpiar_ubicacion($fila['ubicacion_nueva']);
+                            ?>
+                            <tr class="<?php echo $clase_fila; ?>">
+                                
+                                <td>
+                                    <?php if($es_pendiente): ?>
+                                        <div class="mb-2"><span class="badge-soft badge-soft-warning">EN PROCESO</span></div>
+                                        
+                                        <div class="d-flex flex-column gap-1">
+                                            <div class="paso-item">
+                                                <?php if($fila['firma_patrimonial_path']): ?>
+                                                    <i class="fas fa-check-circle status-icon-ok"></i> <span class="text-success small fw-bold">Patrimonio</span>
+                                                <?php else: ?>
+                                                    <i class="fas fa-clock status-icon-wait"></i> <span class="text-muted small">Patrimonio</span>
+                                                <?php endif; ?>
+                                            </div>
+                                            <div class="paso-item">
+                                                <?php if(!empty($fila['firma_responsable'])): // Este campo no siempre está en pendiente, depende de si ya firmó pero falta patr ?>
+                                                    <i class="fas fa-check-circle status-icon-ok"></i> <span class="text-success small fw-bold">Receptor</span>
+                                                <?php else: ?>
+                                                    <i class="fas fa-clock status-icon-wait"></i> <span class="text-muted small">Receptor</span>
+                                                <?php endif; ?>
+                                            </div>
+                                        </div>
+
+                                    <?php else: ?>
+                                        <span class="badge-soft badge-soft-success"><i class="fas fa-check-double me-1"></i> FINALIZADO</span>
+                                    <?php endif; ?>
+                                </td>
+
+                                <td class="small text-muted fw-bold">
+                                    <?php echo date('d/m/y', strtotime($fila['fecha'])); ?><br>
+                                    <span class="fw-normal"><?php echo date('H:i', strtotime($fila['fecha'])); ?></span>
+                                </td>
+                                
+                                <td>
+                                    <span class="fw-bold text-dark d-block text-truncate" style="max-width: 250px;"><?php echo htmlspecialchars($fila['elemento']); ?></span>
+                                    <small class="text-muted"><i class="fas fa-user-circle me-1"></i> <?php echo htmlspecialchars($fila['usuario'] ?? 'Sistema'); ?></small>
+                                </td>
+                                
+                                <td>
+                                    <div class="d-flex flex-column small">
+                                        <div class="text-danger mb-1"><i class="fas fa-map-marker-alt me-2" style="width:15px;"></i> <?php echo htmlspecialchars($ubi_ant); ?></div>
+                                        <div class="text-success"><i class="fas fa-map-marker me-2" style="width:15px;"></i> <?php echo htmlspecialchars($ubi_nue); ?></div>
+                                    </div>
+                                </td>
+
+                                <td class="text-end">
+                                    <div class="btn-group shadow-sm">
+                                        <button class="btn btn-sm btn-light border" onclick="verDetalle(<?php echo htmlspecialchars(json_encode($fila)); ?>)" title="Ver Detalles Completos">
+                                            <i class="fas fa-eye text-primary"></i>
+                                        </button>
+
+                                        <?php if($es_pendiente): ?>
+                                            <button class="btn btn-sm btn-light border" onclick="copiarLink('<?php echo $link_firma; ?>')" title="Copiar Enlace de Firma">
+                                                <i class="fas fa-link text-dark"></i>
+                                            </button>
+                                            
+                                            <?php if($puede_eliminar): ?>
+                                                <a href="inventario_movimientos.php?cancelar_pendiente=<?php echo $fila['id_unico']; ?>" class="btn btn-sm btn-light border" onclick="return confirm('¿Cancelar y eliminar esta solicitud?')" title="Cancelar">
+                                                    <i class="fas fa-trash-alt text-danger"></i>
+                                                </a>
+                                            <?php endif; ?>
+
+                                        <?php else: ?>
+                                            <a href="inventario_movimientos_pdf.php?id=<?php echo $fila['id_unico']; ?>" target="_blank" class="btn btn-sm btn-light border" title="Constancia Anexo 4">
+                                                <i class="fas fa-file-pdf text-danger"></i>
+                                            </a>
+
+                                            <?php if($ruta_acta): ?>
+                                                <a href="<?php echo $ruta_acta; ?>" target="_blank" class="btn btn-sm btn-light border" title="Acta Firmada">
+                                                    <i class="fas fa-file-signature text-success"></i>
+                                                </a>
+                                            <?php endif; ?>
+                                        <?php endif; ?>
+                                    </div>
+                                </td>
+                            </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalDetalle" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title fw-bold">Detalle de Operación</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    
+                    <div class="d-flex align-items-center mb-3">
+                        <div id="m_estado_badge"></div>
+                        <span class="ms-auto text-muted small" id="m_fecha"></span>
+                    </div>
+
+                    <h5 class="fw-bold text-dark mb-3" id="m_bien"></h5>
+
+                    <div class="p-3 bg-light rounded border mb-3">
+                        <div class="row">
+                            <div class="col-6 border-end">
+                                <small class="text-uppercase text-muted fw-bold" style="font-size:0.7rem;">Origen</small>
+                                <div class="text-danger fw-bold" id="m_origen"></div>
+                            </div>
+                            <div class="col-6 ps-3">
+                                <small class="text-uppercase text-muted fw-bold" style="font-size:0.7rem;">Destino</small>
+                                <div class="text-success fw-bold" id="m_destino"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <small class="fw-bold text-secondary">Observaciones / Motivo:</small>
+                        <p class="mb-0 text-muted fst-italic" id="m_obs"></p>
+                    </div>
+
+                    <div id="divLink" class="mt-4 pt-3 border-top" style="display:none;">
+                        <label class="fw-bold text-primary small mb-1">Enlace para completar firmas:</label>
+                        <div class="input-group">
+                            <input type="text" id="inputModalLink" class="form-control form-control-sm bg-white" readonly>
+                            <button class="btn btn-dark btn-sm" onclick="copiarLinkModal()"><i class="fas fa-copy"></i></button>
+                        </div>
+                        <div class="mt-2 small text-muted">
+                            <i class="fas fa-info-circle me-1"></i> Envíe este enlace al responsable saliente.
+                        </div>
+                    </div>
+
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cerrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
+    <script>
+        $(document).ready(function(){ 
+            $('#tablaUnificada').DataTable({ 
+                order: [], 
+                language: { url: "//cdn.datatables.net/plug-ins/1.13.4/i18n/es-ES.json" },
+                pageLength: 25
+            });
+        });
+
+        function verDetalle(data) {
+            document.getElementById('m_fecha').innerText = data.fecha;
+            document.getElementById('m_bien').innerText = data.elemento;
+            document.getElementById('m_origen').innerText = data.ubicacion_anterior || '-';
+            document.getElementById('m_destino').innerText = data.ubicacion_nueva || '-';
+            document.getElementById('m_obs').innerText = data.detalle || 'Sin observaciones registradas.';
+            
+            let divLink = document.getElementById('divLink');
+            let badgeDiv = document.getElementById('m_estado_badge');
+            
+            if(data.tipo_dato === 'pendiente') {
+                badgeDiv.innerHTML = '<span class="badge bg-warning text-dark px-3 py-2">PENDIENTE DE FIRMAS</span>';
+                divLink.style.display = 'block';
+                document.getElementById('inputModalLink').value = "<?php echo $base_url; ?>transferencia_externa.php?token=" + data.token_hash;
+            } else {
+                badgeDiv.innerHTML = '<span class="badge bg-success px-3 py-2">MOVIMIENTO FINALIZADO</span>';
+                divLink.style.display = 'none';
+            }
+            new bootstrap.Modal(document.getElementById('modalDetalle')).show();
+        }
+
+        function copiarLink(url) {
+            navigator.clipboard.writeText(url).then(() => { alert('Enlace copiado al portapapeles'); });
+        }
+        function copiarLinkModal() {
+            let input = document.getElementById('inputModalLink');
+            input.select(); navigator.clipboard.writeText(input.value).then(() => { alert('Copiado'); });
+        }
+    </script>
+</body>
+</html>

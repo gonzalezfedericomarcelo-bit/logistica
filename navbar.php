@@ -149,26 +149,6 @@ if ($id_usuario_nav > 0 && isset($pdo)) {
         <div class="collapse navbar-collapse" id="navbarNavDropdown">
             
             <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-                
-                <?php if (tiene_permiso('acceso_pedidos_crear', $pdo) || tiene_permiso('acceso_pedidos_lista_encargado', $pdo)): ?>
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle <?php echo (strpos(basename($_SERVER['PHP_SELF']), 'pedido_') !== false || strpos(basename($_SERVER['PHP_SELF']), 'encargado_pedidos_') !== false) ? 'active' : ''; ?>"
-                            href="#" id="pedidosDropdown" role="button" data-bs-toggle="dropdown">
-                            <i class="fas fa-file-signature"></i> Pedidos
-                        </a>
-                        <ul class="dropdown-menu">
-                            <?php if (tiene_permiso('acceso_pedidos_crear', $pdo)): ?>
-                                <li><a class="dropdown-item" href="pedido_crear.php"><i class="fas fa-plus-circle me-2 text-success"></i> Crear Pedido</a></li>
-                            <?php endif; ?>
-                            <li><a class="dropdown-item" href="pedidos_lista_usuario.php"><i class="fas fa-history me-2"></i> Ver Mis Pedidos</a></li>
-                             <?php if (tiene_permiso('acceso_pedidos_lista_encargado', $pdo)): ?>
-                                <li><hr class="dropdown-divider"></li>
-                                <li><a class="dropdown-item" href="encargado_pedidos_lista.php"><i class="fas fa-inbox me-2 text-primary"></i> Bandeja de Pedidos</a></li>
-                            <?php endif; ?>
-                        </ul>
-                    </li>
-                <?php endif; ?>
-                
                 <?php if ($mostrar_novedades): ?>
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle <?php echo (strpos(basename($_SERVER['PHP_SELF']), 'asistencia_') !== false) ? 'active' : ''; ?>" href="#" role="button" data-bs-toggle="dropdown">
@@ -182,7 +162,24 @@ if ($id_usuario_nav > 0 && isset($pdo)) {
                     </ul>
                 </li>
                 <?php endif; ?>
-
+                <?php if (tiene_permiso('acceso_pedidos_crear', $pdo) || tiene_permiso('acceso_pedidos_lista_encargado', $pdo)): ?>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle <?php echo (strpos(basename($_SERVER['PHP_SELF']), 'pedido_') !== false || strpos(basename($_SERVER['PHP_SELF']), 'encargado_pedidos_') !== false) ? 'active' : ''; ?>"
+                            href="#" id="pedidosDropdown" role="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-file-signature"></i> Pedidos de trabajo
+                        </a>
+                        <ul class="dropdown-menu">
+                            <?php if (tiene_permiso('acceso_pedidos_crear', $pdo)): ?>
+                                <li><a class="dropdown-item" href="pedido_crear.php"><i class="fas fa-plus-circle me-2 text-success"></i> Crear Pedido de trabajo</a></li>
+                            <?php endif; ?>
+                            <li><a class="dropdown-item" href="pedidos_lista_usuario.php"><i class="fas fa-history me-2"></i> Ver Mis Pedidos de trabajo</a></li>
+                             <?php if (tiene_permiso('acceso_pedidos_lista_encargado', $pdo)): ?>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="encargado_pedidos_lista.php"><i class="fas fa-inbox me-2 text-primary"></i> Bandeja de Pedidos de trabajo</a></li>
+                            <?php endif; ?>
+                        </ul>
+                    </li>
+                <?php endif; ?>
                 <?php 
                 // --- MODIFICACIÓN: PROTECCIÓN DE TAREAS CON PERMISO ---
                 if (tiene_permiso('ver_lista_tareas', $pdo)): 
@@ -201,6 +198,9 @@ if ($id_usuario_nav > 0 && isset($pdo)) {
                     </ul>
                 </li>
                 <?php endif; // Fin permiso Tareas ?>
+                
+
+                
                 
                 
                 <?php if (tiene_permiso('acceso_inventario', $pdo)): ?>
@@ -221,15 +221,45 @@ if ($id_usuario_nav > 0 && isset($pdo)) {
                     <i class="fas fa-plus-circle me-2 text-success"></i> Nuevo Cargo
                 </a>
             </li>
-            <li>
-                            <a class="dropdown-item" href="admin_link_externo.php">
-                                <i class="fas fa-qrcode me-2 text-warning"></i> Generar Firma Remota
-                            </a>
-                        </li>
+            
         </ul>
     </li>
 <?php endif; ?>
 
+<?php if ($mostrar_ascensores): ?>
+                
+                <li class="nav-item dropdown">
+    <a class="nav-link dropdown-toggle active" href="#" data-bs-toggle="dropdown" style="color: #cdcecfd8;">
+        <i class="fas fa-elevator"></i> Ascensores
+    </a>
+    <ul class="dropdown-menu">
+        <li>
+            <a class="dropdown-item" href="mantenimiento_ascensores.php">
+                <i class="fas fa-tachometer-alt me-2"></i> Tablero Principal
+            </a>
+        </li>
+        
+        <li>
+            <a class="dropdown-item" href="ascensor_estadisticas.php">
+                <i class="fas fa-chart-line me-2"></i> Estadísticas
+            </a>
+        </li>
+
+        <?php if(tiene_permiso('admin_ascensores', $pdo)): ?>
+            <li><hr class="dropdown-divider"></li>
+            
+            <li>
+                <a class="dropdown-item" href="admin_ascensores.php">
+                    <i class="fas fa-cogs me-2"></i> Administrar Equipos
+                </a>
+            </li>
+        <?php endif; ?>
+    </ul>
+</li>
+    
+    
+
+                <?php endif; ?>
 
                 <?php 
                 // --- MODIFICACIÓN: PROTECCIÓN DE BLOG (AVISOS) ---
@@ -273,26 +303,7 @@ if ($id_usuario_nav > 0 && isset($pdo)) {
                 </li>
                 <?php endif; // Fin permiso Chat ?>
 
-                <?php if ($mostrar_ascensores): ?>
                 
-                <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle active" href="#" data-bs-toggle="dropdown" style="color: #ffc107;">
-                        <i class="fas fa-elevator"></i> Ascensores
-                    </a>
-                    <ul class="dropdown-menu">
-                        <li><a class="dropdown-item" href="mantenimiento_ascensores.php">Tablero Principal</a></li>
-                        <li><a class="dropdown-item" href="ascensor_crear_incidencia.php"><i class="fas fa-plus-circle me-2 text-success"></i> Nuevo Reclamo</a></li>
-                        <li><a class="dropdown-item" href="ascensor_estadisticas.php">Estadísticas</a></li>
-                        <?php if(tiene_permiso('admin_ascensores', $pdo)): ?>
-                        <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" href="admin_ascensores.php">Administrar Equipos</a></li>
-                        <?php endif; ?>
-                    </ul>
-                </li>
-    
-    
-
-                <?php endif; ?>
                 <?php if ($mostrar_menu_admin): ?>
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle <?php echo (strpos(basename($_SERVER['PHP_SELF']), 'admin_') !== false || strpos(basename($_SERVER['PHP_SELF']), 'encargado_') !== false) ? 'active' : ''; ?>"
