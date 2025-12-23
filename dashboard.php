@@ -57,8 +57,14 @@ if (function_exists('obtenerFraseMotivadora')) {
 // 5. FILTROS SQL
 $sql_filtro_usuario = "";
 $params_filtro = [];
+// Corrección Multi-Usuario para el Dashboard
 if ($rol_usuario === 'empleado') {
-    $sql_filtro_usuario = " AND t.id_asignado = :uid ";
+    // Busca si el ID es igual, O si está contenido en el texto (ej: "5", "4,5", "[4, 5]")
+    $sql_filtro_usuario = " AND (
+        t.id_asignado = :uid 
+        OR t.id_asignado LIKE CONCAT('%\"', :uid, '\"%') 
+        OR t.id_asignado LIKE CONCAT('%', :uid, '%')
+    )";
     $params_filtro[':uid'] = $id_usuario;
 }
 

@@ -42,6 +42,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $_SESSION['usuario_rol'] = $user['rol'];
                     $_SESSION['usuario_perfil'] = $user['foto_perfil']; 
                     $_SESSION['foto_perfil'] = $user['foto_perfil']; 
+                    if (isset($usuario['requiere_cambio_pass']) && $usuario['requiere_cambio_pass'] == 1) {
+    header("Location: forzar_cambio_pass.php");
+    exit();
+}
                     
                     try { $pdo->prepare("UPDATE usuarios SET ultimo_acceso = NOW() WHERE id_usuario = :id")->execute([':id' => $user['id_usuario']]); } catch (Exception $e) {}
                     
