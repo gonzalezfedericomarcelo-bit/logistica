@@ -26,6 +26,12 @@ try {
     $modo_navidad = ($res_conf && $res_conf['valor'] == '1');
 } catch (Exception $e) {}
 
+// Lógica para mostrar el modal SOLO una vez por sesión
+$mostrar_modal_fiestas = false;
+if ($modo_navidad && !isset($_SESSION['navidad_mostrada'])) {
+    $mostrar_modal_fiestas = true;
+    $_SESSION['navidad_mostrada'] = true; // Marcamos como visto para que no salga al recargar
+}
 // --- LÓGICA NOTIFICACIÓN CHAT ---
 $mostrar_chat_modal = false;
 try {
@@ -984,6 +990,468 @@ $_SESSION['dashboard_loaded_once'] = true;
         }
     });
     </script>
+    <?php if ($mostrar_modal_fiestas): ?>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+<?php
+// --- 1. PREPARAR NOMBRE CORTO (Solo el primer nombre para que sea más personal) ---
+$partes_nombre = explode(' ', trim($nombre_usuario));
+$primer_nombre = ucfirst(strtolower($partes_nombre[0])); 
+
+// --- 2. GENERACIÓN DE CARTAS (Mantenemos las mismas) ---
+$cartas_navidad = [
+    0 => "En estas fechas tan señaladas, quiero tomarme un momento para agradecerte sinceramente. Tu dedicación no solo hace que el trabajo salga adelante, sino que crea un ambiente donde todos queremos estar. Que esta Navidad te traiga la misma paz que tú transmites al equipo. ¡Brindo por ti y por todo lo que has logrado este año!",
+    1 => "A veces el ritmo del día a día no nos deja decir lo importante: gracias por estar ahí. Tu esfuerzo es el motor silencioso de muchos de nuestros éxitos. Deseo que en estas fiestas puedas desconectar, abrazar a los tuyos y recargar energías, porque te mereces todo lo bueno que viene en camino. ¡Felices fiestas!",
+    2 => "La Navidad es tiempo de balance, y al mirar atrás, tu nombre aparece en muchos de los mejores momentos de este año. Gracias por tu compromiso inquebrantable y por esa energía que contagia. Que tengas una Nochebuena llena de risas y un Año Nuevo cargado de oportunidades. ¡Eres fundamental para nosotros!",
+    3 => "Más allá de los objetivos y las tareas, lo que realmente valoramos es a la persona que hay detrás. Gracias por tu calidad humana y por sumar siempre. Espero que estas fiestas estén llenas de magia, buena comida y mejores compañías. ¡Levanto mi copa para brindar por tu felicidad!",
+    4 => "Ha sido un año de desafíos, pero tenerte en el equipo ha hecho que todo sea más fácil. Tu capacidad para resolver problemas y tu buena disposición son un regalo diario. Te deseo una Navidad mágica, rodeado/a de amor y alegría. ¡Gracias por ser parte de esta familia laboral!",
+    5 => "Dicen que el mejor regalo es compartir tiempo con personas valiosas, y trabajar contigo ha sido eso para nosotros. Gracias por tu profesionalismo y tu lealtad. Que el espíritu navideño llene tu hogar de luz y que el próximo año venga cargado de éxitos personales y profesionales.",
+    6 => "Llega el final de un ciclo y es imposible no destacar tu labor. Has sido una pieza clave en este rompecabezas. Deseo de corazón que pases unos días inolvidables junto a tu familia y amigos. ¡Que el nuevo año te sorprenda con momentos maravillosos!",
+    7 => "Tu trabajo habla por sí solo, pero hoy quiero agradecerte por tu actitud. Esa sonrisa y esa disposición hacen la diferencia. Que esta Navidad recibas todo el cariño que mereces y que el Año Nuevo sea el inicio de tu mejor etapa. ¡Felices Fiestas!",
+    8 => "¡Feliz Navidad! Quería aprovechar este momento para decirte que admiro tu constancia. No todo el mundo tiene esa fuerza para seguir adelante día a día. Deseo que encuentres bajo el árbol mucha salud, amor y prosperidad. ¡Gracias por todo!",
+    9 => "El año se pasa volando, pero los buenos gestos quedan. Gracias por cada vez que diste un extra sin que nadie te lo pidiera. Eres un ejemplo a seguir. Que disfrutes de estas fiestas con la tranquilidad del deber cumplido y la ilusión de lo que vendrá.",
+    10 => "En medio del caos diario, tú siempre aportas calma y soluciones. Gracias por ser ese pilar en el que podemos confiar. Te deseo una Navidad llena de abrazos sinceros y un Año Nuevo donde se cumplan todos tus sueños. ¡Felicidades!",
+    11 => "No quería cerrar el año sin decirte lo importante que eres para este equipo. Tu evolución y tu entrega son admirables. Que estas fiestas sean un paréntesis de felicidad pura para ti y los tuyos. ¡Salud y mucho éxito!",
+    12 => "La magia de la Navidad no está en los regalos, sino en las personas. Y tú eres una gran persona. Gracias por tu compañerismo y por hacer el día a día más ameno. ¡Que tengas unas fiestas espectaculares y un inicio de año brillante!",
+    13 => "Gracias por ponerle corazón a lo que haces. Eso no se paga con nada, pero se valora inmensamente. Deseo que esta Navidad te devuelva multiplicado todo lo bueno que das a los demás. ¡Pásalo genial!",
+    14 => "Mirando los logros de este año, veo tu huella en muchos de ellos. Gracias por remar siempre a favor. Te deseo unas fiestas llenas de luz, calor de hogar y momentos inolvidables. ¡Te lo mereces!",
+    15 => "¡Felices Fiestas! Que la alegría de estos días te acompañe durante todo el año que entra. Gracias por tu esfuerzo incansable y por ser una persona en la que siempre se puede confiar. ¡Brindo por ti!",
+    16 => "Tu talento es grande, pero tu humildad y compañerismo son aún mayores. Gracias por ser como eres. Que esta Navidad sea el prólogo de un año lleno de buenas noticias para ti. ¡Disfruta mucho!",
+    17 => "A veces las palabras se quedan cortas, pero gracias. Gracias por estar, por persistir y por sumar. Que en estas fiestas encuentres descanso, alegría y mucho amor. ¡Feliz Navidad y próspero Año Nuevo!",
+    18 => "Eres de esas personas que hacen que el trabajo sea menos trabajo. Gracias por tu buena vibra. Te deseo una Navidad de película y un Año Nuevo de récord. ¡A celebrar!",
+    19 => "El éxito de un equipo se construye con personas como tú. Gracias por tu dedicación absoluta. Que la magia de la Navidad ilumine tu hogar y te traiga todo aquello que anhelas. ¡Un fuerte abrazo!",
+    20 => "Cierro los ojos y pido un deseo: que sigas con nosotros mucho tiempo más. Gracias por tu lealtad y esfuerzo. ¡Que tengas una Navidad maravillosa rodeado/a de tu gente querida!",
+    21 => "Tu capacidad de superación es inspiradora. Gracias por no rendirte nunca. Te deseo unas fiestas donde solo haya espacio para la felicidad y la celebración. ¡Feliz Navidad!",
+    22 => "Detrás de cada gran resultado, hay un gran esfuerzo tuyo. Gracias por hacerlo posible. Que esta Navidad sea tan especial como tú lo eres para este equipo. ¡Chin chin!",
+    23 => "Es un privilegio contar contigo. Tu profesionalidad nos hace mejores a todos. Que disfrutes de estas fiestas con la satisfacción de haberlo dado todo y la emoción de lo nuevo. ¡Felicidades!",
+    24 => "¡Feliz Navidad! Que la paz y la armonía reinen en tu hogar. Gracias por ser una persona tan trabajadora y honesta. Te deseo lo mejor del mundo para el año que comienza.",
+    25 => "Gracias por cada detalle, por cada hora dedicada y por tu compromiso. Eres esencial. Que estas fiestas te traigan descanso, alegría y muchos momentos para recordar. ¡Salud!",
+    26 => "Tu energía positiva es contagiosa. Gracias por mantener el ánimo arriba incluso en momentos difíciles. Te deseo una Navidad brillante y un Año Nuevo explosivo de felicidad.",
+    27 => "No hay mejor regalo para una empresa que tener empleados como tú. Gracias por tu excelencia. Que pases una Nochebuena mágica y un fin de año espectacular.",
+    28 => "Gracias por construir, por proponer y por estar. Tu aporte es invaluable. Deseo que estas fiestas sean un remanso de paz y alegría para ti y tu familia. ¡Un abrazo fuerte!",
+    29 => "¡Felices Fiestas! Que la ilusión de estos días te acompañe siempre. Gracias por tu trabajo impecable y por tu calidad humana. ¡Eres un crack!",
+    30 => "Tu perseverancia es tu mejor cualidad. Gracias por no bajar los brazos. Que esta Navidad te llene de esperanza y el Año Nuevo te traiga recompensas merecidas.",
+    31 => "Trabajar contigo es un aprendizaje constante. Gracias por compartir tu experiencia. Te deseo unas fiestas llenas de amor, salud y prosperidad. ¡A disfrutar!",
+    32 => "Gracias por cuidar los detalles y por tu responsabilidad. Se nota cuando alguien ama lo que hace. ¡Que tengas una Navidad preciosa y un Año Nuevo lleno de éxitos!",
+    33 => "Eres un ejemplo de integridad y esfuerzo. Gracias por ser parte de nuestro camino. Te deseo una Navidad cálida, familiar y muy feliz. ¡Todo lo mejor para ti!",
+    34 => "¡Feliz Navidad! Gracias por sumar tu talento a este proyecto. Que estas fiestas sean el impulso que necesitas para alcanzar todas tus metas el próximo año.",
+    35 => "Tu lealtad y compromiso son el cimiento de nuestro éxito. Gracias infinitas. Que disfrutes de cada momento de estas fiestas junto a quienes más quieres.",
+    36 => "Gracias por tu paciencia y tu buen hacer. Eres una garantía de calidad. Te deseo una Navidad llena de sorpresas bonitas y un Año Nuevo próspero.",
+    37 => "La excelencia no es un acto, es un hábito, y tú lo tienes. Gracias por tu constancia. ¡Que pases unas fiestas maravillosas y muy divertidas!",
+    38 => "Gracias por ser ese compañero/a que siempre está dispuesto a ayudar. Eso vale oro. Te deseo una Navidad llena de luz y un año nuevo lleno de aventuras.",
+    39 => "¡Felices Fiestas! Gracias por tu aporte único y especial. Que la alegría de la Navidad inunde tu corazón y tu hogar. ¡Te lo mereces todo!",
+    40 => "Tu esfuerzo diario no pasa desapercibido. Gracias por dar lo mejor de ti. Que estas fiestas sean una celebración de la vida y del amor. ¡Felicidades!",
+    41 => "Gracias por enfrentar los retos con valentía. Eres un motor para el equipo. Te deseo una Navidad serena y feliz, y un Año Nuevo lleno de triunfos.",
+    42 => "¡Feliz Navidad! Que la felicidad sea tu mejor regalo. Gracias por tu trabajo duro y tu sonrisa fácil. ¡A brindar por todo lo bueno!",
+    43 => "Gracias por tu flexibilidad y tu capacidad de adaptación. Eres vital para nosotros. Que tengas unas fiestas inolvidables y un comienzo de año espectacular.",
+    44 => "Tu pasión por el trabajo es admirable. Gracias por inspirarnos. Te deseo una Navidad mágica, llena de sueños cumplidos y momentos felices.",
+    45 => "¡Felices Fiestas! Gracias por ser parte de esta gran familia. Que la paz y el amor sean los protagonistas de tu Navidad. ¡Un brindis por ti!",
+    46 => "Gracias por tu disciplina y tu enfoque. Haces que las cosas sucedan. Que disfrutes de unas fiestas relajadas y llenas de cariño. ¡Te lo has ganado!",
+    47 => "Eres una persona excepcional y un profesional increíble. Gracias por todo. Te deseo una Navidad de cuento y un Año Nuevo de leyenda. ¡Felicidades!",
+    48 => "Gracias por tu creatividad y tus ideas. Aportas frescura al equipo. ¡Que tengas una Navidad colorida y alegre, y un año nuevo sorprendente!",
+    49 => "Cerramos el año con gratitud, y tú eres gran parte de ella. Gracias por tu entrega. Te deseo unas fiestas llenas de abrazos, risas y mucha felicidad."
+];
+
+$indice_carta = ($id_usuario * 11) % 50;
+$mensaje_personal = $cartas_navidad[$indice_carta];
+?>
+
+<style>
+    /* === FONDO ROJO INTENSO === */
+    #modalFiestas .modal-content {
+        background: radial-gradient(circle at center, #d90429 0%, #6a040f 100%);
+        color: white;
+        min-height: 100vh;
+        position: relative;
+        overflow: hidden;
+        border: none;
+    }
+
+    /* === NIEVE === */
+    .snowflake {
+        position: absolute;
+        top: -20px;
+        color: rgba(255, 255, 255, 0.8);
+        user-select: none;
+        pointer-events: none;
+        z-index: 5;
+    }
+
+    /* === GUIRNALDAS REALISTAS Y LUCES === */
+    .garland-container {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 120%; /* Más ancho para el movimiento */
+        margin-left: -10%;
+        height: 150px;
+        z-index: 20;
+        display: flex;
+        justify-content: space-around;
+        pointer-events: none;
+        animation: swayGarland 6s ease-in-out infinite alternate;
+        transform-origin: top center;
+    }
+
+    .garland {
+        width: 100%;
+        height: 100px;
+        background: url('assets/img/guir.png'); /* Si tienes la imagen */
+        background-color: transparent;
+        border-bottom: 15px dashed #0f3d0f; /* Color pino */
+        border-radius: 0 0 50% 50% / 0 0 100% 100%;
+        box-shadow: 0 5px 0 #082508;
+        position: relative;
+        margin: 0 -10px;
+    }
+
+    .light {
+        position: absolute;
+        bottom: -8px;
+        width: 12px;
+        height: 18px;
+        border-radius: 50%;
+        background-color: #fff;
+        box-shadow: 0 0 10px #fff;
+        animation: glowLight 2s infinite alternate;
+    }
+    .light.red { left: 20%; background: #ff0000; box-shadow: 0 0 10px #ff0000; animation-delay: 0s; }
+    .light.gold { left: 50%; background: #ffd700; box-shadow: 0 0 10px #ffd700; animation-delay: 0.5s; }
+    .light.green { left: 80%; background: #00ff00; box-shadow: 0 0 10px #00ff00; animation-delay: 1s; }
+
+    @keyframes swayGarland {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(1deg) translateY(2px); }
+    }
+    
+    @keyframes glowLight {
+        0% { opacity: 0.4; transform: scale(0.9); }
+        100% { opacity: 1; transform: scale(1.1); }
+    }
+
+    /* === ÁRBOL GIGANTE === */
+    .tree-container {
+        font-size: 7rem;
+        color: #1b4d3e; /* Verde pino oscuro */
+        text-shadow: 0 0 5px #2ecc71, 3px 3px 0px #000;
+        margin-bottom: 20px;
+        position: relative;
+        z-index: 2;
+        filter: drop-shadow(0 10px 10px rgba(0,0,0,0.5));
+    }
+    .tree-star {
+        color: #ffd700;
+        animation: spinStar 3s infinite alternate;
+    }
+    @keyframes spinStar { 0% { transform: scale(1); filter: brightness(1); } 100% { transform: scale(1.2); filter: brightness(1.5); } }
+
+    /* === TARJETA (LO QUE SE DESCARGA) === */
+    #tarjetaCapture {
+        background: rgba(80, 0, 0, 0.7); /* Rojo oscuro transparente */
+        border: 4px double #ffcc00;
+        border-radius: 15px;
+        padding: 40px;
+        max-width: 800px;
+        margin: 0 auto;
+        position: relative;
+        z-index: 10;
+        box-shadow: 0 0 40px rgba(255, 204, 0, 0.2);
+    }
+
+    .titulo-feliz {
+        font-family: 'Times New Roman', serif;
+        font-weight: 700;
+        font-size: 3.5rem;
+        color: #ffcc00;
+        text-shadow: 2px 2px 0 #5c0000, 0 0 20px #ff9900;
+        margin-bottom: 0;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+    }
+
+    /* NOMBRE PERSONALIZADO */
+    .nombre-destinatario {
+        font-family: 'Brush Script MT', cursive;
+        font-size: 3rem;
+        color: #fff;
+        text-shadow: 0 0 10px #ff0000, 2px 2px 0 #000;
+        margin-bottom: 1rem;
+        display: block;
+    }
+
+    .mensaje-texto {
+        font-family: 'Georgia', serif;
+        font-size: 1.6rem;
+        line-height: 1.5;
+        color: #fff;
+        text-shadow: 1px 1px 2px #000;
+        font-style: italic;
+    }
+    
+    .firma-container {
+        margin-top: 30px;
+        border-top: 1px solid rgba(255, 204, 0, 0.3);
+        padding-top: 20px;
+    }
+
+    .frase-final {
+        font-family: 'Georgia', serif; 
+        font-weight: bold;
+        font-size: 1.8rem;
+        color: #ffcc00;
+        text-shadow: 2px 2px 5px #000;
+        display: block;
+        margin-bottom: 10px;
+    }
+    
+    .deseo-final {
+        font-family: 'Arial', sans-serif;
+        font-size: 1.2rem;
+        color: #fff;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        display: block;
+        margin-bottom: 5px;
+    }
+
+    .firma-sargento {
+        font-family: 'Times New Roman', serif;
+        font-size: 1.5rem;
+        font-weight: bold;
+        color: #ffcc00;
+        text-shadow: 1px 1px 0 #000;
+        text-decoration: underline;
+    }
+
+    /* === BOTONES === */
+    .btn-container {
+        margin-top: 40px;
+        display: flex;
+        justify-content: center;
+        gap: 20px;
+        z-index: 20;
+        position: relative;
+    }
+
+    .btn-gracias {
+        background: #ffcc00;
+        color: #8d0801;
+        font-weight: 900;
+        font-size: 1.4rem;
+        padding: 12px 40px;
+        border-radius: 50px;
+        border: 2px solid #fff;
+        box-shadow: 0 0 20px rgba(255, 204, 0, 0.6);
+        transition: all 0.3s;
+    }
+    .btn-gracias:hover { transform: scale(1.1); background: #fff; }
+
+    .btn-descargar {
+        background: rgba(255,255,255,0.2);
+        color: #fff;
+        font-weight: bold;
+        font-size: 1.2rem;
+        padding: 12px 30px;
+        border-radius: 50px;
+        border: 2px solid #fff;
+        transition: all 0.3s;
+    }
+    .btn-descargar:hover { background: #fff; color: #000; }
+
+    /* Canvas fuegos artificiales */
+    #fireworksCanvas {
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        pointer-events: none; z-index: 9999; display: none; /* Oculto al inicio */
+    }
+</style>
+
+<div class="modal fade" id="modalFiestas" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-hidden="true" style="z-index: 10000;">
+    <div class="modal-dialog modal-fullscreen"> 
+        <div class="modal-content text-center d-flex flex-column justify-content-center align-items-center">
+            
+            <canvas id="fireworksCanvas"></canvas>
+
+            <div class="garland-container">
+                <div class="garland"><div class="light red"></div><div class="light gold"></div><div class="light green"></div></div>
+                </div>
+
+            <div id="tarjetaCapture">
+                <div class="tree-container"><i class="fas fa-star tree-star mb-3 d-block" style="font-size: 0.4em;"></i><i class="fas fa-tree"></i></div>
+                <h1 class="titulo-feliz">¡FELICES FIESTAS!</h1>
+                <span class="nombre-destinatario"><?php echo $primer_nombre; ?></span>
+                <hr style="border-color: #ffcc00; opacity: 1; margin: 10px 20%;">
+                <p class="mensaje-texto">"<?php echo $mensaje_personal; ?>"</p>
+                <div class="firma-container">
+                    <span class="frase-final">Todo va a pasar, yo creo en vos.</span>
+                    <span class="deseo-final">Te deseo una feliz Navidad y próspero año nuevo</span>
+                    <span class="firma-sargento">Sargento Federico González</span>
+                </div>
+            </div>
+            
+            <div class="btn-container d-flex flex-column align-items-center" style="z-index: 9999; position: relative; margin-top: 30px;">
+                
+                <div class="d-flex gap-3 mb-3">
+                    <button type="button" class="btn btn-descargar" id="btnDescargar">
+                        <i class="fas fa-camera me-2"></i> Guardar
+                    </button>
+
+                    <button type="button" class="btn btn-success fw-bold shadow" id="btnWhatsapp" style="border-radius: 50px; padding: 12px 25px; border: 2px solid white;">
+                        <i class="fab fa-whatsapp me-2"></i> WhatsApp
+                    </button>
+
+                    <button type="button" class="btn btn-gracias" id="btnGracias">
+                        <i class="fas fa-gift me-2"></i> Gracias
+                    </button>
+                </div>
+
+                <div class="form-check bg-dark bg-opacity-50 px-4 py-2 rounded-pill mt-2">
+                    <input class="form-check-input" type="checkbox" id="checkNoMostrar" style="cursor: pointer; transform: scale(1.2);">
+                    <label class="form-check-label text-white fw-bold ms-2" for="checkNoMostrar" style="cursor: pointer; font-size: 0.9rem;">
+                        No volver a mostrar este saludo
+                    </label>
+                </div>
+                
+                <div id="mensajeFinalGracias" style="display:none; margin-top:20px;">
+                    <h2 class="text-white fw-bold" style="text-shadow: 2px 2px 4px #000;">¡Gracias por tu trabajo, <?php echo $primer_nombre; ?>!</h2>
+                </div>
+            </div>
+            
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var myModalEl = document.getElementById('modalFiestas');
+        var myModal = new bootstrap.Modal(myModalEl);
+        myModal.show();
+        
+        // --- 1. NIEVE ---
+        function createSnowflake() {
+            const snow = document.createElement('div');
+            snow.classList.add('snowflake');
+            snow.textContent = Math.random() > 0.5 ? '❅' : '•';
+            snow.style.left = Math.random() * 100 + 'vw';
+            snow.style.opacity = Math.random() * 0.6;
+            const size = Math.random() * 1.5 + 1 + 'rem';
+            snow.style.fontSize = size;
+            
+            const duration = Math.random() * 5 + 5; 
+            snow.style.transition = `top ${duration}s linear, opacity ${duration}s ease-out`;
+            
+            myModalEl.querySelector('.modal-content').appendChild(snow);
+            
+            setTimeout(() => { snow.style.top = '110%'; }, 50);
+            setTimeout(() => { snow.remove(); }, duration * 1000);
+        }
+        let snowInterval = setInterval(createSnowflake, 100);
+
+        // --- 2. DESCARGAR ---
+        // FUNCIÓN ESPÍA MAESTRA
+        function notificarAdmin(accion) {
+            console.log("Enviando aviso de: " + accion); // Para que veas en consola si funciona
+            
+            const noMostrar = document.getElementById('checkNoMostrar').checked;
+            const formData = new FormData();
+            formData.append('accion', accion);
+            formData.append('no_mostrar', noMostrar); // Enviamos true o false
+
+            // Envia los datos al archivo PHP sin recargar la página
+            fetch('guardar_log_tarjeta.php', { method: 'POST', body: formData });
+        }
+
+        // 1. BOTÓN DESCARGAR
+        document.getElementById('btnDescargar').addEventListener('click', function() {
+            notificarAdmin('Click en Guardar Foto'); // AVISA AL ADMIN
+            
+            const btn = this;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> ...';
+            html2canvas(document.getElementById('tarjetaCapture'), { backgroundColor: null, scale: 2 }).then(canvas => {
+                const link = document.createElement('a');
+                link.download = 'Tarjeta_Navidad.png';
+                link.href = canvas.toDataURL();
+                link.click();
+                btn.innerHTML = '<i class="fas fa-check"></i> ¡Lista!';
+            });
+        });
+
+        // 2. BOTÓN WHATSAPP
+        document.getElementById('btnWhatsapp').addEventListener('click', function() {
+            notificarAdmin('Click en Compartir WhatsApp'); // AVISA AL ADMIN
+            
+            const texto = "¡Miren la tarjeta que me dio la empresa! 🎄";
+            window.open("https://wa.me/?text=" + encodeURIComponent(texto), '_blank');
+        });
+
+        // 3. BOTÓN GRACIAS (El final)
+        document.getElementById('btnGracias').addEventListener('click', function() {
+            notificarAdmin('Click en Gracias (Cerrando)'); // AVISA AL ADMIN
+
+            // Ocultar botones
+            document.querySelector('.btn-container').style.display = 'none'; 
+            document.getElementById('mensajeFinalGracias').style.display = 'block';
+            document.getElementById('fireworksCanvas').style.display = 'block';
+            
+            startFireworks(document.getElementById('fireworksCanvas'));
+            
+            setTimeout(function() {
+                myModal.hide();
+                // Liberar scroll forzosamente
+                document.body.classList.remove('modal-open');
+                document.body.style.overflow = 'auto'; 
+                document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+            }, 5000);
+        });
+
+        // Lógica de Fuegos Artificiales
+        function startFireworks(canvas) {
+            const ctx = canvas.getContext('2d');
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            let particles = [];
+
+            function Particle(x, y, color) {
+                this.x = x; this.y = y; this.color = color;
+                this.velocity = { x: (Math.random() - 0.5) * 15, y: (Math.random() - 0.5) * 15 };
+                this.alpha = 1; this.life = 100;
+                this.draw = function() {
+                    ctx.save(); ctx.globalAlpha = this.alpha; ctx.beginPath();
+                    ctx.arc(this.x, this.y, 4, 0, Math.PI * 2, false);
+                    ctx.fillStyle = this.color; ctx.fill(); ctx.restore();
+                };
+                this.update = function() {
+                    this.x += this.velocity.x; this.y += this.velocity.y;
+                    this.alpha -= 0.02; this.life--;
+                };
+            }
+
+            function explode(x, y) {
+                const colors = ['#ff0000', '#ffd700', '#ffffff', '#00ff00', '#00ffff'];
+                for (let i = 0; i < 50; i++) { 
+                    particles.push(new Particle(x, y, colors[Math.floor(Math.random() * colors.length)]));
+                }
+            }
+
+            function animate() {
+                requestAnimationFrame(animate);
+                ctx.fillStyle = 'rgba(0,0,0,0.2)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                particles.forEach((p, index) => {
+                    if (p.life <= 0) particles.splice(index, 1); else { p.update(); p.draw(); }
+                });
+            }
+            animate();
+
+            let launchInterval = setInterval(() => {
+                explode(Math.random() * canvas.width, Math.random() * canvas.height * 0.8);
+            }, 200); 
+            
+            setTimeout(() => { clearInterval(launchInterval); }, 2800);
+        }
+    });
+</script>
+<?php endif; ?>
     <?php include 'footer.php'; ?>
 </body>
 
